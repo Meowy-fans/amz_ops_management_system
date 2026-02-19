@@ -3,11 +3,9 @@ import logging
 import os
 from contextlib import contextmanager
 from typing import Optional
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, pool
-from sqlalchemy.orm import Session, sessionmaker
-
-load_dotenv()
+from sqlalchemy.orm import sessionmaker, Session
+from src.config.settings import settings
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
@@ -22,14 +20,8 @@ class DatabaseManager:
     
     def __init__(self):
         if self._engine is None:
-            config = {
-                'host': os.getenv('DATABASE_HOST'),
-                'port': os.getenv('DATABASE_PORT', '5432'),
-                'name': os.getenv('DATABASE_NAME'),
-                'user': os.getenv('DATABASE_USER'),
-                'password': os.getenv('DATABASE_PASSWORD'),
-            }
-            url = f"postgresql+psycopg2://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['name']}"
+            # Use Pydantic Settings for URL
+            url = settings.DATABASE_URL
             
             self._engine = create_engine(
                 url,

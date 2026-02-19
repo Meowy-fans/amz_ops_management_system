@@ -6,6 +6,8 @@
 
 ## 🚀 快速开始
 
+> **项目状态**：[查看进度 (STATUS.md)](./STATUS.md) | [待办任务 (TODO.md)](./TODO.md)
+
 ### 1. 查看帮助
 ```bash
 python main.py --help

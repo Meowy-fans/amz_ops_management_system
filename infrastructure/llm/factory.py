@@ -1,7 +1,7 @@
 """LLM服务工厂"""
-import os
 import logging
 from typing import Dict
+from src.config.settings import settings
 from infrastructure.llm.interface import LLMServiceInterface
 from infrastructure.llm.implementations.direct_llm_service import DirectLLMService
 
@@ -16,8 +16,8 @@ def get_llm_service() -> LLMServiceInterface:
     if _service_instance is not None:
         return _service_instance
     
-    # 从环境变量决定模式
-    mode = os.getenv('LLM_SERVICE_MODE', 'direct')
+    # 从配置决定模式
+    mode = settings.LLM_SERVICE_MODE
     
     if mode == 'autogen':
         from infrastructure.llm.implementations.autogen_llm_service import AutoGenLLMService
@@ -33,18 +33,18 @@ def get_llm_service() -> LLMServiceInterface:
 def _load_direct_config() -> Dict:
     """加载Direct模式配置"""
     return {
-        'default_provider': os.getenv('LLM_PROVIDER', 'qwen'),
+        'default_provider': settings.LLM_PROVIDER,
         'providers': {
             'deepseek': {
-                'default_model': os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+                'default_model': settings.DEEPSEEK_MODEL
             },
             'qwen': {
-                'default_model': os.getenv('QWEN_MODEL', 'qwen-plus-latest')
+                'default_model': settings.QWEN_MODEL
             }
         },
         'task_routing': {
-            'product_generation': os.getenv('LLM_PROVIDER', 'qwen'),
+            'product_generation': settings.LLM_PROVIDER,
             'sku_mapping': 'qwen',
-            'product_attribute_enrichment': os.getenv('LLM_PROVIDER', 'qwen')  # 新增
+            'product_attribute_enrichment': settings.LLM_PROVIDER
         }
     }

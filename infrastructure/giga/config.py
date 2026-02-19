@@ -1,16 +1,13 @@
 """Giga API配置管理"""
-import os
 from typing import Dict
-from dotenv import load_dotenv
-
-load_dotenv()
+from src.config.settings import settings
 
 class GigaConfig:
     """Giga API配置"""
     
-    BASE_URL = os.getenv('GIGA_BASE_URL', 'https://api.gigacloudlogistics.com')
-    CLIENT_ID = os.getenv('GIGA_CLIENT_ID')
-    CLIENT_SECRET = os.getenv('GIGA_CLIENT_SECRET')
+    BASE_URL = settings.GIGA_BASE_URL
+    CLIENT_ID = settings.GIGA_CLIENT_ID
+    CLIENT_SECRET = settings.GIGA_CLIENT_SECRET
     
     ENDPOINTS = {
         'token': '/api-auth-v1/oauth/token',

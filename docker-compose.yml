@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: amz_listing_app
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=amz_listing
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - APP_ENV=development
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    command: python main.py
+
+  db:
+    image: postgres:15-alpine
+    container_name: amz_listing_db
+    environment:
+      - POSTGRES_DB=amz_listing
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

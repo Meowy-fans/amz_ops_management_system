@@ -1,9 +1,9 @@
-import os
 import json
 import uuid
 import logging
 import requests
 from typing import Dict, Any, Optional
+from src.config.settings import settings
 from infrastructure.llm.interface import LLMServiceInterface
 from infrastructure.llm.types import LLMRequest, LLMResponse
 
@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 class AutoGenLLMService(LLMServiceInterface):
     def __init__(self):
-        self.base_url = os.getenv("AUTOGEN_BASE_URL", "http://localhost:8000")
-        self.timeout = int(os.getenv("AUTOGEN_TIMEOUT_SECONDS", "300"))
-        self.global_max_rounds = int(os.getenv("AUTOGEN_GLOBAL_MAX_ROUNDS", "1"))
-        self.termination_keyword = os.getenv("AUTOGEN_TERMINATION_KEYWORD", "TERMINATE")
-        self.fallback_model = os.getenv("AUTOGEN_FALLBACK_MODEL", "deepseek-chat")
+        self.base_url = settings.AUTOGEN_BASE_URL
+        self.timeout = settings.AUTOGEN_TIMEOUT_SECONDS
+        self.global_max_rounds = settings.AUTOGEN_GLOBAL_MAX_ROUNDS
+        self.termination_keyword = settings.AUTOGEN_TERMINATION_KEYWORD
+        self.fallback_model = settings.AUTOGEN_FALLBACK_MODEL
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         session_id = self._get_session_id(request)
@@ -78,7 +78,7 @@ class AutoGenLLMService(LLMServiceInterface):
         return sid if sid else f"{request.task_type}-{uuid.uuid4().hex[:12]}"
 
     def _default_model(self) -> str:
-        return os.getenv("QWEN_MODEL", os.getenv("DEEPSEEK_MODEL", "qwen-plus-latest"))
+        return settings.QWEN_MODEL
 
     def _raise_for_status(self, resp: requests.Response):
         if 200 <= resp.status_code < 300:

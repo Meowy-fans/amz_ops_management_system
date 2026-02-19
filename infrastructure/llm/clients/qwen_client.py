@@ -1,11 +1,11 @@
 """千问API客户端（简化版）"""
-import os
-import json
 import logging
+import json
 from typing import Dict, Any
 from http import HTTPStatus
 import dashscope
 from dashscope.api_entities.dashscope_response import GenerationResponse
+from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +13,11 @@ class QwenAPIClient:
     """千问API客户端"""
     
     def __init__(self):
-        if not os.getenv("DASHSCOPE_API_KEY"):
-            raise EnvironmentError("请设置DASHSCOPE_API_KEY环境变量")
-        dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
+        self.api_key = settings.DASHSCOPE_API_KEY
+        if not self.api_key:
+            raise EnvironmentError("请设置DASHSCOPE_API_KEY配置")
+        
+        dashscope.api_key = self.api_key
         logger.info("千问客户端初始化完成")
     
     def generate(
@@ -58,7 +60,9 @@ class QwenAPIClient:
                 raise ValueError(f"API错误: {response.code} - {response.message}")
                 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON解析失败: {content[:200]}")
+            # content variable might not be defined if error happens before assignment
+            # but standard logic suggests it happens in json.loads
+            logger.error(f"JSON解析失败")
             raise ValueError(f"无效JSON响应: {e}")
         except Exception as e:
             logger.error(f"千问API错误: {e}")

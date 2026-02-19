@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 import argparse
 
 # 加载环境变量
-load_dotenv(dotenv_path=Path('.env'))
+# 加载配置
+from src.config.settings import settings
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent

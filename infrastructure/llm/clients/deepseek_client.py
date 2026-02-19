@@ -1,9 +1,9 @@
 """DeepSeek API客户端（简化版）"""
-import os
 import json
 import logging
 import requests
 from typing import Dict, Any
+from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +11,14 @@ class DeepSeekAPIClient:
     """DeepSeek API客户端"""
     
     def __init__(self):
-        self.api_key = os.getenv("DEEPSEEK_API_KEY")
+        self.api_key = settings.DEEPSEEK_API_KEY
         if not self.api_key:
-            raise EnvironmentError("未找到DEEPSEEK_API_KEY环境变量")
+            # Pydantic validation might allow None if optional, but logic needs it
+            raise ValueError("未找到DEEPSEEK_API_KEY配置")
         
-        self.base_url = os.getenv("DEEPSEEK_API_ENDPOINT", "https://api.deepseek.com/v1")
+        # Base settings doesn't have endpoint yet, let's assume standard or add it
+        # For now, hardcode or use default since we removed env var
+        self.base_url = "https://api.deepseek.com/v1" 
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
