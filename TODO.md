@@ -24,7 +24,7 @@
 | TASK-018 | 修复正式测试文件被 `.gitignore` 屏蔽 | P0 | ✅ | Codex | 偏移缓解 Phase 0 | 2026-05-04 | 2026-05-04 | `.gitignore` 改为仅忽略根目录临时 `test_*.py` |
 | TASK-019 | 修复 `GigaInventorySyncService` 单测挂起 | P0 | ✅ | Codex | 偏移缓解 Phase 0 | 2026-05-04 | 2026-05-04 | `pytest` 完整通过：52 passed |
 | TASK-020 | 建立当前覆盖率基线 | P0 | ✅ | Codex | 偏移缓解 Phase 0 | 2026-05-04 | 2026-05-04 | `pytest --cov=src --cov=infrastructure`: 60.60% |
-| TASK-021 | 接入 GitHub Actions self-hosted runner CI | P0 | ⏳ | Codex | 偏移缓解 Phase 2 | 2026-05-05 | - | 已注册 repo-level runner `amz-listing-runner-01`（online，标签 `self-hosted`,`Linux`,`X64`,`ci`）；待 workflow 推送到远端后验证 CI green |
+| TASK-021 | 接入 GitHub Actions self-hosted runner CI | P0 | ✅ | Codex | 偏移缓解 Phase 2 | 2026-05-05 | 2026-05-04 | repo-level runner `amz-listing-runner-01` online；CI run `25330003050` 在 commit `c5dc219` 绿色通过 |
 | TASK-022 | 补关键模块设计文档 | P1 | ✅ | Codex | 偏移缓解 Phase 1 | 2026-05-05 | 2026-05-04 | 已新增 `docs/module-design/` 4 篇与 `docs/api-contracts/service-results.md` |
 | TASK-023 | 拆分 `main.py` CLI/任务路由/应用任务边界 | P1 | ✅ | Codex | 偏移缓解 Phase 3 | 2026-05-06 | 2026-05-04 | 已拆出菜单、查询、类目配置、发品、运营 handler 和任务注册；`main.py` 当前 96 行 |
 | TASK-024 | Service 层去展示化：PricingService reporter 边界 | P1 | ✅ | Codex | 偏移缓解 Phase 4 | 2026-05-06 | 2026-05-04 | `PricingService` 支持 `NullPricingProgressReporter` 并复用统一 reporter；`pytest`: 78 passed |

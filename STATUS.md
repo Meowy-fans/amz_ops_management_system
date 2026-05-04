@@ -8,7 +8,7 @@
 - ✅ **2026-05-04 / Codex**: 修复库存同步单测挂起问题，完整测试从卡住恢复为 `52 passed in 1.34s`。
 - ✅ **2026-05-04 / Codex**: 调整 `.gitignore`，不再屏蔽 `tests/` 下的正式 `test_*.py` 单测文件。
 - ✅ **2026-05-04 / Codex**: 建立覆盖率基线：当前 `127 passed in 9.12s`，总覆盖率 `60.60%`。
-- ⏳ **2026-05-04 / Codex**: 已新增 `.github/workflows/ci.yml`，并注册 repo-level runner `amz-listing-runner-01`；GitHub API 显示 runner online，待 workflow 推送到远端后验证 CI green。
+- ✅ **2026-05-04 / Codex**: 已新增 `.github/workflows/ci.yml` 并接入 repo-level runner `amz-listing-runner-01`；CI run `25330003050` 在 commit `c5dc219` 绿色通过。
 - ✅ **2026-05-04 / Codex**: 补齐关键模块设计文档和 service 返回契约草案，覆盖发品、Giga同步、价格库存、模板映射。
 - ⏳ **2026-05-04 / Codex**: 开始拆分 `main.py` 前置收敛，已将重复的非交互任务分发逻辑合并到 `_dispatch_task()`；`pytest` 仍为 52 passed。
 - ⏳ **2026-05-04 / Codex**: 修复无 `--task` 时交互菜单不可达的问题，并将交互菜单壳拆到 `src/cli/menu.py`；`main.py` 从 937 行降至 843 行。
@@ -46,13 +46,12 @@
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- ⏳ push/PR 后检查 GitHub Actions `CI` 是否由 `amz-listing-runner-01` 绿色通过。
 - 🔲 继续补核心发品链路测试，优先提升 repository 边界和 Excel 生成路径覆盖。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
 - 当前覆盖率 `60.60%`，仍低于开发规范对核心业务逻辑的目标。
-- GitHub Actions self-hosted runner 已注册并 online；当前远端 workflow 列表为空，CI green 验证等待本地 workflow 变更推送到 GitHub。
+- GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
 - 生产部署配置仍未按服务器运维规范接入 `/data/docker-compose/` 与共享 PostgreSQL。
