@@ -3,14 +3,16 @@ import logging
 import pandas as pd
 from sqlalchemy.orm import Session
 from src.repositories.amz_full_list_report_repository import AmzFullListReportRepository
+from src.services.progress_reporter import ProgressReporter
 from infrastructure.validators import validate_file_path
 
 logger = logging.getLogger(__name__)
 
 class AmzFullListImporterService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, reporter: ProgressReporter | None = None):
         self.db = db
         self.repository = AmzFullListReportRepository(db)
+        self.reporter = reporter or ProgressReporter()
     
     def import_report_from_file(self, file_path: str) -> None:
         """导入文件"""
@@ -28,10 +30,10 @@ class AmzFullListImporterService:
             self.db.commit()
             
             stats = self.repository.get_statistics()
-            print(f"\n✅ 导入完成！")
-            print(f"总记录: {stats['total']}")
-            print(f"Active: {stats['active']}")
-            print(f"唯一ASIN: {stats['unique_asins']}\n")
+            self.reporter.emit(f"\n✅ 导入完成！")
+            self.reporter.emit(f"总记录: {stats['total']}")
+            self.reporter.emit(f"Active: {stats['active']}")
+            self.reporter.emit(f"唯一ASIN: {stats['unique_asins']}\n")
             
         except Exception as e:
             self.db.rollback()

@@ -5,16 +5,18 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from infrastructure.giga.api_client import GigaAPIClient, GigaAPIException
 from src.repositories.giga_product_sync_repository import GigaProductSyncRepository
+from src.services.progress_reporter import ProgressReporter
 
 logger = logging.getLogger(__name__)
 
 class GigaSyncService:
     """Giga商品同步服务"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, reporter: ProgressReporter | None = None):
         self.db = db
         self.api_client = GigaAPIClient()
         self.repository = GigaProductSyncRepository(db)
+        self.reporter = reporter or ProgressReporter()
     
     def get_full_sku_list(
         self,
@@ -158,25 +160,25 @@ class GigaSyncService:
         """完整同步流程"""
         logger.info("🚀 开始完整同步流程...")
         
-        print("➡️ 步骤1/2: 获取SKU列表...")
+        self.reporter.emit("➡️ 步骤1/2: 获取SKU列表...")
         sku_list = self.get_full_sku_list()
         
         if not sku_list:
-            print("✅ 未获取到SKU，流程结束")
+            self.reporter.emit("✅ 未获取到SKU，流程结束")
             return {'total': 0, 'success': 0, 'failed': 0}
         
-        print(f"✔️ 成功获取{len(sku_list)}个SKU")
+        self.reporter.emit(f"✔️ 成功获取{len(sku_list)}个SKU")
         
-        print("➡️ 步骤2/2: 同步商品详情...")
+        self.reporter.emit("➡️ 步骤2/2: 同步商品详情...")
         result = self.sync_product_details(sku_list)
         
         stats = self.repository.get_statistics()
         
-        print("\n" + "="*60)
-        print("✅ 同步完成！")
-        print("="*60)
-        print(f"本次同步: 总计{result['total']}，成功{result['success']}，失败{result['failed']}")
-        print(f"数据库统计: 总记录{stats['total']}，超大件{stats['oversize']}")
-        print("="*60 + "\n")
+        self.reporter.emit("\n" + "="*60)
+        self.reporter.emit("✅ 同步完成！")
+        self.reporter.emit("="*60)
+        self.reporter.emit(f"本次同步: 总计{result['total']}，成功{result['success']}，失败{result['failed']}")
+        self.reporter.emit(f"数据库统计: 总记录{stats['total']}，超大件{stats['oversize']}")
+        self.reporter.emit("="*60 + "\n")
         
         return result

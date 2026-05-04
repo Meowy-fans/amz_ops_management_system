@@ -3,7 +3,6 @@ Product Listing Service
 产品发品服务，整合所有Repository和Helper
 """
 import logging
-import json
 import uuid
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
@@ -13,6 +12,14 @@ from src.repositories.product_listing_repository import ProductListingRepository
 from src.repositories.product_data_repository import ProductDataRepository
 from src.repositories.amz_template_repository import AmzTemplateRepository
 from src.repositories.amz_listing_log_repository import AmzListingLogRepository
+from src.services.product_listing_config import load_category_config
+from src.services.product_listing_flow_helpers import (
+    failure_result,
+    get_pending_skus_for_category,
+    success_result,
+)
+from src.services.product_listing_log_builder import build_listing_logs
+from src.services.product_listing_variation_builder import ProductListingVariationBuilder
 from src.utils.data_mapping_helper import DataMappingHelper
 from src.utils.excel_generator import ExcelGenerator
 from src.utils.variation_helper import VariationHelper
@@ -83,29 +90,7 @@ class ProductListingService:
     
     def _load_category_config(self, config_path: Optional[Path]) -> Optional[Dict]:
         """加载品类配置"""
-        if config_path is None:
-            # 尝试自动查找
-            try:
-                current = Path(__file__).resolve()
-                for parent in current.parents:
-                    config_file = parent / "config" / "amz_listing_data_mapping" / "category_mapping.json"
-                    if config_file.exists():
-                        config_path = config_file
-                        break
-            except:
-                return None
-        
-        if config_path and config_path.exists():
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    # 提取 category_details 部分
-                    return config.get("category_details", {})
-            except Exception as e:
-                logger.warning(f"加载品类配置失败: {e}")
-                return None
-        
-        return None
+        return load_category_config(config_path, __file__)
     
     def generate_listings_by_category(self, category_name: str) -> Dict[str, Any]:
         """
@@ -117,16 +102,7 @@ class ProductListingService:
             category_name: 品类名称（如 'CABINET', 'HOME_MIRROR'）
         
         Returns:
-            结果字典：
-            {
-                'success': bool,
-                'batch_id': uuid,
-                'excel_file': str,
-                'single_count': int,
-                'variation_count': int,
-                'total_rows': int,
-                'message': str
-            }
+            发品结果字典
         """
         try:
             logger.info(f"\n{'='*60}")
@@ -135,36 +111,13 @@ class ProductListingService:
             
             batch_id = uuid.uuid4()
             
-            # 步骤1: 获取所有待发品SKU
-            logger.info("步骤1: 获取所有待发品SKU...")
-            all_pending_skus = self.product_listing_repo.get_pending_listing_skus()
+            pending_skus, failure_message = get_pending_skus_for_category(
+                self.product_listing_repo,
+                category_name,
+            )
             
-            if not all_pending_skus:
-                return {
-                    'success': False,
-                    'message': "没有待发品SKU"
-                }
-            
-            logger.info(f"  找到 {len(all_pending_skus)} 个待发品SKU")
-            
-            # 步骤2: 获取SKU到品类的映射
-            logger.info("步骤2: 获取SKU品类映射...")
-            sku_category_mapping = self.product_listing_repo.get_sku_to_category_mapping(all_pending_skus)
-            
-            # 步骤3: 过滤出指定品类的SKU
-            logger.info(f"步骤3: 过滤品类 '{category_name}'...")
-            pending_skus = [
-                sku for sku, cat in sku_category_mapping 
-                if cat and cat.upper() == category_name.upper()
-            ]
-            
-            if not pending_skus:
-                return {
-                    'success': False,
-                    'message': f"品类 '{category_name}' 没有待发品SKU"
-                }
-            
-            logger.info(f"  品类 '{category_name}' 有 {len(pending_skus)} 个待发品SKU")
+            if failure_message:
+                return failure_result(failure_message)
             
             # 步骤4: 获取变体关联数据
             logger.info("步骤4: 获取变体关联数据...")
@@ -182,10 +135,7 @@ class ProductListingService:
             template_rules = self.template_repo.find_template_by_category(category_name)
             
             if not template_rules:
-                return {
-                    'success': False,
-                    'message': f"品类 '{category_name}' 没有模板规则"
-                }
+                return failure_result(f"品类 '{category_name}' 没有模板规则")
             
             # 步骤7: 处理单品
             logger.info("步骤7: 处理单品...")
@@ -202,10 +152,7 @@ class ProductListingService:
             all_rows = single_rows + variation_rows
             
             if not all_rows:
-                return {
-                    'success': False,
-                    'message': "没有生成任何数据行"
-                }
+                return failure_result("没有生成任何数据行")
             
             logger.info(f"  总共生成 {len(all_rows)} 行数据")
             
@@ -227,23 +174,18 @@ class ProductListingService:
             logger.info(f"✅ 发品文件生成成功！")
             logger.info(f"{'='*60}")
             
-            return {
-                'success': True,
-                'batch_id': batch_id,
-                'excel_file': excel_file,
-                'single_count': len(single_skus),
-                'variation_count': len(variation_families),
-                'total_rows': len(all_rows),
-                'message': f"成功生成 {len(all_rows)} 行数据"
-            }
+            return success_result(
+                batch_id=batch_id,
+                excel_file=excel_file,
+                single_count=len(single_skus),
+                variation_count=len(variation_families),
+                total_rows=len(all_rows),
+            )
             
         except Exception as e:
             self.db.rollback()
             logger.error(f"❌ 生成发品文件失败: {e}", exc_info=True)
-            return {
-                'success': False,
-                'message': f"生成失败: {str(e)}"
-            }
+            return failure_result(f"生成失败: {str(e)}")
     
     def _process_single_products(
         self,
@@ -306,20 +248,7 @@ class ProductListingService:
         Returns:
             (数据行列表, 日志数据列表)
         """
-        rows = []
-        logs = []
-        
-        for family in families:
-            try:
-                family_rows, family_logs = self._process_single_family(family, template_rules)
-                rows.extend(family_rows)
-                logs.extend(family_logs)
-            except Exception as e:
-                logger.error(f"  处理变体家族失败: {e}")
-                continue
-        
-        logger.info(f"  成功处理 {len(families)} 个变体家族，生成 {len(rows)} 行")
-        return rows, logs
+        return self._variation_builder().process_variations(families, template_rules)
     
     def _process_single_family(
         self,
@@ -327,130 +256,7 @@ class ProductListingService:
         template_rules: Dict
     ) -> Tuple[List[Dict[str, Any]], List[Dict]]:
         """处理单个变体家族"""
-        rows = []
-        logs = []
-        
-        # 生成父SKU
-        parent_sku = f"PARENT-{uuid.uuid4().hex[:12].upper()}"
-        
-        # 1. 获取所有子SKU的完整数据
-        family_full_data = []
-        for sku in family_skus:
-            product_data = self.product_data_repo.get_full_product_data(sku)
-            if product_data:
-                family_full_data.append(product_data)
-        
-        if not family_full_data:
-            logger.warning(f"  跳过家族: 无法获取任何SKU数据")
-            return rows, logs
-        
-        # 2. 使用LLM判定变体主题和属性
-        variation_theme = None
-        child_attributes_map = {}
-        
-        if self.variation_theme_service:
-            try:
-                # 获取有效的变体主题列表
-                valid_themes = self._extract_valid_themes(template_rules)
-                priority_themes = template_rules.get('priority_themes', [])
-                
-                logger.info(f"  调用LLM判定变体主题...")
-                llm_result = self.variation_theme_service.determine_variation_theme(
-                    family_full_data,
-                    valid_themes,
-                    priority_themes
-                )
-                
-                variation_theme = llm_result.get('variation_theme')
-                child_attributes_map = llm_result.get('child_attributes', {})
-                
-                logger.info(f"  变体主题: {variation_theme}")
-                
-            except Exception as e:
-                logger.error(f"  变体主题判定失败: {e}")
-        
-        # 3. 获取变体属性映射规则
-        variation_mapping = template_rules.get('variation_mapping', {})
-        
-        # 4. 生成父体行
-        first_product = family_full_data[0]
-        parent_row = self.data_mapper.apply_mapping(
-            first_product,
-            template_rules,
-            self.category_config,
-            self.llm_service
-        )
-        
-        parent_row['SKU'] = parent_sku
-        parent_row['Listing Action'] = 'Create or Replace (Full Update)'
-        parent_row['Relationship Type'] = 'Parent'
-        parent_row['Parentage Level'] = 'Parent'
-        parent_row['Child Relationship Type'] = 'Variation'
-        
-        # 添加变体主题
-        if variation_theme:
-            parent_row['Variation Theme Name'] = variation_theme
-        
-        # 泛化标题
-        if 'Item Name' in parent_row:
-            parent_row['Item Name'] = self.variation_helper.generalize_parent_title(
-                parent_row['Item Name']
-            )
-        
-        rows.append(parent_row)
-        
-        # 5. 生成所有子体行
-        for child_sku in family_skus:
-            child_product = self.product_data_repo.get_full_product_data(child_sku)
-            
-            if not child_product:
-                continue
-            
-            child_row = self.data_mapper.apply_mapping(
-                child_product,
-                template_rules,
-                self.category_config,
-                self.llm_service
-            )
-            
-            child_row['Listing Action'] = 'Create or Replace (Full Update)'
-            child_row['Relationship Type'] = 'Child'
-            child_row['Parentage Level'] = 'Child'
-            child_row['Parent SKU'] = parent_sku
-            child_row['Child Relationship Type'] = 'Variation'
-
-            # 子体行也写入变体主题名称
-            if variation_theme:
-                child_row['Variation Theme Name'] = variation_theme
-            
-            # 添加变体属性
-            if child_sku in child_attributes_map:
-                # 获取内部属性（如 {'color_name': 'White', 'size_name': '36'}）
-                internal_attributes = child_attributes_map[child_sku]
-                
-                # 转换为Amazon字段名（如 {'Color': 'White', 'Size': '36'}）
-                amazon_attributes = {
-                    variation_mapping.get(k, k): v 
-                    for k, v in internal_attributes.items()
-                    if variation_mapping.get(k)
-                }
-                
-                # 合并到子体行
-                child_row.update(amazon_attributes)
-            
-            rows.append(child_row)
-            
-            # 记录日志
-            logs.append({
-                'meow_sku': child_sku,
-                'parent_sku': parent_sku,
-                'variation_attributes': child_attributes_map.get(child_sku, {}),
-                'listing_batch_id': None,
-                'status': 'GENERATED',
-                'variation_theme': variation_theme
-            })
-        
-        return rows, logs
+        return self._variation_builder().process_single_family(family_skus, template_rules)
     
     def _extract_valid_themes(self, template_rules: Dict) -> List[str]:
         """
@@ -462,13 +268,17 @@ class ProductListingService:
         Returns:
             有效主题列表，如 ['Color', 'Size', 'Color/Size', 'Material']
         """
-        # 从 valid_values 中查找 Variation Theme Name 的有效值
-        for item in template_rules.get('valid_values', []):
-            if item.get('attribute') == 'Variation Theme Name':
-                return item.get('values', [])
-        
-        # 如果没找到，返回常见主题
-        return ['Color', 'Size', 'Color/Size']
+        return ProductListingVariationBuilder.extract_valid_themes(template_rules)
+
+    def _variation_builder(self) -> ProductListingVariationBuilder:
+        return ProductListingVariationBuilder(
+            product_data_repo=self.product_data_repo,
+            data_mapper=self.data_mapper,
+            variation_helper=self.variation_helper,
+            variation_theme_service=self.variation_theme_service,
+            category_config=self.category_config,
+            llm_service=self.llm_service,
+        )
     
     def _save_listing_logs(
         self,
@@ -477,23 +287,7 @@ class ProductListingService:
         batch_id: uuid.UUID
     ):
         """保存发品日志"""
-        all_logs = []
-        
-        # 单品日志 - 使用固定标识符表示单品
-        for sku in single_skus:
-            all_logs.append({
-                'meow_sku': sku,
-                'parent_sku': 'SINGLE_PRODUCT',  # 固定标识：表示这是单品
-                'variation_attributes': {},
-                'listing_batch_id': batch_id,
-                'status': 'GENERATED',
-                'variation_theme': None
-            })
-        
-        # 变体日志
-        for log in variation_logs:
-            log['listing_batch_id'] = batch_id
-            all_logs.append(log)
+        all_logs = build_listing_logs(single_skus, variation_logs, batch_id)
         
         if all_logs:
             self.listing_log_repo.bulk_insert_log(all_logs)

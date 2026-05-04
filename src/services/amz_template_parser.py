@@ -10,6 +10,13 @@ import logging
 from collections import defaultdict
 import traceback
 from typing import List, Dict, Any, Tuple
+from src.services.template_parser_helpers import (
+    build_data_definition_column_mapping,
+    extract_field_definitions,
+    extract_valid_values,
+    find_data_definition_header,
+    is_deprecated,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -205,34 +212,11 @@ class AdvancedTemplateParser:
 
         sheet = self.wb[sheet_name]
 
-        # 动态表头查找逻辑
-        header_row_idx = -1
-        raw_headers = []
-        # 定义必须存在的关键列，用于识别表头行
-        required_headers = {"Field Name", "Local Label Name"}
-
-        # 扫描前5行来查找表头
-        for i in range(1, 6):
-            if i > sheet.max_row:
-                break
-
-            current_row_values = {
-                str(cell.value).strip() 
-                for cell in sheet[i] 
-                if cell.value
-            }
-            
-            # 如果当前行包含了所有必需的列名，就认定为表头行
-            if required_headers.issubset(current_row_values):
-                header_row_idx = i
-                raw_headers = [
-                    str(cell.value).strip() if cell.value else "" 
-                    for cell in sheet[i]
-                ]
-                self._log_and_print(
-                    f"✅ 在第 {header_row_idx} 行找到 'Data Definitions' 的表头。"
-                )
-                break
+        header_row_idx, raw_headers = find_data_definition_header(sheet)
+        if header_row_idx != -1:
+            self._log_and_print(
+                f"✅ 在第 {header_row_idx} 行找到 'Data Definitions' 的表头。"
+            )
 
         if header_row_idx == -1:
             self._log_and_print(
@@ -241,30 +225,7 @@ class AdvancedTemplateParser:
             )
             return False
 
-        # 列名映射
-        header_variations = {
-            "group": ["Group Name"],
-            "field_name": ["Field Name"],
-            "local_label": ["Local Label Name", "Local Label"],
-            "accepted_values": ["Accepted Values"],
-            "example": ["Example"],
-            "required_parent": ["Required for Parent?", "Required for Parant?"],
-            "required_child": ["Required for Child?"],
-            "required_single": [
-                "Required for single SKU product?", 
-                "Required for single SKU"
-            ]
-        }
-
-        column_mapping = {}
-        for key, variations in header_variations.items():
-            for variation in variations:
-                try:
-                    idx = raw_headers.index(variation)
-                    column_mapping[key] = idx
-                    break
-                except ValueError:
-                    continue
+        column_mapping = build_data_definition_column_mapping(raw_headers)
 
         if 'field_name' not in column_mapping:
             self._log_and_print(
@@ -278,49 +239,11 @@ class AdvancedTemplateParser:
             f"✅ 成功映射 'Data Definitions' 的列: {list(column_mapping.keys())}"
         )
 
-        current_group = ""
-        # 从表头行的下一行开始解析数据
-        for row_idx in range(header_row_idx + 1, sheet.max_row + 1):
-            row_values = [cell.value for cell in sheet[row_idx]]
-            if not any(v is not None for v in row_values):
-                continue
-
-            group_name_idx = column_mapping.get("group", -1)
-            group_name = (
-                str(row_values[group_name_idx]).strip() 
-                if group_name_idx != -1 and row_values[group_name_idx] 
-                else ""
-            )
-
-            field_name_idx = column_mapping["field_name"]
-            field_name = (
-                str(row_values[field_name_idx]).strip() 
-                if row_values[field_name_idx] 
-                else ""
-            )
-
-            # 处理分组行
-            if group_name and not field_name:
-                current_group = group_name
-                continue
-
-            # 处理字段行
-            if field_name and field_name.lower() != "field name":
-                field_def = {
-                    "group": current_group, 
-                    "field_name": field_name
-                }
-                
-                for key, idx in column_mapping.items():
-                    if key not in field_def and idx < len(row_values):
-                        field_def[key] = (
-                            str(row_values[idx]) 
-                            if row_values[idx] is not None 
-                            else ""
-                        )
-
-                self.field_definitions[field_name] = field_def
-                continue
+        self.field_definitions = extract_field_definitions(
+            sheet,
+            header_row_idx,
+            column_mapping,
+        )
 
         self._log_and_print(
             f"✅ 'Data Definitions' 解析完成，"
@@ -341,45 +264,7 @@ class AdvancedTemplateParser:
             return True
 
         sheet = self.wb[sheet_name]
-        current_group = None
-
-        for row_idx in range(1, sheet.max_row + 1):
-            row = [
-                str(cell.value).strip() if cell.value else "" 
-                for cell in sheet[row_idx]
-            ]
-            if not any(row):
-                continue
-
-            # 处理分组行
-            if row[0]:
-                current_group = row[0]
-                continue
-
-            # 处理属性行
-            if row[1] and "[" in row[1] and "]" in row[1]:
-                attr_declaration = row[1]
-                try:
-                    attr_name_part, scope_part = attr_declaration.rsplit("[", 1)
-                    scope = scope_part.split("]", 1)[0].strip()
-                    attr_name = attr_name_part.strip().rstrip("-").strip()
-                except ValueError:
-                    attr_name = attr_declaration
-                    scope = "UNKNOWN"
-
-                valid_vals = [
-                    val 
-                    for val in row[2:] 
-                    if val and not self._is_deprecated(val)
-                ]
-
-                if valid_vals:
-                    self.valid_values.append({
-                        "group": current_group,
-                        "attribute": attr_name,
-                        "scope": scope,
-                        "values": valid_vals
-                    })
+        self.valid_values = extract_valid_values(sheet, self.skip_deprecated)
 
         self._log_and_print(
             f"✅ 'Valid Values' 解析完成，"
@@ -397,9 +282,4 @@ class AdvancedTemplateParser:
         Returns:
             是否为废弃值
         """
-        if not self.skip_deprecated:
-            return False
-            
-        val_lower = value.lower()
-        deprecated_terms = ["deprecated", "do not use", "obsolete"]
-        return any(term in val_lower for term in deprecated_terms)
+        return is_deprecated(value, self.skip_deprecated)

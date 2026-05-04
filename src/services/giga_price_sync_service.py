@@ -5,6 +5,7 @@ from typing import List, Dict
 from sqlalchemy.orm import Session
 from infrastructure.giga.api_client import GigaAPIClient, GigaAPIException
 from src.repositories.giga_product_price_repository import GigaProductPriceRepository
+from src.services.progress_reporter import ProgressReporter
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +18,13 @@ class GigaPriceSyncService:
         batch_size: int = 200,
         max_retries: int = 3,
         api_rate_limit: int = 9,
-        wait_time: int = 10
+        wait_time: int = 10,
+        reporter: ProgressReporter | None = None
     ):
         self.db = db
         self.repository = GigaProductPriceRepository(db)
         self.api_client = GigaAPIClient()
+        self.reporter = reporter or ProgressReporter()
         
         # 配置参数
         self.batch_size = batch_size
@@ -32,7 +35,7 @@ class GigaPriceSyncService:
     def fetch_batch_prices(self, skus: List[str]) -> List[Dict]:
         """获取批次商品价格（带重试）"""
         logger.info(f"⏳ 正在请求 {len(skus)} 个SKU的价格...")
-        print(f"   ⏳ 正在请求API（{len(skus)}个SKU）...")
+        self.reporter.emit(f"   ⏳ 正在请求API（{len(skus)}个SKU）...")
         
         request_start = time.time()
         
@@ -54,7 +57,7 @@ class GigaPriceSyncService:
                 
                 data = body.get('data', [])
                 logger.info(f"✅ API响应成功，耗时 {elapsed:.2f}秒，获取 {len(data)} 条数据")
-                print(f"   ✅ API响应成功（耗时 {elapsed:.1f}秒，返回 {len(data)} 条）")
+                self.reporter.emit(f"   ✅ API响应成功（耗时 {elapsed:.1f}秒，返回 {len(data)} 条）")
                 
                 return data
                 
@@ -64,11 +67,11 @@ class GigaPriceSyncService:
                 if attempt < self.max_retries - 1:
                     delay = 2 ** attempt
                     logger.warning(f"API调用失败（耗时{elapsed:.1f}秒），{delay}秒后重试 ({attempt+1}/{self.max_retries}): {e}")
-                    print(f"   ⚠️ 重试中... ({attempt+1}/{self.max_retries})")
+                    self.reporter.emit(f"   ⚠️ 重试中... ({attempt+1}/{self.max_retries})")
                     time.sleep(delay)
                 else:
                     logger.error(f"API调用失败，已达最大重试次数（总耗时{elapsed:.1f}秒）: {e}")
-                    print(f"   ❌ API请求失败")
+                    self.reporter.emit(f"   ❌ API请求失败")
                     raise
     
     def sync_all_prices(self) -> Dict[str, int]:
@@ -82,12 +85,12 @@ class GigaPriceSyncService:
         
         if not total_skus:
             logger.info("没有需要更新的SKU")
-            print("✅ 没有需要更新的SKU")
+            self.reporter.emit("✅ 没有需要更新的SKU")
             return {'total': 0, 'success': 0, 'failed': 0}
         
         logger.info(f"共获取 {total_skus} 个商品SKU")
-        print(f"\n📊 待同步SKU总数: {total_skus}")
-        print(f"📦 批次大小: {self.batch_size}\n")
+        self.reporter.emit(f"\n📊 待同步SKU总数: {total_skus}")
+        self.reporter.emit(f"📦 批次大小: {self.batch_size}\n")
         
         # 2. 分批处理
         batches = [
@@ -102,14 +105,16 @@ class GigaPriceSyncService:
         for i, batch in enumerate(batches):
             batch_num = i + 1
             batch_start = time.time()
+            success = 0
+            failure = 0
             
             logger.info(f"处理批次 {batch_num}/{total_batches} ({len(batch)}个SKU)")
-            print(f"🔄 处理批次 {batch_num}/{total_batches}...")
+            self.reporter.emit(f"🔄 处理批次 {batch_num}/{total_batches}...")
             
             # API限流控制
             if i > 0 and i % self.api_rate_limit == 0:
                 logger.info(f"等待{self.wait_time}秒以满足API限流要求...")
-                print(f"   ⏸️  限流等待{self.wait_time}秒...")
+                self.reporter.emit(f"   ⏸️  限流等待{self.wait_time}秒...")
                 time.sleep(self.wait_time)
             
             try:
@@ -117,7 +122,7 @@ class GigaPriceSyncService:
                 prices = self.fetch_batch_prices(batch)
                 
                 # 批量保存（一次性提交）
-                print(f"   💾 保存数据...")
+                self.reporter.emit(f"   💾 保存数据...")
                 save_start = time.time()
                 
                 success, failure = self.repository.batch_upsert_prices(prices)
@@ -136,27 +141,27 @@ class GigaPriceSyncService:
                 self.db.rollback()
                 total_failure += len(batch)
                 logger.error(f"处理批次失败: {e}")
-                print(f"   ❌ 批次失败: {e}")
+                self.reporter.emit(f"   ❌ 批次失败: {e}")
             
             # 进度报告
             processed = min((i + 1) * self.batch_size, total_skus)
             progress = processed / total_skus * 100
             
             logger.info(f"进度: {progress:.1f}% | 成功: {total_success} | 失败: {total_failure}")
-            print(f"   ✔️ 成功: {success}/{len(batch)}")
-            print(f"   📈 总进度: {processed}/{total_skus} ({progress:.1f}%)\n")
+            self.reporter.emit(f"   ✔️ 成功: {success}/{len(batch)}")
+            self.reporter.emit(f"   📈 总进度: {processed}/{total_skus} ({progress:.1f}%)\n")
         
         # 3. 最终统计
         elapsed = time.time() - start_time
         
-        print("\n" + "="*60)
-        print("✅ 价格同步完成！")
-        print("="*60)
-        print(f"总计: {total_skus}")
-        print(f"成功: {total_success}")
-        print(f"失败: {total_failure}")
-        print(f"耗时: {elapsed:.2f}秒 ({elapsed/60:.2f}分钟)")
-        print("="*60 + "\n")
+        self.reporter.emit("\n" + "="*60)
+        self.reporter.emit("✅ 价格同步完成！")
+        self.reporter.emit("="*60)
+        self.reporter.emit(f"总计: {total_skus}")
+        self.reporter.emit(f"成功: {total_success}")
+        self.reporter.emit(f"失败: {total_failure}")
+        self.reporter.emit(f"耗时: {elapsed:.2f}秒 ({elapsed/60:.2f}分钟)")
+        self.reporter.emit("="*60 + "\n")
         
         logger.info(f"同步完成! 总计: {total_skus} | 成功: {total_success} | 失败: {total_failure}")
         logger.info(f"耗时: {elapsed:.2f}秒")

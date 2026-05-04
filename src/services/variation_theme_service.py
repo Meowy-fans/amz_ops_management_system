@@ -2,12 +2,17 @@
 Variation Theme Service
 负责使用LLM判定变体主题和属性
 """
-import json
 import logging
-import re
-from typing import Dict, Any, List, Tuple, Set
+from typing import Dict, Any, List
 
 from infrastructure.llm import get_llm_service, LLMRequest
+from src.services.variation_theme_helpers import (
+    build_correction_prompt,
+    build_first_round_prompt,
+    check_attribute_uniqueness,
+    format_variation_attributes,
+    strip_html,
+)
 from src.utils.prompt_manager import PromptManager
 
 logger = logging.getLogger(__name__)
@@ -110,47 +115,11 @@ class VariationThemeService:
         priority_themes: List[str]
     ) -> Dict[str, Any]:
         """第一轮：使用LLM判定变体主题"""
-        # 清洗产品数据
-        cleaned_products = []
-        for product in family_data:
-            raw_data = product.get('raw_data', {}) or {}
-            
-            cleaned = {
-                'meow_sku': product.get('meow_sku'),
-                'name': product.get('product_name'),
-                'description': self._strip_html(
-                    product.get('product_description') or raw_data.get('description')
-                ),
-                'attributes': raw_data.get('attributes', {}),
-                'dimensions_and_weight': {
-                    'assembledLength': raw_data.get('assembledLength'),
-                    'assembledWidth': raw_data.get('assembledWidth'),
-                    'assembledHeight': raw_data.get('assembledHeight'),
-                    'weight': raw_data.get('weight')
-                }
-            }
-            
-            # 移除空值
-            cleaned['dimensions_and_weight'] = {
-                k: v for k, v in cleaned['dimensions_and_weight'].items() 
-                if v is not None
-            }
-            
-            cleaned_products.append(cleaned)
-        
-        # 过滤高优先级主题
-        high_priority = [
-            theme for theme in priority_themes 
-            if theme in valid_themes
-        ] if priority_themes else []
-        
-        # 构建LLM请求
-        user_content = {
-            'high_priority_themes': high_priority,
-            'valid_variation_themes': valid_themes,
-            'products': cleaned_products
-        }
-        user_prompt = json.dumps(user_content, indent=2, ensure_ascii=False)
+        user_prompt = build_first_round_prompt(
+            family_data,
+            valid_themes,
+            priority_themes,
+        )
         
         # 获取Prompt
         system_prompt = self.prompt_manager.get_prompt('prod_variance_determ')
@@ -186,46 +155,12 @@ class VariationThemeService:
         failed_theme: str
     ) -> Dict[str, Any]:
         """第二轮：纠正重复的变体属性"""
-        # 清洗产品数据
-        cleaned_products = []
-        for product in family_data:
-            raw_data = product.get('raw_data', {}) or {}
-            
-            cleaned = {
-                'meow_sku': product.get('meow_sku'),
-                'name': product.get('product_name'),
-                'description': self._strip_html(
-                    product.get('product_description') or raw_data.get('description')
-                ),
-                'attributes': raw_data.get('attributes', {}),
-                'dimensions_and_weight': {
-                    'assembledLength': raw_data.get('assembledLength'),
-                    'assembledWidth': raw_data.get('assembledWidth'),
-                    'assembledHeight': raw_data.get('assembledHeight'),
-                    'weight': raw_data.get('weight')
-                }
-            }
-            
-            cleaned['dimensions_and_weight'] = {
-                k: v for k, v in cleaned['dimensions_and_weight'].items() 
-                if v is not None
-            }
-            
-            cleaned_products.append(cleaned)
-        
-        # 构建纠正请求
-        high_priority = [
-            theme for theme in priority_themes 
-            if theme in valid_themes
-        ] if priority_themes else []
-        
-        user_content = {
-            'failed_theme': failed_theme,
-            'valid_variation_themes': valid_themes,
-            'recommended_themes': high_priority,
-            'products': cleaned_products
-        }
-        user_prompt = json.dumps(user_content, indent=2, ensure_ascii=False)
+        user_prompt = build_correction_prompt(
+            family_data,
+            valid_themes,
+            priority_themes,
+            failed_theme,
+        )
         
         # 获取Prompt
         system_prompt = self.prompt_manager.get_prompt('prod_variance_correction')
@@ -268,24 +203,7 @@ class VariationThemeService:
             True: 所有属性组合唯一
             False: 存在重复
         """
-        if not child_attributes:
-            return True
-        
-        seen_signatures = set()
-        
-        for sku, attributes in child_attributes.items():
-            # 生成属性签名：color:White|size:36
-            attr_signature = '|'.join(
-                f"{k}:{v}" for k, v in sorted(attributes.items())
-            )
-            
-            if attr_signature in seen_signatures:
-                logger.warning(f"检测到重复属性组合: {attr_signature}")
-                return False
-            
-            seen_signatures.add(attr_signature)
-        
-        return True
+        return check_attribute_uniqueness(child_attributes)
     
     @staticmethod
     def _format_variation_attributes(
@@ -303,31 +221,9 @@ class VariationThemeService:
         Returns:
             格式化后的属性
         """
-        formatted = {}
-        
-        for sku, attributes in child_attributes.items():
-            new_attributes = {}
-            
-            for key, value in attributes.items():
-                # 尺寸类属性取整
-                if 'size' in key.lower() and isinstance(value, (int, float, str)):
-                    try:
-                        rounded_value = int(round(float(value)))
-                        new_attributes[key] = str(rounded_value)
-                    except (ValueError, TypeError):
-                        new_attributes[key] = value
-                else:
-                    new_attributes[key] = value
-            
-            formatted[sku] = new_attributes
-        
-        return formatted
+        return format_variation_attributes(child_attributes)
     
     @staticmethod
     def _strip_html(html_string: str) -> str:
         """移除HTML标签"""
-        if not html_string:
-            return ""
-        clean_text = re.sub(r'<[^>]+>', '', html_string)
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-        return clean_text
+        return strip_html(html_string)

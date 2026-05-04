@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on:
+      - self-hosted
+      - ci
+    timeout-minutes: 15
+
+    env:
+      APP_ENV: test
+      LOG_LEVEL: INFO
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: amz_listing_test
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      LLM_SERVICE_MODE: direct
+      LLM_PROVIDER: qwen
+      GIGA_BASE_URL: https://api.gigacloudlogistics.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Python environment
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          . .venv/bin/activate
+          pytest
+
+      - name: Coverage baseline
+        run: |
+          . .venv/bin/activate
+          pytest --cov=src --cov=infrastructure --cov-report=term-missing --cov-fail-under=35

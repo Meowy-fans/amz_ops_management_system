@@ -10,6 +10,7 @@ from src.repositories.amz_listing_data_repository import ListingDataRepository
 from src.services.giga_price_sync_service import GigaPriceSyncService
 from src.services.giga_inventory_sync_service import GigaInventorySyncService
 from src.services.pricing_service import PricingService
+from src.services.progress_reporter import ProgressReporter
 import logging
 import os
 import datetime
@@ -28,7 +29,7 @@ class InventoryPriceUpdaterService:
     4. 整合数据并生成更新文件
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, reporter: ProgressReporter | None = None):
         """
         初始化服务
         
@@ -37,6 +38,7 @@ class InventoryPriceUpdaterService:
         """
         self.db = db
         self.repository = ListingDataRepository(db)
+        self.reporter = reporter or ProgressReporter()
 
     def _sync_latest_data(self):
         """
@@ -49,29 +51,29 @@ class InventoryPriceUpdaterService:
         """
         try:
             # 1. 同步价格
-            print("\n➡️ 步骤 1/4: 开始同步全量 Giga 商品价格...")
+            self.reporter.emit("\n➡️ 步骤 1/4: 开始同步全量 Giga 商品价格...")
             logger.info("调用 GigaPriceSyncService...")
-            price_service = GigaPriceSyncService(self.db)
+            price_service = GigaPriceSyncService(self.db, reporter=self.reporter)
             price_service.sync_all_prices()
-            print("✔️ 商品价格同步完成。")
+            self.reporter.emit("✔️ 商品价格同步完成。")
 
             # 2. 同步库存
-            print("\n➡️ 步骤 2/4: 开始更新 Giga 已同步全量商品的库存...")
+            self.reporter.emit("\n➡️ 步骤 2/4: 开始更新 Giga 已同步全量商品的库存...")
             logger.info("调用 GigaInventorySyncService...")
-            inventory_service = GigaInventorySyncService(self.db)
+            inventory_service = GigaInventorySyncService(self.db, reporter=self.reporter)
             inventory_service.sync_all_inventory()
-            print("✔️ 商品库存更新完成。")
+            self.reporter.emit("✔️ 商品库存更新完成。")
 
             # 3. 更新售价
-            print("\n➡️ 步骤 3/4: 开始批量更新所有商品售价...")
+            self.reporter.emit("\n➡️ 步骤 3/4: 开始批量更新所有商品售价...")
             logger.info("调用 PricingService...")
-            pricing_service = PricingService(self.db)
+            pricing_service = PricingService(self.db, reporter=self.reporter)
             pricing_service.update_prices()
-            print("✔️ 商品售价更新完成。")
+            self.reporter.emit("✔️ 商品售价更新完成。")
             
         except Exception as e:
             logger.error(f"数据同步阶段发生错误: {e}", exc_info=True)
-            print(f"❌ 数据同步阶段发生错误，但流程将继续尝试使用现有数据。")
+            self.reporter.emit(f"❌ 数据同步阶段发生错误，但流程将继续尝试使用现有数据。")
 
     def generate_update_file(self):
         """
@@ -90,11 +92,11 @@ class InventoryPriceUpdaterService:
         self._sync_latest_data()
 
         # 2. 获取基础数据
-        print("\n➡️ 步骤 4/4: 正在整合数据并生成文件...")
+        self.reporter.emit("\n➡️ 步骤 4/4: 正在整合数据并生成文件...")
         sku_map = self.repository.get_skus_for_update()
         
         if not sku_map:
-            print("✅ 未找到任何需要处理的商品，流程结束。")
+            self.reporter.emit("✅ 未找到任何需要处理的商品，流程结束。")
             logger.info("未在数据库中找到任何符合条件的商品。")
             return
 
@@ -175,13 +177,13 @@ class InventoryPriceUpdaterService:
             # 保存为制表符分隔的 .txt 文件
             df.to_csv(filepath, sep='\t', index=False, header=True)
 
-            print("\n" + "=" * 70)
-            print("🎉 流程执行成功！")
-            print(f"📄 更新文件已成功保存至: {filepath}")
-            print(f"📊 共处理 {len(final_data)} 个商品")
-            print("=" * 70)
+            self.reporter.emit("\n" + "=" * 70)
+            self.reporter.emit("🎉 流程执行成功！")
+            self.reporter.emit(f"📄 更新文件已成功保存至: {filepath}")
+            self.reporter.emit(f"📊 共处理 {len(final_data)} 个商品")
+            self.reporter.emit("=" * 70)
             logger.info(f"更新文件已成功保存至: {filepath}")
 
         except Exception as e:
-            print(f"❌ 生成文件时发生严重错误: {e}")
+            self.reporter.emit(f"❌ 生成文件时发生严重错误: {e}")
             logger.error(f"生成文件失败: {e}", exc_info=True)

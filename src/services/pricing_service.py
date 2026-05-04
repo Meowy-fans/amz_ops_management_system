@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from src.repositories.pricing_repository import PricingRepository
 from src.services.category_service import CategoryService
+from src.services.progress_reporter import NullProgressReporter, ProgressReporter
 from src.utils.pricing_config import PricingConfigLoader
 import logging
 from typing import List, Dict, Any, Tuple, Optional
@@ -13,13 +14,23 @@ getcontext().prec = 12
 
 logger = logging.getLogger(__name__)
 
+
+class PricingProgressReporter(ProgressReporter):
+    """Backward-compatible pricing reporter alias."""
+
+
+class NullPricingProgressReporter(NullProgressReporter):
+    """Backward-compatible pricing null reporter alias."""
+
+
 class PricingService:
     """定价服务 - 负责价格计算和更新"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, reporter: Optional[PricingProgressReporter] = None):
         self.db = db
         self.pricing_repo = PricingRepository(db=self.db)
-        self.category_service = CategoryService(db=self.db)
+        self.reporter = reporter or PricingProgressReporter()
+        self.category_service = CategoryService(db=self.db, reporter=self.reporter)
     
     def _calculate_price(self, pc: Decimal, lf: Decimal, params: Dict[str, Any]) -> Decimal:
         """
@@ -61,46 +72,46 @@ class PricingService:
             (总处理数, 成功数, 报告数据)
         """
         logger.info("🚀 开始批量价格更新流程...")
-        print("\n" + "="*60)
-        print("💰 价格更新流程")
-        print("="*60)
+        self.reporter.emit("\n" + "="*60)
+        self.reporter.emit("💰 价格更新流程")
+        self.reporter.emit("="*60)
         
         # 1. 获取SKU列表
         if sku_list is None:
-            print("➡️  步骤 1/4: 获取所有需要定价的SKU...")
+            self.reporter.emit("➡️  步骤 1/4: 获取所有需要定价的SKU...")
             target_skus = self.pricing_repo.get_all_meow_skus()
         else:
-            print(f"➡️  步骤 1/4: 处理指定的 {len(sku_list)} 个SKU...")
+            self.reporter.emit(f"➡️  步骤 1/4: 处理指定的 {len(sku_list)} 个SKU...")
             target_skus = sku_list
         
         if not target_skus:
             logger.info("没有找到需要处理的SKU")
-            print("✔️  没有找到需要处理的SKU")
+            self.reporter.emit("✔️  没有找到需要处理的SKU")
             return 0, 0, []
         
-        print(f"✔️  找到 {len(target_skus)} 个需要处理的SKU")
+        self.reporter.emit(f"✔️  找到 {len(target_skus)} 个需要处理的SKU")
         
         # 2. 品类匹配
-        print("➡️  步骤 2/4: 品类匹配...")
+        self.reporter.emit("➡️  步骤 2/4: 品类匹配...")
         categorized_skus, uncategorized = self.category_service.categorize_skus(target_skus)
         
         category_summary = {cat: len(skus) for cat, skus in categorized_skus.items()}
         if category_summary:
-            print(f"✔️  品类分布: {category_summary}")
+            self.reporter.emit(f"✔️  品类分布: {category_summary}")
         if uncategorized:
-            print(f"   未分类: {len(uncategorized)} 个（使用fallback配置）")
+            self.reporter.emit(f"   未分类: {len(uncategorized)} 个（使用fallback配置）")
         
         # 3. 获取成本数据
-        print("➡️  步骤 3/4: 获取成本数据...")
+        self.reporter.emit("➡️  步骤 3/4: 获取成本数据...")
         sku_costs = self.pricing_repo.get_costs_for_skus(target_skus)
-        print(f"✔️  成功获取 {len(sku_costs)} 个SKU的成本数据")
+        self.reporter.emit(f"✔️  成功获取 {len(sku_costs)} 个SKU的成本数据")
         
         if len(sku_costs) < len(target_skus):
             missing = len(target_skus) - len(sku_costs)
-            print(f"   ⚠️  {missing} 个SKU没有成本数据（将跳过）")
+            self.reporter.emit(f"   ⚠️  {missing} 个SKU没有成本数据（将跳过）")
         
         # 4. 计算价格
-        print("➡️  步骤 4/4: 计算最终价格...")
+        self.reporter.emit("➡️  步骤 4/4: 计算最终价格...")
         
         # 构建SKU到品类的映射
         sku_to_category = {}
@@ -151,22 +162,22 @@ class PricingService:
             try:
                 self.pricing_repo.upsert_final_prices(price_data_to_upsert)
                 self.db.commit()
-                print(f"✔️  成功更新 {len(price_data_to_upsert)} 条价格记录到数据库")
+                self.reporter.emit(f"✔️  成功更新 {len(price_data_to_upsert)} 条价格记录到数据库")
             except Exception as e:
                 logger.error(f"数据库批量更新失败: {e}")
                 self.db.rollback()
                 success_count = 0
-                print(f"❌ 数据库更新失败: {e}")
+                self.reporter.emit(f"❌ 数据库更新失败: {e}")
         
         total_processed = len(target_skus)
         
-        print("\n" + "="*60)
-        print("✅ 价格更新完成")
-        print("="*60)
-        print(f"总计处理: {total_processed}")
-        print(f"成功更新: {success_count}")
-        print(f"失败/跳过: {total_processed - success_count}")
-        print("="*60 + "\n")
+        self.reporter.emit("\n" + "="*60)
+        self.reporter.emit("✅ 价格更新完成")
+        self.reporter.emit("="*60)
+        self.reporter.emit(f"总计处理: {total_processed}")
+        self.reporter.emit(f"成功更新: {success_count}")
+        self.reporter.emit(f"失败/跳过: {total_processed - success_count}")
+        self.reporter.emit("="*60 + "\n")
         
         logger.info(f"价格更新流程完成。处理: {total_processed}, 成功: {success_count}")
         

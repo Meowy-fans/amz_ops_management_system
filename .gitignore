@@ -206,9 +206,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# 测试脚本
-test_*.py
-debug_*.py
+# 临时调试脚本（不要屏蔽 tests/ 下的正式单测）
+/test_*.py
+/debug_*.py
 
 # 测试数据
 data/test/

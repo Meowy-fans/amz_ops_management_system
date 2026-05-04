@@ -1,6 +1,7 @@
 """品类服务"""
 from sqlalchemy.orm import Session
 from src.repositories.category_repository import CategoryRepository
+from src.services.progress_reporter import ProgressReporter
 import logging
 from typing import List, Tuple, Dict
 from collections import defaultdict
@@ -10,9 +11,10 @@ logger = logging.getLogger(__name__)
 class CategoryService:
     """品类服务 - 负责SKU品类判定"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, reporter: ProgressReporter | None = None):
         self.db = db
         self.repo = CategoryRepository(db=self.db)
+        self.reporter = reporter or ProgressReporter()
     
     def categorize_skus(self, sku_list: List[str]) -> Tuple[Dict[str, List[str]], List[str]]:
         """
@@ -30,7 +32,7 @@ class CategoryService:
             return {}, []
         
         logger.info(f"开始为 {len(sku_list)} 个SKU进行品类判断...")
-        print(f"   🔍 品类匹配中...")
+        self.reporter.emit(f"   🔍 品类匹配中...")
         
         # 调用Repository获取映射关系
         mappings = self.repo.get_sku_to_category_mapping(sku_list)
@@ -55,6 +57,6 @@ class CategoryService:
         
         if uncategorized_skus:
             logger.warning(f"{len(uncategorized_skus)} 个SKU未找到品类映射")
-            print(f"   ⚠️  {len(uncategorized_skus)} 个SKU未找到品类（将使用默认配置）")
+            self.reporter.emit(f"   ⚠️  {len(uncategorized_skus)} 个SKU未找到品类（将使用默认配置）")
         
         return dict(categorized_skus), uncategorized_skus

@@ -5,10 +5,12 @@ Data Mapping Helper
 import json
 import logging
 import re
-import difflib
-import unicodedata
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from src.utils.data_field_mapper import DataFieldMapper
+from src.utils.data_mapping_llm import enrich_product_attributes
+from src.utils.data_mapping_tasks import collect_llm_tasks_from_mapping
+from src.utils.data_mapping_valid_values import align_to_valid_values, fuzzy_select, normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +26,8 @@ class DataMappingHelper:
     - 提供统一的映射接口
     """
     
-    # 单位映射字典
-    WEIGHT_UNIT_MAP = {
-        "lb": "Pounds",
-        "kg": "Kilograms", 
-        "oz": "Ounces",
-        "g": "Grams"
-    }
-    
-    DIMENSION_UNIT_MAP = {
-        "in": "Inches",
-        "cm": "Centimeters",
-        "mm": "Millimeters",
-        "ft": "Feet"
-    }
+    WEIGHT_UNIT_MAP = DataFieldMapper.WEIGHT_UNIT_MAP
+    DIMENSION_UNIT_MAP = DataFieldMapper.DIMENSION_UNIT_MAP
     
     def __init__(self, config_path: Optional[Path] = None):
         """
@@ -51,6 +41,7 @@ class DataMappingHelper:
         
         self.config_path = config_path
         self.mapping_config = self._load_mapping_config()
+        self.field_mapper = DataFieldMapper()
         
         logger.info(f"数据映射助手初始化完成，加载 {len(self.mapping_config)} 个字段映射规则")
     
@@ -162,37 +153,7 @@ class DataMappingHelper:
                     mapped_data[field_name] = mapped_data[referenced_field]
 
         # 第三轮：与模板有效值对齐（模糊匹配）
-        try:
-            valid_values = template_rules.get('valid_values', []) if template_rules else []
-            attr_to_values = {
-                str(item.get('attribute')).strip(): item.get('values', [])
-                for item in valid_values
-                if item.get('attribute')
-            }
-            for field_name, value in list(mapped_data.items()):
-                candidates = attr_to_values.get(field_name)
-                if not candidates:
-                    continue
-                if value is None:
-                    continue
-                if isinstance(value, list):
-                    continue
-                if not isinstance(value, str):
-                    continue
-                if value in candidates:
-                    continue
-                norm_val = self._normalize_text(value)
-                exact = next((c for c in candidates if self._normalize_text(str(c)) == norm_val), None)
-                if exact is not None:
-                    mapped_data[field_name] = exact
-                    continue
-                match = self._fuzzy_select(value, candidates, cutoff=0.9)
-                if match is not None:
-                    mapped_data[field_name] = match
-                else:
-                    pass
-        except Exception as e:
-            logger.warning(f"有效值对齐失败: {e}")
+        mapped_data = align_to_valid_values(mapped_data, template_rules)
 
         # 第四轮：处理LLM增强字段
         if llm_tasks and llm_service:
@@ -227,79 +188,13 @@ class DataMappingHelper:
             template_rules: 模板规则
             llm_service: LLM服务实例
         """
-        from infrastructure.llm import LLMRequest
-        from src.utils.prompt_manager import PromptManager
-        
-        raw_data = product_data.get("raw_data", {}) or {}
-        
-        # 1. 构建产品profile
-        product_profile = {
-            "name": product_data.get("product_name"),
-            "description": self._strip_html(
-                product_data.get("product_description") or raw_data.get("description")
-            ),
-            "attributes": raw_data.get("attributes", {}),
-            "characteristics": raw_data.get("characteristics", []),
-            "dimensions_and_weight": {
-                "assembledLength": raw_data.get("assembledLength"),
-                "assembledWidth": raw_data.get("assembledWidth"),
-                "assembledHeight": raw_data.get("assembledHeight"),
-            }
-        }
-        
-        # 2. 构建标准化的 valid_values_map
-        valid_values_map = {
-            str(item.get('attribute')).strip().lower(): item.get('values', [])
-            for item in template_rules.get('valid_values', [])
-            if item.get('attribute')
-        }
-        
-        # 3. 为每个任务添加 valid_options（如果有）
-        processed_tasks = []
-        for task in llm_tasks:
-            field_name = task.get("field_name")
-            normalized_field_name = str(field_name).strip().lower()
-            
-            # 从 valid_values_map 查找
-            if normalized_field_name in valid_values_map:
-                task["valid_options"] = valid_values_map[normalized_field_name]
-            
-            processed_tasks.append(task)
-        
-        # 4. 构建LLM请求
-        user_content_data = {
-            "product_profile": product_profile,
-            "tasks": processed_tasks
-        }
-        user_content_str = json.dumps(user_content_data, indent=2, ensure_ascii=False)
-        
-        # 5. 获取Prompt
-        prompt_manager = PromptManager()
-        system_prompt = prompt_manager.get_prompt('prod_attribute_enrichment')
-        
-        if not system_prompt:
-            logger.error("未找到 prod_attribute_enrichment Prompt")
-            return {}
-        
-        # 6. 调用LLM
-        try:
-            request = LLMRequest(
-                task_type='product_attribute_enrichment',
-                system_prompt=system_prompt,
-                user_prompt=user_content_str,
-                json_mode=True,
-                temperature=0.7
-            )
-            
-            response = llm_service.generate(request)
-            llm_result = response.content
-            
-            logger.info(f"LLM成功生成 {len(llm_result)} 个增强字段")
-            return llm_result
-            
-        except Exception as e:
-            logger.error(f"调用LLM失败: {e}", exc_info=True)
-            return {}
+        return enrich_product_attributes(
+            product_data,
+            llm_tasks,
+            template_rules,
+            llm_service,
+            self._strip_html,
+        )
     
     @staticmethod
     def _strip_html(html_string: Optional[str]) -> str:
@@ -319,150 +214,33 @@ class DataMappingHelper:
         category_map: Optional[Dict]
     ) -> Any:
         """映射单个字段"""
-        source_type = rule.get("source_type")
-        
-        # 静态值
-        if source_type == "static":
-            return rule.get("value")
-        
-        # 直接字段
-        elif source_type == "direct":
-            value = product_data.get(rule.get("value"))
-            # 特殊处理：Product Type转大写
-            if field_name == "Product Type" and isinstance(value, str):
-                return value.upper()
-            return value
-        
-        # 数据库字段
-        elif source_type == "db_field":
-            return product_data.get(rule.get("field"))
-        
-        # 多个数据库字段
-        elif source_type == "db_field_multiple":
-            fields = rule.get("fields", [])
-            return [product_data.get(f) for f in fields if product_data.get(f)]
-        
-        # JSONB字段
-        elif source_type == "jsonb":
-            value = self._get_jsonb_value(raw_data, rule.get("json_path"))
-            if value in (None, "", "Not Applicable"):
-                fallback = rule.get("fallback")
-                return fallback if fallback is not None else value
-            return value
-        
-        # JSONB数组
-        elif source_type == "jsonb_array":
-            return raw_data.get(rule.get("json_path"), [])
-        
-        # JSONB计算值
-        elif source_type == "jsonb_computed":
-            combo_info = raw_data.get(rule.get("json_path"), [])
-            return len(combo_info) if combo_info else 1
-        
-        # 包装尺寸
-        elif source_type == "package_dimension":
-            dim = rule.get("dimension")
-            combo_info = raw_data.get("comboInfo", [])
-            value = raw_data.get(dim)
-            if not value and combo_info:
-                value = combo_info[0].get(dim)
-            return value
-        
-        # 产品尺寸
-        elif source_type == "item_dimension":
-            dim = rule.get("dimension")
-            value = raw_data.get(dim)
-            if value == "Not Applicable":
-                return None
-            return value
-        
-        # 单位映射
-        elif source_type == "unit_mapper":
-            return self._map_unit(rule.get("unit_type"), raw_data)
-        
-        # 重量求和
-        elif source_type == "summed_weight":
-            return self._calculate_weight(rule.get("weight_type"), raw_data)
-        
-        # 品类查找
-        elif source_type == "category_lookup":
-            if not category_map:
-                return None
-            current_category = product_data.get("category_name", "").upper()
-            lookup_key = rule.get("lookup_key")
-            if current_category and lookup_key:
-                return category_map.get(current_category, {}).get(lookup_key)
-        
-        # 未知类型
-        else:
-            logger.warning(f"未知的source_type: {source_type} (字段: {field_name})")
-            return None
+        return self.field_mapper.map_single_field(
+            field_name,
+            rule,
+            product_data,
+            raw_data,
+            category_map,
+        )
     
     def _get_jsonb_value(self, raw_data: Dict, json_path: str) -> Any:
         """从JSONB中提取值"""
-        if not json_path:
-            return None
-        
-        path_keys = json_path.split('.')
-        temp_value = raw_data
-        
-        for key in path_keys:
-            if isinstance(temp_value, dict):
-                temp_value = temp_value.get(key)
-            else:
-                return None
-            
-            if temp_value is None:
-                break
-        
-        return temp_value
+        return self.field_mapper.get_jsonb_value(raw_data, json_path)
 
     @staticmethod
     def _normalize_text(text: str) -> str:
-        s = str(text)
-        s = unicodedata.normalize('NFKC', s)
-        s = s.casefold()
-        s = re.sub(r"\s+", " ", s).strip()
-        s = s.replace("-", " ")
-        s = s.replace("_", " ")
-        s = s.replace("  ", " ")
-        return s
+        return normalize_text(text)
 
     @staticmethod
     def _fuzzy_select(value: str, candidates: List[str], cutoff: float = 0.9) -> Optional[str]:
-        norm_candidates = {DataMappingHelper._normalize_text(c): c for c in candidates}
-        norm_value = DataMappingHelper._normalize_text(value)
-        pool = list(norm_candidates.keys())
-        matches = difflib.get_close_matches(norm_value, pool, n=1, cutoff=cutoff)
-        if matches:
-            return norm_candidates[matches[0]]
-        return None
+        return fuzzy_select(value, candidates, cutoff)
     
     def _map_unit(self, unit_type: str, raw_data: Dict) -> Optional[str]:
         """映射单位"""
-        if unit_type == "weight":
-            raw_unit = raw_data.get("weightUnit")
-            return self.WEIGHT_UNIT_MAP.get(str(raw_unit).lower())
-        
-        elif unit_type == "dimension":
-            raw_unit = raw_data.get("lengthUnit")
-            return self.DIMENSION_UNIT_MAP.get(str(raw_unit).lower())
-        
-        return None
+        return self.field_mapper.map_unit(unit_type, raw_data)
     
     def _calculate_weight(self, weight_type: str, raw_data: Dict) -> Optional[float]:
         """计算重量"""
-        if weight_type == "item":
-            total_weight = raw_data.get("assembledWeight")
-        else:
-            total_weight = raw_data.get("weight")
-        
-        # 如果没有重量且是组合商品，求和
-        if not total_weight and raw_data.get("comboFlag"):
-            combo_info = raw_data.get("comboInfo", [])
-            total_weight = sum(item.get("weight", 0) for item in combo_info)
-        
-        return total_weight if total_weight else None
+        return self.field_mapper.calculate_weight(weight_type, raw_data)
     
     def get_llm_tasks(self, template_rules: Dict) -> List[Dict]:
         """
@@ -480,31 +258,4 @@ class DataMappingHelper:
                 'valid_options': 有效选项（可选）
             }
         """
-        llm_tasks = []
-        
-        # 标准化valid_values映射（不区分大小写和空格）
-        valid_values_map = {}
-        for item in template_rules.get('valid_values', []):
-            attr = item.get('attribute')
-            if attr:
-                normalized_key = str(attr).strip().lower()
-                valid_values_map[normalized_key] = item.get('values', [])
-        
-        # 提取LLM字段
-        for field_name, rule in self.mapping_config.items():
-            if rule.get("source_type") == "llm_enhanced":
-                task = {
-                    "field_name": field_name,
-                    "description": rule.get("description", ""),
-                    "output_type": rule.get("output_type", "string")
-                }
-                
-                # 检查是否有有效值约束
-                normalized_field = str(field_name).strip().lower()
-                if normalized_field in valid_values_map:
-                    task["valid_options"] = valid_values_map[normalized_field]
-                
-                llm_tasks.append(task)
-        
-        logger.debug(f"提取 {len(llm_tasks)} 个LLM任务")
-        return llm_tasks
+        return collect_llm_tasks_from_mapping(self.mapping_config, template_rules)

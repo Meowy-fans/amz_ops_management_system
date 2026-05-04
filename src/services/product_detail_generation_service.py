@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from infrastructure.llm import get_llm_service, LLMRequest
 from infrastructure.db_pool import SessionLocal
 from src.repositories.llm_product_detail_repository import LLMProductDetailRepository
+from src.services.progress_reporter import ProgressReporter
 from src.utils.data_cleaner import DataCleaner
 from src.utils.prompt_manager import PromptManager
 
@@ -23,12 +24,14 @@ class ProductDetailGenerationService:
         batch_size: int = 50,
         max_retries: int = 3,
         thread_count: int = 4,
-        max_input_length: int = 10000  # ✅ 默认10000字符
+        max_input_length: int = 10000,  # ✅ 默认10000字符
+        reporter: ProgressReporter | None = None
     ):
         self.db = db
         self.repository = LLMProductDetailRepository(db)
         self.llm_service = get_llm_service()
         self.prompt_manager = PromptManager()
+        self.reporter = reporter or ProgressReporter()
         
         # 配置参数
         self.batch_size = batch_size
@@ -170,17 +173,17 @@ class ProductDetailGenerationService:
         
         if not all_skus:
             logger.info("✅ 没有需要处理的SKU")
-            print("✅ 没有需要处理的SKU")
+            self.reporter.emit("✅ 没有需要处理的SKU")
             return
         
         total_skus = len(all_skus)
         num_batches = (total_skus + self.batch_size - 1) // self.batch_size
         
         logger.info(f"📊 待处理SKU总数: {total_skus}")
-        print(f"\n📊 待处理SKU总数: {total_skus}")
-        print(f"📦 批次大小: {self.batch_size}")
-        print(f"🧵 线程数: {self.thread_count}")
-        print(f"📏 最大输入长度: {self.max_input_length}字符\n")
+        self.reporter.emit(f"\n📊 待处理SKU总数: {total_skus}")
+        self.reporter.emit(f"📦 批次大小: {self.batch_size}")
+        self.reporter.emit(f"🧵 线程数: {self.thread_count}")
+        self.reporter.emit(f"📏 最大输入长度: {self.max_input_length}字符\n")
         
         # 2. 分批处理
         for batch_idx in range(num_batches):
@@ -189,23 +192,23 @@ class ProductDetailGenerationService:
             batch_skus = all_skus[start_idx:end_idx]
             
             logger.info(f"🔄 处理批次 {batch_idx+1}/{num_batches}: {len(batch_skus)}个SKU")
-            print(f"🔄 处理批次 {batch_idx+1}/{num_batches}...")
+            self.reporter.emit(f"🔄 处理批次 {batch_idx+1}/{num_batches}...")
             
             saved_count = self.process_batch(batch_skus)
             
             logger.info(f"✔️ 批次{batch_idx+1}完成: 成功{saved_count}个")
-            print(f"   ✔️ 成功: {saved_count}/{len(batch_skus)}")
-            print(f"   📈 总进度: {self.processed_count}/{total_skus}\n")
+            self.reporter.emit(f"   ✔️ 成功: {saved_count}/{len(batch_skus)}")
+            self.reporter.emit(f"   📈 总进度: {self.processed_count}/{total_skus}\n")
             
             time.sleep(0.5)  # 批次间隔
         
         # 3. 输出总结
-        print("\n" + "="*60)
-        print("✅ 处理完成！")
-        print("="*60)
-        print(f"成功: {self.processed_count}")
-        print(f"失败: {self.failed_count}")
-        print(f"总计: {total_skus}")
-        print("="*60 + "\n")
+        self.reporter.emit("\n" + "="*60)
+        self.reporter.emit("✅ 处理完成！")
+        self.reporter.emit("="*60)
+        self.reporter.emit(f"成功: {self.processed_count}")
+        self.reporter.emit(f"失败: {self.failed_count}")
+        self.reporter.emit(f"总计: {total_skus}")
+        self.reporter.emit("="*60 + "\n")
         
         logger.info(f"🎉 处理完成: {self.processed_count}成功 | {self.failed_count}失败")

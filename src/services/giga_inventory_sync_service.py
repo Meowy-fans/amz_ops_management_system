@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from infrastructure.giga.api_client import GigaAPIClient, GigaAPIException
 from infrastructure.db_pool import SessionLocal
 from src.repositories.giga_product_inventory_repository import GigaProductInventoryRepository
+from src.services.progress_reporter import ProgressReporter
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,13 @@ class GigaInventorySyncService:
         max_threads: int = 5,
         api_rate_limit: int = 9,
         wait_time: int = 10,
-        save_api_response: bool = False
+        save_api_response: bool = False,
+        reporter: ProgressReporter | None = None
     ):
         self.db = db
         self.repository = GigaProductInventoryRepository(db)
         self.api_client = GigaAPIClient()
+        self.reporter = reporter or ProgressReporter()
         
         # 配置参数
         self.batch_size = batch_size
@@ -164,7 +167,7 @@ class GigaInventorySyncService:
             
             if not stats['total_skus']:
                 logger.info("没有需要更新的SKU")
-                print("✅ 没有需要更新的SKU")
+                self.reporter.emit("✅ 没有需要更新的SKU")
                 return stats
             
             # 2. 分批
@@ -175,9 +178,9 @@ class GigaInventorySyncService:
             stats['batches'] = len(batches)
             
             logger.info(f"待同步SKU总数: {stats['total_skus']}, 批次数: {stats['batches']}")
-            print(f"\n📊 待同步SKU总数: {stats['total_skus']}")
-            print(f"📦 批次大小: {self.batch_size}")
-            print(f"🧵 线程数: {self.max_threads}\n")
+            self.reporter.emit(f"\n📊 待同步SKU总数: {stats['total_skus']}")
+            self.reporter.emit(f"📦 批次大小: {self.batch_size}")
+            self.reporter.emit(f"🧵 线程数: {self.max_threads}\n")
             
             # 3. 使用线程池处理
             with ThreadPoolExecutor(max_workers=min(self.max_threads, len(batches))) as executor:
@@ -195,12 +198,12 @@ class GigaInventorySyncService:
                         stats['upserted'] += upserted
                         stats['success_batches'] += 1
                         
-                        print(f"✔️ 批次 {batch_idx}/{stats['batches']}: 更新 {upserted} 条")
+                        self.reporter.emit(f"✔️ 批次 {batch_idx}/{stats['batches']}: 更新 {upserted} 条")
                         
                     except Exception as e:
                         stats['failed_batches'] += 1
                         logger.error(f"批次 {batch_idx} 处理失败: {e}")
-                        print(f"❌ 批次 {batch_idx}/{stats['batches']}: 失败")
+                        self.reporter.emit(f"❌ 批次 {batch_idx}/{stats['batches']}: 失败")
                     
                     # 进度报告
                     progress = batch_idx / stats['batches'] * 100
@@ -217,16 +220,16 @@ class GigaInventorySyncService:
             # 最终报告
             elapsed = time.time() - start_time
             
-            print("\n" + "="*60)
-            print("✅ 库存同步完成！")
-            print("="*60)
-            print(f"SKU总数: {stats['total_skus']}")
-            print(f"处理批次: {stats['batches']}")
-            print(f"成功批次: {stats['success_batches']}")
-            print(f"失败批次: {stats['failed_batches']}")
-            print(f"更新记录: {stats['upserted']}/{stats['processed']}")
-            print(f"耗时: {elapsed:.2f}秒 ({elapsed/60:.2f}分钟)")
-            print("="*60 + "\n")
+            self.reporter.emit("\n" + "="*60)
+            self.reporter.emit("✅ 库存同步完成！")
+            self.reporter.emit("="*60)
+            self.reporter.emit(f"SKU总数: {stats['total_skus']}")
+            self.reporter.emit(f"处理批次: {stats['batches']}")
+            self.reporter.emit(f"成功批次: {stats['success_batches']}")
+            self.reporter.emit(f"失败批次: {stats['failed_batches']}")
+            self.reporter.emit(f"更新记录: {stats['upserted']}/{stats['processed']}")
+            self.reporter.emit(f"耗时: {elapsed:.2f}秒 ({elapsed/60:.2f}分钟)")
+            self.reporter.emit("="*60 + "\n")
             
             logger.info(f"库存同步完成 | SKU总数: {stats['total_skus']}")
             logger.info(f"更新记录: {stats['upserted']}/{stats['processed']}")
