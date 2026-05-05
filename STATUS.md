@@ -85,12 +85,13 @@
 - ✅ **2026-05-05 / Codex**: 扩展单字段映射器兜底分支单元测试，固定 item dimension、category lookup、未知 source type、JSON path、未知单位和 item weight 兜底契约；`pytest` 当前 446 passed，总覆盖率 `95.32%`，`data_field_mapper.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 升级 CI checkout action 到 Node 24 运行时，`.github/workflows/ci.yml` 从 `actions/checkout@v4` 调整为 `actions/checkout@v6`；GitHub Actions 日志确认 runner `amz-listing-runner-01` 当前版本 `2.333.1`，满足 checkout v6 兼容要求。
 - ✅ **2026-05-05 / Codex**: 补齐生产初始迁移覆盖，Alembic 首次建库现在会创建 `ds_api_product_details`、`product_final_prices`、`amazon_cat_templates` 等运行时表，并在读取历史 SQL 时跳过宿主机专属 owner 语句；共享 PostgreSQL 临时库验证迁移成功且关键表齐全。
+- ✅ **2026-05-05 / Codex**: 生产服务已安装到 `/data/docker-compose/amz-listing-management-system/`，镜像 `amz-listing-management-system:2026-05-05`，容器 `amz-listing-management-system` 当前 `running healthy`；共享 PostgreSQL 独立库 `amz_listing` 已执行 Alembic 迁移，HTTP socket、关键表和 `list-categories` smoke 均通过。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 安装生产服务到 `/data/docker-compose/amz-listing-management-system/`，创建共享 PostgreSQL 独立库/用户，执行 Alembic 迁移、启动容器并完成健康检查。
+- 🔲 注入真实 Giga/LLM API 凭据后，做受控端到端业务任务演练（同步、详情生成、定价/发品生成），再评估是否通过 Traefik 暴露内部 HTTP 入口。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
@@ -98,4 +99,4 @@
 - GitHub Actions self-hosted runner 已注册并 online；runner `amz-listing-runner-01` 当前版本 `2.333.1`，已将 checkout action 升级到 `actions/checkout@v6` 以消除 Node.js 20 runtime deprecation。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
-- 生产部署模板与初始迁移已补齐；尚未安装到 `/data/docker-compose/amz-listing-management-system/`，也尚未创建共享 PostgreSQL 独立库/用户。生产 `.env` 会使用生成的数据库密码，外部 Giga/LLM API key 暂留空，待用户提供真实凭据后再启用相关任务。
+- 生产 `.env` 已生成数据库密码；外部 Giga/LLM API key 暂留空，因此涉及供应商接口和大模型调用的业务任务需要待真实凭据注入后再跑端到端验证。当前服务未通过 Traefik 暴露公网入口。
