@@ -52,3 +52,4 @@
 | TASK-046 | 拆分数据映射有效值对齐与 LLM 任务提取职责 | P1 | ✅ | Codex | 偏移缓解 Phase 6 | 2026-05-07 | 2026-05-04 | 有效值对齐和 LLM task 提取拆到 `data_mapping_valid_values.py`、`data_mapping_tasks.py`，`data_mapping_helper.py` 降至 261 行；总覆盖率 59.33%；`pytest`: 123 passed |
 | TASK-047 | 拆分 Giga 价格仓库数据转换职责 | P1 | ✅ | Codex | 偏移缓解 Phase 6 | 2026-05-07 | 2026-05-04 | 价格过滤、按 Giga 指数去重、base/tier row 构造拆到 `giga_price_transform.py`，价格仓库降至 277 行；总覆盖率 60.60%；`pytest`: 127 passed |
 | TASK-048 | 加强核心发品链路集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_product_listing_generation_flow.py`，覆盖 service/helper/mapper/excel/log 协作链路；`pytest`: 128 passed，覆盖率 60.79% |
+| TASK-049 | 加强发品 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_product_listing_repository_sql_contract.py`，固定待发品筛选、变体查询和品类映射 SQL 契约；`pytest`: 134 passed，覆盖率 61.02% |
