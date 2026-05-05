@@ -76,3 +76,4 @@
 | TASK-070 | 加强 AI 商品详情生成服务单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_product_detail_generation_service.py`，覆盖单 SKU 生成、缺数据/缺 prompt、LLM 重试/失败、批处理统计契约；`pytest`: 292 passed，覆盖率 79.72% |
 | TASK-071 | 加强 Prompt 管理器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_prompt_manager.py`，覆盖 prompt YAML 加载、缺文件/坏 YAML 容错、缺失 prompt 和 reload 契约；`pytest`: 298 passed，覆盖率 79.98% |
 | TASK-072 | 加强输入校验和异常单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/test_validators.py`，覆盖文件路径校验、格式拒绝和业务异常 code 契约；`pytest`: 307 passed，覆盖率 80.19% |
+| TASK-073 | 加强直接 LLM 服务适配器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/llm/test_direct_llm_service.py`，覆盖 provider 路由、默认模型、fallback、不可用 provider 和健康检查契约；`pytest`: 317 passed，覆盖率 81.06% |
