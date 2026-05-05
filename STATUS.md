@@ -48,12 +48,13 @@
 - ✅ **2026-05-05 / Codex**: 新增 Giga 库存同步编排集成测试，覆盖库存批次调度、成功/失败批次聚合、限流等待、仓库异常兜底和 reporter 输出；`pytest` 当前 142 passed，总覆盖率 `62.90%`，`GigaInventorySyncService` 覆盖率 87%。
 - ✅ **2026-05-05 / Codex**: 新增库存价格更新文件生成集成测试，覆盖 SKU/价格/库存整合、TSV 输出列顺序、空价格/空库存兜底和 reporter 输出；`pytest` 当前 143 passed，总覆盖率 `63.59%`，`InventoryPriceUpdaterService` 覆盖率 96%。
 - ✅ **2026-05-05 / Codex**: 新增库存价格更新 repository SQL 边界集成测试，固定可更新 SKU 映射、价格/库存批量查询、空输入短路和异常兜底契约；`pytest` 当前 149 passed，总覆盖率 `64.31%`，`ListingDataRepository` 覆盖率 100%。
+- ✅ **2026-05-05 / Codex**: 新增 CLI 非交互入口冒烟测试，覆盖 `main.py --task` 参数传递、DB session 生命周期、成功退出码和未知任务退出码；`pytest` 当前 151 passed，总覆盖率 `64.31%`。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 继续补集成测试，优先覆盖 CLI 调度入口冒烟和剩余 repository SQL 边界。
+- 🔲 继续补集成测试，优先覆盖剩余 repository SQL 边界。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
