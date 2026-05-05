@@ -1,8 +1,8 @@
 # Project Status
 
 ## 当前阶段
-- **阶段**：偏移缓解 Phase 6 持续推进
-- **里程碑**：测试/CI基线、关键模块文档、入口层拆分、主要 service 输出边界、重点大文件职责拆分持续收敛
+- **阶段**：偏移缓解 Phase 7 持续推进
+- **里程碑**：测试/CI基线、关键模块文档、入口层拆分、主要 service 输出边界、重点大文件职责拆分、核心链路集成测试持续收敛
 
 ## 最新进展
 - ✅ **2026-05-04 / Codex**: 修复库存同步单测挂起问题，完整测试从卡住恢复为 `52 passed in 1.34s`。
@@ -41,16 +41,17 @@
 - ✅ **2026-05-04 / Codex**: 拆分变体主题 LLM prompt 准备与属性格式化职责，将产品清洗、prompt 组装、优先主题过滤、唯一性校验和格式化迁移到 `variation_theme_helpers.py`，服务降至 229 行；总覆盖率 `58.93%`。
 - ✅ **2026-05-04 / Codex**: 拆分数据映射有效值对齐与 LLM task 提取职责，将有效值对齐、模糊匹配和 LLM 任务提取迁移到 `data_mapping_valid_values.py` / `data_mapping_tasks.py`，`data_mapping_helper.py` 降至 261 行；总覆盖率 `59.33%`。
 - ✅ **2026-05-04 / Codex**: 拆分 Giga 价格仓库数据转换职责，将无效价格过滤、按 Giga 指数去重、base/tier row 构造迁移到 `giga_price_transform.py`，`giga_product_price_repository.py` 降至 277 行；总覆盖率 `60.60%`。
+- ✅ **2026-05-05 / Codex**: 新增核心发品链路集成测试，覆盖 `ProductListingService` 与变体识别、字段映射、Excel 生成、发品日志构造、事务提交的协作路径；`pytest` 当前 128 passed，总覆盖率 `60.79%`。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 继续补核心发品链路测试，优先提升 repository 边界和 Excel 生成路径覆盖。
+- 🔲 继续补集成测试，优先覆盖 repository SQL 边界、Giga 同步编排和更新文件生成路径。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `60.60%`，仍低于开发规范对核心业务逻辑的目标。
+- 当前覆盖率 `60.79%`，仍低于开发规范对核心业务逻辑的目标。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
