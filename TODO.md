@@ -86,3 +86,4 @@
 | TASK-080 | 加强品类 CLI handler 单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/cli/test_category_handlers.py`，覆盖模板更新/矫正、Giga 品类同步确认与导出、CSV 映射更新和新品类导出契约；`pytest`: 397 passed，覆盖率 91.48% |
 | TASK-081 | 加强发品 CLI handler 单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/cli/test_listing_handlers.py`，覆盖交互返回/选择、成功/失败结果和系统异常契约；`pytest`: 401 passed，覆盖率 91.81% |
 | TASK-082 | 加强 CLI 菜单和任务分发单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/cli/test_menu.py` 与 `tests/unit/cli/test_task_dispatcher.py`，覆盖无效菜单、键盘中断、异常兜底和发品任务 CLI 分发契约；`pytest`: 405 passed，覆盖率 92.12% |
+| TASK-083 | 加强模板解析器失败路径单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_template_parser_helpers.py`，覆盖工作簿打开失败、缺工作表、缺表头、无 Valid Values、异常兜底和变体主题 fallback；`pytest`: 414 passed，覆盖率 92.85% |
