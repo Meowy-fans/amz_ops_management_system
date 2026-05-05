@@ -57,3 +57,4 @@
 | TASK-051 | 加强 Giga 价格同步编排集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_giga_price_sync_flow.py`，覆盖价格批处理、限流、提交/回滚、重试和统计输出；`pytest`: 140 passed，覆盖率 62.74% |
 | TASK-052 | 加强 Giga 库存同步编排集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_giga_inventory_sync_flow.py`，覆盖库存批次调度、成功/失败批次、限流和统计输出；`pytest`: 142 passed，覆盖率 62.90% |
 | TASK-053 | 加强库存价格更新文件生成集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_inventory_price_update_file_flow.py`，覆盖 SKU/价格/库存整合、TSV 输出列顺序和空值兜底；`pytest`: 143 passed，覆盖率 63.59% |
+| TASK-054 | 加强库存价格更新 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_listing_data_repository_sql_contract.py`，覆盖 SKU 映射、价格/库存批量查询、空输入和异常兜底；`pytest`: 149 passed，覆盖率 64.31% |
