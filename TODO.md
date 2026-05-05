@@ -88,3 +88,4 @@
 | TASK-082 | 加强 CLI 菜单和任务分发单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/cli/test_menu.py` 与 `tests/unit/cli/test_task_dispatcher.py`，覆盖无效菜单、键盘中断、异常兜底和发品任务 CLI 分发契约；`pytest`: 405 passed，覆盖率 92.12% |
 | TASK-083 | 加强模板解析器失败路径单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_template_parser_helpers.py`，覆盖工作簿打开失败、缺工作表、缺表头、无 Valid Values、异常兜底和变体主题 fallback；`pytest`: 414 passed，覆盖率 92.85% |
 | TASK-084 | 加强数据映射 helper 编排单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/utils/test_data_mapping_helper.py`，覆盖配置加载/失败、空输入、LLM 增强成功/失败和 wrapper 委托契约；`pytest`: 420 passed，覆盖率 93.27% |
+| TASK-085 | 加强 Excel 生成器边界单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/utils/test_excel_generator.py`，覆盖默认路径发现、空输入、保存异常、重复表头解析和缺少硬编码字段告警契约；`pytest`: 425 passed，覆盖率 93.72% |
