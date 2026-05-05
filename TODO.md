@@ -78,3 +78,4 @@
 | TASK-072 | 加强输入校验和异常单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/test_validators.py`，覆盖文件路径校验、格式拒绝和业务异常 code 契约；`pytest`: 307 passed，覆盖率 80.19% |
 | TASK-073 | 加强直接 LLM 服务适配器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/llm/test_direct_llm_service.py`，覆盖 provider 路由、默认模型、fallback、不可用 provider 和健康检查契约；`pytest`: 317 passed，覆盖率 81.06% |
 | TASK-074 | 加强 LLM API 客户端单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/llm/test_llm_api_clients.py`，覆盖 DeepSeek/Qwen 初始化、文本/JSON 解析、空内容、API 错误和异常重抛契约；`pytest`: 329 passed，覆盖率 81.91% |
+| TASK-075 | 加强 Giga API 客户端单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/giga/test_giga_clients.py`，覆盖 Giga 配置、token 缓存/刷新、API 成功、401 刷新、业务错误、超时和可重试异常契约；`pytest`: 344 passed，覆盖率 83.79% |
