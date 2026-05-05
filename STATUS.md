@@ -70,6 +70,7 @@
 - ✅ **2026-05-05 / Codex**: 新增 LLM API 客户端单元测试，固定 DeepSeek/Qwen 初始化、文本/JSON 解析、空内容、API 错误和异常重抛契约；`pytest` 当前 329 passed，总覆盖率 `81.91%`，DeepSeek/Qwen 客户端覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增 Giga API 客户端单元测试，固定 Giga 配置、token 缓存/刷新、API 成功、401 刷新、业务错误、超时和可重试异常契约；`pytest` 当前 344 passed，总覆盖率 `83.79%`，Giga config/token/API client 覆盖率 100%/90%/93%。
 - ✅ **2026-05-05 / Codex**: 新增生产部署模板 `deploy/production/`，按 `/data/docker-compose/amz-listing-management-system/`、共享 PostgreSQL `postgres:5432`、无宿主机端口、`.env` 敏感配置和 `/data/volumes` 持久化路径固化部署契约；compose config 校验通过，`pytest` 当前 344 passed。
+- ✅ **2026-05-05 / Codex**: 新增 Autogen LLM 适配器单元测试，固定 payload、session、fallback、健康检查、final message 解析和上游错误契约；`pytest` 当前 356 passed，总覆盖率 `85.84%`，`AutoGenLLMService` 覆盖率 98%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -79,7 +80,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `83.79%`，已越过 80% 覆盖率线；仍需继续收敛 CLI 展示层、Autogen LLM 适配器和少量模板解析边界。
+- 当前覆盖率 `85.84%`，已越过 80% 覆盖率线；仍需继续收敛 CLI 展示层和少量模板解析/映射边界。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
