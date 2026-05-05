@@ -53,6 +53,7 @@
 - ✅ **2026-05-05 / Codex**: 新增 Giga 价格 repository SQL/COPY 边界集成测试，固定 SKU 查询、base/tier COPY 写入、统计查询、批量失败和 tier 失败兜底契约；`pytest` 当前 171 passed，总覆盖率 `67.07%`，`GigaProductPriceRepository` 覆盖率 98%。
 - ✅ **2026-05-05 / Codex**: 新增 Giga 库存 repository SQL/COPY 边界集成测试，固定 SKU 查询、库存解析、临时表 COPY upsert、提交/回滚和统计查询契约；`pytest` 当前 181 passed，总覆盖率 `68.29%`，`GigaProductInventoryRepository` 覆盖率 99%。
 - ✅ **2026-05-05 / Codex**: 新增 Giga 商品同步 repository SQL 边界集成测试，固定 product upsert、batch upsert、按 SKU 查询、统计和 SKU 列表契约；`pytest` 当前 190 passed，总覆盖率 `69.18%`，`GigaProductSyncRepository` 覆盖率 100%。
+- ✅ **2026-05-05 / Codex**: 新增 SKU 映射 repository SQL 边界集成测试，固定映射查询、LLM SKU 查询、未映射过滤、批量插入和统计契约；`pytest` 当前 200 passed，总覆盖率 `70.01%`，`SkuMappingRepository` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -62,7 +63,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `69.18%`，仍低于开发规范对核心业务逻辑的目标。
+- 当前覆盖率 `70.01%`，仍低于开发规范对核心业务逻辑的目标。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
