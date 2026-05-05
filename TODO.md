@@ -82,3 +82,4 @@
 | TASK-076 | 补生产部署 `/data/docker-compose` 模板 | P1 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | 新增 `deploy/production/` compose/env/deploy/README，并更新架构部署拓扑；compose config 校验通过，`pytest`: 344 passed |
 | TASK-077 | 加强 Autogen LLM 适配器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/llm/test_autogen_llm_service.py`，覆盖 payload、session、fallback、健康检查、final message 解析和上游错误契约；`pytest`: 356 passed，覆盖率 85.84% |
 | TASK-078 | 加强运营 CLI handler 单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/cli/test_operation_handlers.py`，覆盖商品同步确认、报告导入、状态更新、AI 详情、价格/库存同步、售价更新和更新文件 handler 契约；`pytest`: 371 passed，覆盖率 87.93% |
+| TASK-079 | 加强查询 CLI handler 单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/cli/test_query_handlers.py`，覆盖统计总览、待发品统计、最近发品、品类列表的成功/空结果/异常契约；`pytest`: 379 passed，覆盖率 89.72% |
