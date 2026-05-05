@@ -67,6 +67,7 @@
 - ✅ **2026-05-05 / Codex**: 新增 Prompt 管理器单元测试，固定 prompt YAML 加载、缺文件/坏 YAML 容错、缺失 prompt 和 reload 契约；`pytest` 当前 298 passed，总覆盖率 `79.98%`，`prompt_manager.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增输入校验和异常单元测试，固定文件路径校验、目录/缺失/格式拒绝和业务异常 code 契约；`pytest` 当前 307 passed，总覆盖率 `80.19%`，`validators.py` 与 `exceptions.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增直接 LLM 服务适配器单元测试，固定 provider 路由、默认模型、fallback、不可用 provider 和健康检查契约；`pytest` 当前 317 passed，总覆盖率 `81.06%`，`DirectLLMService` 覆盖率 94%。
+- ✅ **2026-05-05 / Codex**: 新增 LLM API 客户端单元测试，固定 DeepSeek/Qwen 初始化、文本/JSON 解析、空内容、API 错误和异常重抛契约；`pytest` 当前 329 passed，总覆盖率 `81.91%`，DeepSeek/Qwen 客户端覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -76,7 +77,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `81.06%`，已越过 80% 覆盖率线；仍需继续收敛 CLI 展示层、外部 API 客户端和少量模板解析边界。
+- 当前覆盖率 `81.91%`，已越过 80% 覆盖率线；仍需继续收敛 CLI 展示层、Giga API 客户端和少量模板解析边界。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
