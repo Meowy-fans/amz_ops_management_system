@@ -4,6 +4,7 @@ from src.utils.data_mapping_valid_values import (
     fuzzy_select,
     normalize_text,
 )
+from src.utils.data_field_mapper import DataFieldMapper
 
 
 def test_align_to_valid_values_exact_normalized_and_fuzzy_matches():
@@ -53,3 +54,46 @@ def test_collect_llm_tasks_from_mapping_includes_valid_options():
         "output_type": "string",
         "valid_options": ["Modern"],
     }]
+
+
+def test_data_field_mapper_fallback_branches():
+    mapper = DataFieldMapper()
+
+    assert mapper.map_single_field(
+        "Item Width",
+        {"source_type": "item_dimension", "dimension": "assembledWidth"},
+        {},
+        {"assembledWidth": 12},
+        {},
+    ) == 12
+    assert mapper.map_single_field(
+        "Amazon Type",
+        {"source_type": "category_lookup", "lookup_key": "amazon_type"},
+        {"category_name": "cabinet"},
+        {},
+        None,
+    ) is None
+    assert mapper.map_single_field(
+        "Amazon Type",
+        {"source_type": "category_lookup"},
+        {"category_name": "cabinet"},
+        {},
+        {"CABINET": {"amazon_type": "Storage Cabinet"}},
+    ) is None
+    assert mapper.map_single_field(
+        "Unknown",
+        {"source_type": "unknown"},
+        {},
+        {},
+        {},
+    ) is None
+
+
+def test_data_field_mapper_json_unit_and_weight_fallbacks():
+    mapper = DataFieldMapper()
+
+    assert mapper.get_jsonb_value({}, "") is None
+    assert mapper.get_jsonb_value({"attributes": "not a dict"}, "attributes.color") is None
+    assert mapper.get_jsonb_value({"attributes": {"color": None}}, "attributes.color") is None
+    assert mapper.map_unit("unknown", {"weightUnit": "lb", "lengthUnit": "in"}) is None
+    assert mapper.calculate_weight("item", {"assembledWeight": 2.5}) == 2.5

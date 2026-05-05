@@ -82,6 +82,7 @@
 - ✅ **2026-05-05 / Codex**: 扩展模板管理服务失败路径单元测试，固定模板文件缺失、保存失败、报错解析失败、无模板记录、无需更新、更新失败和异常回滚契约；`pytest` 当前 432 passed，总覆盖率 `94.35%`，`amz_template_management_service.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增品类映射 CSV 更新器单元测试，固定文件缺失、读取失败、空文件、校验错误、错误截断、部分更新告警和更新异常契约；`pytest` 当前 439 passed，总覆盖率 `94.78%`，`category_mapping_csv_updater.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 扩展报告导入与状态更新服务单元测试，固定状态更新 0/-1 分支、CSV/TSV 读取、编码失败和清洗去重契约；`pytest` 当前 444 passed，总覆盖率 `95.13%`，`ListingStatusManager` 与 `AmzFullListImporterService` 覆盖率 100%。
+- ✅ **2026-05-05 / Codex**: 扩展单字段映射器兜底分支单元测试，固定 item dimension、category lookup、未知 source type、JSON path、未知单位和 item weight 兜底契约；`pytest` 当前 446 passed，总覆盖率 `95.32%`，`data_field_mapper.py` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -91,7 +92,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `95.13%`，已越过 80% 覆盖率线；CLI 入口层覆盖率已收敛至 100%，核心模板解析/模板管理/映射/Excel/CSV/报告导入边界已明显收敛。
+- 当前覆盖率 `95.32%`，已越过 80% 覆盖率线；CLI 入口层覆盖率已收敛至 100%，核心模板解析/模板管理/映射/Excel/CSV/报告导入边界已明显收敛。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
