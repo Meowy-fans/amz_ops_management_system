@@ -75,16 +75,17 @@
 - ✅ **2026-05-05 / Codex**: 扩展查询 CLI handler 单元测试，固定统计总览、待发品统计、最近发品、品类列表的成功/空结果/异常契约；`pytest` 当前 379 passed，总覆盖率 `89.72%`，`query_handlers.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 扩展品类 CLI handler 单元测试，固定模板更新/矫正、Giga 品类同步确认与导出、CSV 映射更新和新品类导出契约；`pytest` 当前 397 passed，总覆盖率 `91.48%`，`category_handlers.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 扩展发品 CLI handler 单元测试，固定交互返回/选择、成功/失败结果和系统异常契约；`pytest` 当前 401 passed，总覆盖率 `91.81%`，`listing_handlers.py` 覆盖率 100%。
+- ✅ **2026-05-05 / Codex**: 扩展 CLI 菜单和任务分发单元测试，固定无效菜单、键盘中断、异常兜底和发品任务 CLI 分发契约；`pytest` 当前 405 passed，总覆盖率 `92.12%`，`menu.py` 与 `task_dispatcher.py` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 继续补 CLI 菜单和任务分发边界测试。
+- 🔲 继续补少量模板解析/映射边界测试。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `91.81%`，已越过 80% 覆盖率线；仍需继续收敛 CLI 菜单/任务分发和少量模板解析/映射边界。
+- 当前覆盖率 `92.12%`，已越过 80% 覆盖率线；CLI 入口层覆盖率已收敛至 100%，仍需继续收敛少量模板解析/映射边界。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。

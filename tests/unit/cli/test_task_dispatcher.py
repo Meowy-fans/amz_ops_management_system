@@ -27,3 +27,18 @@ def test_dispatch_generate_listing_returns_service_result(monkeypatch):
         category="CABINET",
         return_listing_result=True,
     ) == {"success": True, "category": "CABINET"}
+
+
+def test_dispatch_generate_listing_uses_cli_handler_without_return(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_generate_listing",
+        lambda db, category=None: calls.append((db, category)),
+    )
+
+    db = object()
+    result = dispatch_task(db, "generate-listing", category="CABINET")
+
+    assert result is None
+    assert calls == [(db, "CABINET")]
