@@ -71,3 +71,4 @@
 | TASK-065 | 加强全量报告 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_amz_full_list_report_repository_sql_contract.py`，覆盖 DataFrame 临时表 upsert/drop、异常清理和统计查询契约；`pytest`: 257 passed，覆盖率 76.05% |
 | TASK-066 | 加强产品数据 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_product_data_repository_sql_contract.py`，覆盖完整产品数据 join 查询、缺失返回和异常重抛契约；`pytest`: 260 passed，覆盖率 76.36% |
 | TASK-067 | 加强发品配置加载单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/services/test_product_listing_config.py`，覆盖默认配置路径发现、显式加载、缺失文件和坏 JSON 契约；`pytest`: 268 passed，覆盖率 76.83% |
+| TASK-068 | 加强价格配置加载单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_pricing_config.py`，覆盖 YAML 加载缓存、fallback、品类覆盖、缺失文件和坏 YAML 契约；`pytest`: 274 passed，覆盖率 77.30% |
