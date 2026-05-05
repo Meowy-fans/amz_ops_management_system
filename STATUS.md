@@ -46,16 +46,17 @@
 - ✅ **2026-05-05 / Codex**: 新增 Giga 商品同步编排集成测试，覆盖 SKU 分页获取、详情批处理、repository 保存、事务提交/回滚、统计和 reporter 输出；`pytest` 当前 137 passed，总覆盖率 `61.28%`，`GigaSyncService` 覆盖率 88%。
 - ✅ **2026-05-05 / Codex**: 新增 Giga 价格同步编排集成测试，覆盖价格批处理、API 重试、限流等待、repository 保存、事务提交/回滚和统计输出；`pytest` 当前 140 passed，总覆盖率 `62.74%`，`GigaPriceSyncService` 覆盖率 98%。
 - ✅ **2026-05-05 / Codex**: 新增 Giga 库存同步编排集成测试，覆盖库存批次调度、成功/失败批次聚合、限流等待、仓库异常兜底和 reporter 输出；`pytest` 当前 142 passed，总覆盖率 `62.90%`，`GigaInventorySyncService` 覆盖率 87%。
+- ✅ **2026-05-05 / Codex**: 新增库存价格更新文件生成集成测试，覆盖 SKU/价格/库存整合、TSV 输出列顺序、空价格/空库存兜底和 reporter 输出；`pytest` 当前 143 passed，总覆盖率 `63.59%`，`InventoryPriceUpdaterService` 覆盖率 96%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 继续补集成测试，优先覆盖更新文件生成路径。
+- 🔲 继续补集成测试，优先覆盖 repository SQL 边界和 CLI 调度入口冒烟。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `62.90%`，仍低于开发规范对核心业务逻辑的目标。
+- 当前覆盖率 `63.59%`，仍低于开发规范对核心业务逻辑的目标。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
