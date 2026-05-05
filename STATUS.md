@@ -64,6 +64,7 @@
 - ✅ **2026-05-05 / Codex**: 新增价格配置加载单元测试，固定 YAML 加载缓存、fallback、品类覆盖、缺失文件和坏 YAML 异常契约；`pytest` 当前 274 passed，总覆盖率 `77.30%`，`pricing_config.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增数据清洗工具单元测试，固定递归清洗、HTML/图片清理、智能截断降级和简单截断契约；`pytest` 当前 285 passed，总覆盖率 `78.69%`，`data_cleaner.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 扩展 AI 商品详情生成服务单元测试，固定单 SKU 生成、缺数据/缺 prompt、LLM 重试/最终失败、批处理保存统计契约；`pytest` 当前 292 passed，总覆盖率 `79.72%`，`ProductDetailGenerationService` 覆盖率 97%。
+- ✅ **2026-05-05 / Codex**: 新增 Prompt 管理器单元测试，固定 prompt YAML 加载、缺文件/坏 YAML 容错、缺失 prompt 和 reload 契约；`pytest` 当前 298 passed，总覆盖率 `79.98%`，`prompt_manager.py` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -73,7 +74,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `79.72%`，仍低于开发规范对核心业务逻辑的目标。
+- 当前覆盖率 `79.98%`，仍低于开发规范对核心业务逻辑的目标。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
