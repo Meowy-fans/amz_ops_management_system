@@ -51,6 +51,27 @@ class TestTemplateManagementService:
             assert success is False
             assert "Invalid Format" in msg
 
+    def test_update_template_from_file_missing_file(self, service):
+        success, msg = service.update_template_from_file("", "CATEGORY")
+
+        assert success is False
+        assert "文件不存在或路径无效" in msg
+
+    @patch('src.services.amz_template_management_service.AdvancedTemplateParser')
+    @patch('builtins.input', return_value="")
+    def test_update_template_from_file_save_failure(self, mock_input, MockParser, service, mock_repo):
+        mock_parser_instance = MockParser.return_value
+        mock_parser_instance.parse.return_value = (True, "Parsed")
+        mock_parser_instance.get_results.return_value = {"fields": ["Color"]}
+        mock_parser_instance.get_all_variation_themes.return_value = ["Color"]
+        mock_repo.save_parsed_data.return_value = None
+
+        with patch('os.path.exists', return_value=True):
+            success, msg = service.update_template_from_file("template.xlsx", "CATEGORY")
+
+        assert success is False
+        assert "数据保存到数据库失败" in msg
+
     @patch('src.services.amz_template_rule_correction.openpyxl')
     def test_correct_rules_from_report_success(self, mock_openpyxl, service, mock_repo):
         # Mock Workbook
@@ -129,3 +150,67 @@ class TestTemplateManagementService:
         assert success is True
         assert "无需矫正" in msg
         assert capsys.readouterr().out == ""
+
+    def test_correct_rules_from_report_parse_failure(self, service):
+        service._parse_report_for_required_fields = MagicMock(side_effect=RuntimeError("bad report"))
+
+        success, msg = service.correct_rules_from_report("report.xlsm", "CAT")
+
+        assert success is False
+        assert "解析报错文件时失败: bad report" in msg
+
+    def test_correct_rules_from_report_missing_template_record(self, service, mock_repo):
+        service._parse_report_for_required_fields = MagicMock(return_value={"brand_name"})
+        mock_repo.find_latest_template_id_and_defs.return_value = None
+
+        success, msg = service.correct_rules_from_report("report.xlsm", "CAT")
+
+        assert success is False
+        assert "未能在数据库中找到品类" in msg
+
+    def test_correct_rules_from_report_no_fields_need_update(self, service, mock_repo):
+        service._parse_report_for_required_fields = MagicMock(return_value={"brand_name"})
+        mock_repo.find_latest_template_id_and_defs.return_value = (
+            1,
+            {
+                "brand_name_key": {
+                    "local_label": "brand_name",
+                    "required_child": "Required",
+                    "required_single": "Required",
+                }
+            },
+        )
+
+        success, msg = service.correct_rules_from_report("report.xlsm", "CAT")
+
+        assert success is True
+        assert "无需矫正" in msg
+        mock_repo.update_field_definitions_by_id.assert_not_called()
+
+    def test_correct_rules_from_report_rolls_back_when_update_fails(self, service, mock_repo, mock_db):
+        service._parse_report_for_required_fields = MagicMock(return_value={"brand_name"})
+        mock_repo.find_latest_template_id_and_defs.return_value = (
+            1,
+            {"brand_name_key": {"local_label": "brand_name", "required_child": "Optional"}},
+        )
+        mock_repo.update_field_definitions_by_id.return_value = False
+
+        success, msg = service.correct_rules_from_report("report.xlsm", "CAT")
+
+        assert success is False
+        assert "操作已回滚" in msg
+        mock_db.rollback.assert_called_once()
+
+    def test_correct_rules_from_report_rolls_back_on_update_exception(self, service, mock_repo, mock_db):
+        service._parse_report_for_required_fields = MagicMock(return_value={"brand_name"})
+        mock_repo.find_latest_template_id_and_defs.return_value = (
+            1,
+            {"brand_name_key": {"local_label": "brand_name", "required_child": "Optional"}},
+        )
+        mock_repo.update_field_definitions_by_id.side_effect = RuntimeError("db failed")
+
+        success, msg = service.correct_rules_from_report("report.xlsm", "CAT")
+
+        assert success is False
+        assert "db failed" in msg
+        mock_db.rollback.assert_called_once()

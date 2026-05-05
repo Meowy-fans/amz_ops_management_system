@@ -79,6 +79,7 @@
 - ✅ **2026-05-05 / Codex**: 扩展模板解析器失败路径单元测试，固定工作簿打开失败、缺工作表、缺表头、无 Valid Values、异常兜底和变体主题 fallback 契约；`pytest` 当前 414 passed，总覆盖率 `92.85%`，`amz_template_parser.py` 覆盖率 96%。
 - ✅ **2026-05-05 / Codex**: 扩展数据映射 helper 编排单元测试，固定配置加载/失败、空输入、LLM 增强成功/失败和 wrapper 委托契约；`pytest` 当前 420 passed，总覆盖率 `93.27%`，`data_mapping_helper.py` 覆盖率 85%。
 - ✅ **2026-05-05 / Codex**: 扩展 Excel 生成器边界单元测试，固定默认路径发现、空输入、保存异常、重复表头解析和缺少硬编码字段告警契约；`pytest` 当前 425 passed，总覆盖率 `93.72%`，`excel_generator.py` 覆盖率 98%。
+- ✅ **2026-05-05 / Codex**: 扩展模板管理服务失败路径单元测试，固定模板文件缺失、保存失败、报错解析失败、无模板记录、无需更新、更新失败和异常回滚契约；`pytest` 当前 432 passed，总覆盖率 `94.35%`，`amz_template_management_service.py` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -88,7 +89,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `93.72%`，已越过 80% 覆盖率线；CLI 入口层覆盖率已收敛至 100%，核心模板解析/映射/Excel 边界已明显收敛。
+- 当前覆盖率 `94.35%`，已越过 80% 覆盖率线；CLI 入口层覆盖率已收敛至 100%，核心模板解析/模板管理/映射/Excel 边界已明显收敛。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
