@@ -55,3 +55,4 @@
 | TASK-049 | 加强发品 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_product_listing_repository_sql_contract.py`，固定待发品筛选、变体查询和品类映射 SQL 契约；`pytest`: 134 passed，覆盖率 61.02% |
 | TASK-050 | 加强 Giga 商品同步编排集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_giga_sync_flow.py`，覆盖分页 SKU 获取、详情批处理、提交/回滚和统计输出；`pytest`: 137 passed，覆盖率 61.28% |
 | TASK-051 | 加强 Giga 价格同步编排集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_giga_price_sync_flow.py`，覆盖价格批处理、限流、提交/回滚、重试和统计输出；`pytest`: 140 passed，覆盖率 62.74% |
+| TASK-052 | 加强 Giga 库存同步编排集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_giga_inventory_sync_flow.py`，覆盖库存批次调度、成功/失败批次、限流和统计输出；`pytest`: 142 passed，覆盖率 62.90% |
