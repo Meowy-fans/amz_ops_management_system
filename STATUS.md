@@ -49,6 +49,7 @@
 - ✅ **2026-05-05 / Codex**: 新增库存价格更新文件生成集成测试，覆盖 SKU/价格/库存整合、TSV 输出列顺序、空价格/空库存兜底和 reporter 输出；`pytest` 当前 143 passed，总覆盖率 `63.59%`，`InventoryPriceUpdaterService` 覆盖率 96%。
 - ✅ **2026-05-05 / Codex**: 新增库存价格更新 repository SQL 边界集成测试，固定可更新 SKU 映射、价格/库存批量查询、空输入短路和异常兜底契约；`pytest` 当前 149 passed，总覆盖率 `64.31%`，`ListingDataRepository` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 新增 CLI 非交互入口冒烟测试，覆盖 `main.py --task` 参数传递、DB session 生命周期、成功退出码和未知任务退出码；`pytest` 当前 151 passed，总覆盖率 `64.31%`。
+- ✅ **2026-05-05 / Codex**: 新增定价 repository SQL/COPY 边界集成测试，固定 SKU 列表、成本查询价格选择、非 USD/无价跳过、COPY upsert 和异常重抛契约；`pytest` 当前 158 passed，总覆盖率 `65.61%`，`PricingRepository` 覆盖率 100%。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
@@ -58,7 +59,7 @@
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
-- 当前覆盖率 `64.31%`，仍低于开发规范对核心业务逻辑的目标。
+- 当前覆盖率 `65.61%`，仍低于开发规范对核心业务逻辑的目标。
 - GitHub Actions self-hosted runner 已注册并 online；CI run `25330003050` 已在 `amz-listing-runner-01` 绿色通过。GitHub 提示 `actions/checkout@v4` 当前 Node.js 20 runtime 将在 2026-06-02 默认切到 Node.js 24，需要后续跟踪。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。

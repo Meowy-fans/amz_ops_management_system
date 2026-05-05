@@ -59,3 +59,4 @@
 | TASK-053 | 加强库存价格更新文件生成集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/services/test_inventory_price_update_file_flow.py`，覆盖 SKU/价格/库存整合、TSV 输出列顺序和空值兜底；`pytest`: 143 passed，覆盖率 63.59% |
 | TASK-054 | 加强库存价格更新 repository SQL 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_listing_data_repository_sql_contract.py`，覆盖 SKU 映射、价格/库存批量查询、空输入和异常兜底；`pytest`: 149 passed，覆盖率 64.31% |
 | TASK-055 | 加强 CLI 非交互入口冒烟测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/cli/test_main_non_interactive_entrypoint.py`，覆盖 `main.py --task` 参数传递、session 生命周期和未知任务退出码；`pytest`: 151 passed，覆盖率 64.31% |
+| TASK-056 | 加强定价 repository SQL/COPY 边界集成测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/integration/repositories/test_pricing_repository_sql_contract.py`，覆盖 SKU 列表、成本查询价格选择、空 upsert、COPY upsert 和异常重抛；`pytest`: 158 passed，覆盖率 65.61% |
