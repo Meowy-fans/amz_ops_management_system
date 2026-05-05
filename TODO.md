@@ -73,3 +73,4 @@
 | TASK-067 | 加强发品配置加载单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/services/test_product_listing_config.py`，覆盖默认配置路径发现、显式加载、缺失文件和坏 JSON 契约；`pytest`: 268 passed，覆盖率 76.83% |
 | TASK-068 | 加强价格配置加载单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_pricing_config.py`，覆盖 YAML 加载缓存、fallback、品类覆盖、缺失文件和坏 YAML 契约；`pytest`: 274 passed，覆盖率 77.30% |
 | TASK-069 | 加强数据清洗工具单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_data_cleaner.py`，覆盖递归清洗、HTML/图片清理、智能截断降级和简单截断契约；`pytest`: 285 passed，覆盖率 78.69% |
+| TASK-070 | 加强 AI 商品详情生成服务单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_product_detail_generation_service.py`，覆盖单 SKU 生成、缺数据/缺 prompt、LLM 重试/失败、批处理统计契约；`pytest`: 292 passed，覆盖率 79.72% |
