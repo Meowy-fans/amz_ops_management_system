@@ -31,6 +31,29 @@ def helper(sample_mapping_config):
     return helper
 
 class TestDataMappingHelper:
+    def test_load_mapping_config_from_file(self, tmp_path):
+        config_path = tmp_path / "amz_mapping.json"
+        config_path.write_text(
+            json.dumps({"mappings": {"Brand": {"source_type": "direct", "value": "brand"}}}),
+            encoding="utf-8",
+        )
+
+        helper = DataMappingHelper(config_path=config_path)
+
+        assert helper.mapping_config == {
+            "Brand": {"source_type": "direct", "value": "brand"}
+        }
+
+    def test_load_mapping_config_raises_for_invalid_json(self, tmp_path):
+        config_path = tmp_path / "amz_mapping.json"
+        config_path.write_text("{bad json", encoding="utf-8")
+
+        with pytest.raises(json.JSONDecodeError):
+            DataMappingHelper(config_path=config_path)
+
+    def test_apply_mapping_returns_empty_for_empty_product(self, helper):
+        assert helper.apply_mapping({}, {}) == {}
+
     def test_static_mapping(self, helper):
         product_data = {"dummy": "data"}
         result = helper.apply_mapping(product_data, {})
@@ -234,3 +257,67 @@ class TestDataMappingHelper:
             "output_type": "string",
             "valid_options": ["Modern"]
         }]
+
+    def test_apply_mapping_merges_llm_enrichment(self, helper, monkeypatch):
+        helper.mapping_config = {
+            "StaticField": {"source_type": "static", "value": "StaticValue"},
+            "Style": {
+                "source_type": "llm_enhanced",
+                "description": "Pick style",
+                "output_type": "string",
+            },
+        }
+        llm_service = object()
+        seen = []
+
+        def enrich(product_data, llm_tasks, template_rules, service):
+            seen.append((product_data, llm_tasks, template_rules, service))
+            return {"Style": "Modern"}
+
+        monkeypatch.setattr(helper, "_enrich_with_llm", enrich)
+
+        result = helper.apply_mapping(
+            {"product_name": "Cabinet"},
+            {"valid_values": [{"attribute": "Style", "values": ["Modern"]}]},
+            llm_service=llm_service,
+        )
+
+        assert result == {"StaticField": "StaticValue", "Style": "Modern"}
+        assert seen[0][1] == [{
+            "field_name": "Style",
+            "description": "Pick style",
+            "output_type": "string",
+        }]
+        assert seen[0][3] is llm_service
+
+    def test_apply_mapping_keeps_non_llm_data_when_llm_enrichment_fails(self, helper, monkeypatch):
+        helper.mapping_config = {
+            "StaticField": {"source_type": "static", "value": "StaticValue"},
+            "Style": {"source_type": "llm_enhanced", "description": "Pick style"},
+        }
+
+        def fail_enrich(*args, **kwargs):
+            raise RuntimeError("llm failed")
+
+        monkeypatch.setattr(helper, "_enrich_with_llm", fail_enrich)
+
+        result = helper.apply_mapping({"product_name": "Cabinet"}, {}, llm_service=object())
+
+        assert result == {"StaticField": "StaticValue"}
+
+    def test_wrapper_helpers_delegate_to_extracted_mapping_logic(self, helper):
+        raw_data = {
+            "attributes": {"color": "Red"},
+            "weightUnit": "oz",
+            "lengthUnit": "cm",
+            "assembledWeight": 2.5,
+        }
+
+        assert helper._strip_html(None) == ""
+        assert helper._strip_html("<p>Hello<br> world</p>") == "Hello world"
+        assert helper._get_jsonb_value(raw_data, "attributes.color") == "Red"
+        assert helper._normalize_text(" Light_Blue ") == "light blue"
+        assert helper._fuzzy_select("modrn", ["Modern"], cutoff=0.8) == "Modern"
+        assert helper._map_unit("weight", raw_data) == "Ounces"
+        assert helper._map_unit("dimension", raw_data) == "Centimeters"
+        assert helper._calculate_weight("item", raw_data) == 2.5
