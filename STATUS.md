@@ -84,12 +84,13 @@
 - ✅ **2026-05-05 / Codex**: 扩展报告导入与状态更新服务单元测试，固定状态更新 0/-1 分支、CSV/TSV 读取、编码失败和清洗去重契约；`pytest` 当前 444 passed，总覆盖率 `95.13%`，`ListingStatusManager` 与 `AmzFullListImporterService` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 扩展单字段映射器兜底分支单元测试，固定 item dimension、category lookup、未知 source type、JSON path、未知单位和 item weight 兜底契约；`pytest` 当前 446 passed，总覆盖率 `95.32%`，`data_field_mapper.py` 覆盖率 100%。
 - ✅ **2026-05-05 / Codex**: 升级 CI checkout action 到 Node 24 运行时，`.github/workflows/ci.yml` 从 `actions/checkout@v4` 调整为 `actions/checkout@v6`；GitHub Actions 日志确认 runner `amz-listing-runner-01` 当前版本 `2.333.1`，满足 checkout v6 兼容要求。
+- ✅ **2026-05-05 / Codex**: 补齐生产初始迁移覆盖，Alembic 首次建库现在会创建 `ds_api_product_details`、`product_final_prices`、`amazon_cat_templates` 等运行时表，并在读取历史 SQL 时跳过宿主机专属 owner 语句；共享 PostgreSQL 临时库验证迁移成功且关键表齐全。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 继续复核剩余低覆盖模块是否属于必要偏移，优先处理可本地验证且不需生产确认的边界。
+- 🔲 安装生产服务到 `/data/docker-compose/amz-listing-management-system/`，创建共享 PostgreSQL 独立库/用户，执行 Alembic 迁移、启动容器并完成健康检查。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
@@ -97,4 +98,4 @@
 - GitHub Actions self-hosted runner 已注册并 online；runner `amz-listing-runner-01` 当前版本 `2.333.1`，已将 checkout action 升级到 `actions/checkout@v6` 以消除 Node.js 20 runtime deprecation。
 - service 层直接 stdout 已基本收敛到统一 reporter；`amz_template_parser.py` 的 `_log_and_print` 仅写 logger，名称命中 `rg "print\\("` 但不输出 stdout。
 - `main.py` 已降至 96 行，入口层拆分目标已完成；业务 service 和 repository 侧本轮识别出的 300+ 行文件规模预警已全部消除。
-- 生产部署模板已补齐但尚未安装到 `/data/docker-compose/amz-listing-management-system/`，也尚未创建共享 PostgreSQL 独立库/用户；执行生产安装时需要写 `/data` 并填充真实 `.env`。
+- 生产部署模板与初始迁移已补齐；尚未安装到 `/data/docker-compose/amz-listing-management-system/`，也尚未创建共享 PostgreSQL 独立库/用户。生产 `.env` 会使用生成的数据库密码，外部 Giga/LLM API key 暂留空，待用户提供真实凭据后再启用相关任务。
