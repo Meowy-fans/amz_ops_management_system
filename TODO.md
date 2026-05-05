@@ -90,3 +90,4 @@
 | TASK-084 | 加强数据映射 helper 编排单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/utils/test_data_mapping_helper.py`，覆盖配置加载/失败、空输入、LLM 增强成功/失败和 wrapper 委托契约；`pytest`: 420 passed，覆盖率 93.27% |
 | TASK-085 | 加强 Excel 生成器边界单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/utils/test_excel_generator.py`，覆盖默认路径发现、空输入、保存异常、重复表头解析和缺少硬编码字段告警契约；`pytest`: 425 passed，覆盖率 93.72% |
 | TASK-086 | 加强模板管理服务失败路径单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_amz_template_management_service.py`，覆盖模板文件缺失、保存失败、报错解析失败、无模板记录、无需更新、更新失败和异常回滚契约；`pytest`: 432 passed，覆盖率 94.35% |
+| TASK-087 | 加强品类映射 CSV 更新器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/services/test_category_mapping_csv_updater.py`，覆盖文件缺失、读取失败、空文件、校验错误、错误截断、部分更新告警和更新异常契约；`pytest`: 439 passed，覆盖率 94.78% |
