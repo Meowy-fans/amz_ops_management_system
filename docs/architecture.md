@@ -118,3 +118,15 @@ graph TD
 -   **Data Processing**: Pandas
 -   **Excel**: OpenPyXL
 -   **AI**: OpenAI API compatible (DeepSeek)
+
+## 6. Deployment Topology
+
+Production deployment follows the server operations contract in `/data/README.md`.
+
+- Source-controlled production compose bundle: `deploy/production/`.
+- Runtime compose location: `/data/docker-compose/amz-listing-management-system/`.
+- Runtime data location: `/data/volumes/amz-listing-management-system/`.
+- Database: shared PostgreSQL container `postgres:5432` on the external Docker `proxy` network, with a dedicated `amz_listing` database/user.
+- Secrets: `/data/docker-compose/amz-listing-management-system/.env`; real secrets are not committed.
+- Host ports: none by default. The container joins `proxy`, and Traefik exposure is disabled unless a route is explicitly registered in `/data/README.md`.
+- Runtime mode: `APP_MODE=server` keeps `scripts/io_server.py` running for internal task execution; one-off CLI tasks can still run through `docker compose run --rm`.
