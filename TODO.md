@@ -75,3 +75,4 @@
 | TASK-069 | 加强数据清洗工具单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_data_cleaner.py`，覆盖递归清洗、HTML/图片清理、智能截断降级和简单截断契约；`pytest`: 285 passed，覆盖率 78.69% |
 | TASK-070 | 加强 AI 商品详情生成服务单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 扩展 `tests/unit/services/test_product_detail_generation_service.py`，覆盖单 SKU 生成、缺数据/缺 prompt、LLM 重试/失败、批处理统计契约；`pytest`: 292 passed，覆盖率 79.72% |
 | TASK-071 | 加强 Prompt 管理器单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/utils/test_prompt_manager.py`，覆盖 prompt YAML 加载、缺文件/坏 YAML 容错、缺失 prompt 和 reload 契约；`pytest`: 298 passed，覆盖率 79.98% |
+| TASK-072 | 加强输入校验和异常单元测试 | P1 | ✅ | Codex | 偏移缓解 Phase 7 | 2026-05-05 | 2026-05-05 | 新增 `tests/unit/infrastructure/test_validators.py`，覆盖文件路径校验、格式拒绝和业务异常 code 契约；`pytest`: 307 passed，覆盖率 80.19% |
