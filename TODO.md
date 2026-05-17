@@ -97,3 +97,9 @@
 | TASK-091 | 补齐生产初始迁移运行时表覆盖 | P0 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | Alembic 初始迁移补执行详情、售价、Amazon 模板表，并过滤宿主机 owner 语句；共享 Postgres 临时库验证关键表齐全；`pytest`: 446 passed，覆盖率 95.32% |
 | TASK-092 | 安装生产服务到 `/data/docker-compose` | P0 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | 已部署容器 `amz-listing-management-system`，共享 PostgreSQL 独立库 `amz_listing`，健康检查 healthy；HTTP socket、Alembic 版本、关键表和 `list-categories` smoke 通过 |
 | TASK-093 | 收口用户可用发品台 | P0 | ✅ | Codex | 生产就绪 | 2026-05-16 | 2026-05-16 | 开放 `https://amz-listing.meowy.fans`（BasicAuth），Web 首页增加生产就绪面板和固定可发品类下拉；CLI/接口统一品类大小写统计口径；当前支持 `CABINET` / `HOME_MIRROR`，未映射供应商品类不自动发品；`pytest -q` 通过，容器 healthy，`/api/readiness` 与 CLI 冒烟通过 |
+| TASK-094 | Amazon SP-API 接入方案规划 | P0 | ✅ | Codex | SP-API 接入 | 2026-05-17 | 2026-05-17 | 已整理 `docs/sp-api-integration-plan.md`，记录私有开发者审核状态、权限范围、网络出口方案、分阶段实现、数据模型和风险 |
+| TASK-095 | 等待 Amazon 私有开发者 / Product Listing 权限审核 | P0 | ⏳ | User | SP-API 接入 | - | - | 用户已提交 Seller Central 私有开发者 / 自用 API 权限申请；待 Amazon 审核通过后创建 private app 并 self-authorize 获取 LWA 凭据 |
+| TASK-096 | 实现 Amazon API 基础设施层 | P0 | 🔲 | Codex | SP-API Phase 1 | - | - | 计划新增 `infrastructure/amazon/`：config、LWA token manager、API client、429 retry、日志脱敏；依赖 TASK-095 |
+| TASK-097 | 接入 Reports API 同步 Amazon 全量 Listing | P1 | 🔲 | Codex | SP-API Phase 2 | - | - | 计划以 Reports API `GET_MERCHANT_LISTINGS_ALL_DATA` 替代手动文件导入，同时保留现有导入入口；依赖 TASK-096 |
+| TASK-098 | 接入 Listings Items API 价格库存更新 | P1 | 🔲 | Codex | SP-API Phase 3 | - | - | 计划先对现有 SKU 做 dry-run 和小批量 `patchListingsItem`，记录 submission 与 issues；依赖 TASK-096 |
+| TASK-099 | 设计并实现新品发品 API 出口 | P1 | 🔲 | Codex | SP-API Phase 4 | - | - | 计划抽 `ListingPlanBuilder`、保留 `ExcelListingExporter`、新增 `AmazonAttributeMapper` 与 `AmazonListingSubmitter`，先用 `VALIDATION_PREVIEW` 验证 CABINET/HOME_MIRROR |

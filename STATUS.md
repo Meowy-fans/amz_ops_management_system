@@ -93,6 +93,7 @@
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
+- 🔲 等待 Amazon SP-API 私有开发者 / 自用应用权限审核；审核通过后按 `docs/sp-api-integration-plan.md` 先落 Amazon API 基础设施与 Reports API 只读同步，再推进价格库存更新和新品发品 API 出口。
 - 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板，或明确排除不发。
 - 🔲 做一次真实小批量 Amazon 后台上传验收，并用 Amazon 报错文件回流验证模板纠错链路。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
