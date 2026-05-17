@@ -72,6 +72,17 @@ def handle_import_amazon_report(db: Session, file_path: Optional[str] = None):
     service.import_report_from_file(file_path)
 
 
+def handle_sync_amazon_report_api(db: Session):
+    """1.2 API 同步亚马逊全量 listing 数据"""
+    logger.info("🚀 启动 Amazon Reports API 数据同步流程...")
+    print("\n" + "=" * 70)
+    print("📦 API 同步亚马逊全量 listing 数据")
+    print("=" * 70)
+
+    service = AmzFullListImporterService(db)
+    service.sync_report_from_api()
+
+
 def handle_update_listing_status(db: Session):
     """1.3 更新亚马逊父品发品状态"""
     logger.info("🚀 启动发品日志状态更新流程...")

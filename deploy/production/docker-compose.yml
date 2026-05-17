@@ -1,6 +1,6 @@
 services:
   amz-listing-management-system:
-    image: amz-listing-management-system:2026-05-05
+    image: amz-listing-management-system:2026-05-17
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile

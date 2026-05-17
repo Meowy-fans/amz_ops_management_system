@@ -128,9 +128,11 @@ Replace the manual Amazon full listing report import path with an API-backed pat
 
 Acceptance:
 
+- Completed 2026-05-17.
 - Existing manual file import remains available.
 - API sync writes the same target table and statistics shape as file import.
-- Issues are logged without exposing credentials.
+- Production smoke read 418 report rows through Reports API and merged them into `amz_all_listing_report`; resulting statistics: total 445, active 254, unique ASINs 442.
+- No credentials or tokens were printed during smoke.
 
 ### Phase 3: Price / Inventory API Update
 

@@ -14,6 +14,7 @@ from src.cli.operation_handlers import (
     handle_generate_details,
     handle_generate_update_file,
     handle_import_amazon_report,
+    handle_sync_amazon_report_api,
     handle_sku_sync_from_csv,
     handle_sync_inventory,
     handle_sync_prices,
@@ -54,6 +55,7 @@ TASK_HANDLERS = {
     "import-amz-report": lambda db, **kwargs: handle_import_amazon_report(
         db, file_path=kwargs.get("file_path")
     ),
+    "sync-amz-report-api": lambda db, **kwargs: handle_sync_amazon_report_api(db),
     "update-listing-status": lambda db, **kwargs: handle_update_listing_status(db),
     "generate-details": lambda db, **kwargs: handle_generate_details(db),
     "sync-prices": lambda db, **kwargs: handle_sync_prices(db),

@@ -42,3 +42,18 @@ def test_dispatch_generate_listing_uses_cli_handler_without_return(monkeypatch):
 
     assert result is None
     assert calls == [(db, "CABINET")]
+
+
+def test_dispatch_sync_amz_report_api_uses_cli_handler(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_sync_amazon_report_api",
+        lambda db: calls.append(db),
+    )
+
+    db = object()
+    result = dispatch_task(db, "sync-amz-report-api")
+
+    assert result is None
+    assert calls == [db]

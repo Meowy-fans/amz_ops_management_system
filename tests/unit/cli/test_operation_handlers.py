@@ -89,6 +89,20 @@ def test_handle_import_amazon_report_prompts_and_imports_existing_file(
     service.import_report_from_file.assert_called_once_with("/tmp/report.txt")
 
 
+def test_handle_sync_amazon_report_api_runs_service(monkeypatch, capsys):
+    service = MagicMock()
+    monkeypatch.setattr(
+        operation_handlers,
+        "AmzFullListImporterService",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_sync_amazon_report_api(db=object())
+
+    service.sync_report_from_api.assert_called_once()
+    assert "API 同步亚马逊全量 listing 数据" in capsys.readouterr().out
+
+
 def test_handle_update_listing_status_runs_manager(monkeypatch, capsys):
     manager = MagicMock()
     monkeypatch.setattr(
