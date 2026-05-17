@@ -1,0 +1,201 @@
+{
+  "_description": "Common Excel-to-SP-API attribute path mappings shared across product types",
+  "mappings": {
+    "Item Name": {
+      "path": "item_name",
+      "type": "text"
+    },
+    "Product Description": {
+      "path": "product_description",
+      "type": "text"
+    },
+    "Bullet Point": {
+      "path": "bullet_point",
+      "type": "list"
+    },
+    "Brand Name": {
+      "path": "brand",
+      "type": "text"
+    },
+    "Manufacturer": {
+      "path": "manufacturer",
+      "type": "text"
+    },
+    "Item Type Keyword": {
+      "path": "item_type_keyword",
+      "type": "text"
+    },
+    "Country of Origin": {
+      "path": "country_of_origin",
+      "type": "country"
+    },
+    "Style": {
+      "path": "style",
+      "type": "text"
+    },
+    "Color": {
+      "path": "color",
+      "type": "text_list"
+    },
+    "Material": {
+      "path": "material",
+      "type": "text_list"
+    },
+    "Fabric Type": {
+      "path": "fabric_type",
+      "type": "text_list"
+    },
+    "Model Name": {
+      "path": "model_name",
+      "type": "text"
+    },
+    "Model Number": {
+      "path": "model_number",
+      "type": "text"
+    },
+    "Part Number": {
+      "path": "part_number",
+      "type": "text"
+    },
+    "Item Depth Front To Back": {
+      "path": "item_depth",
+      "type": "dimension"
+    },
+    "Item Width Side To Side": {
+      "path": "item_width",
+      "type": "dimension"
+    },
+    "Item Height Floor To Top": {
+      "path": "item_height",
+      "type": "dimension"
+    },
+    "Item Weight": {
+      "path": "item_weight",
+      "type": "weight"
+    },
+    "Main Image URL": {
+      "path": "main_product_image_locator",
+      "type": "image"
+    },
+    "Other Image URL": {
+      "path": "other_product_image_locator_1",
+      "type": "image_list_spread"
+    },
+    "Your Price USD (Sell on Amazon, US)": {
+      "path": "purchasable_offer",
+      "type": "price"
+    },
+    "Quantity (US)": {
+      "path": "fulfillment_availability",
+      "type": "quantity"
+    },
+    "Item Package Quantity": {
+      "path": "item_package_quantity",
+      "type": "number"
+    },
+    "Number of Items": {
+      "path": "number_of_items",
+      "type": "number"
+    },
+    "Merchant Shipping Group": {
+      "path": "merchant_shipping_group",
+      "type": "skip"
+    },
+    "Supplier Declared DG Hz Regulation": {
+      "path": "supplier_declared_dg_hz_regulation",
+      "type": "text_list"
+    },
+    "Safety Warning": {
+      "path": "safety_warning",
+      "type": "text_list"
+    },
+    "Door Style": {
+      "path": "door",
+      "type": "text_list"
+    },
+    "Number of Drawers": {
+      "path": "number_of_drawers",
+      "type": "number"
+    },
+    "Item Shape": {
+      "path": "item_shape",
+      "type": "text"
+    },
+    "Required Assembly": {
+      "path": "is_assembly_required",
+      "type": "text_list"
+    },
+    "Room Type": {
+      "path": "room_type",
+      "type": "text_list"
+    },
+    "Mounting Type": {
+      "path": "mounting_type",
+      "type": "text"
+    },
+    "Construction Type": {
+      "path": "construction_type",
+      "type": "text"
+    },
+    "Is Fragile?": {
+      "path": "is_fragile",
+      "type": "text_list"
+    },
+    "Installation Type": {
+      "path": "installation_type",
+      "type": "text"
+    },
+    "Number of Doors": {
+      "path": "number_of_doors",
+      "type": "number"
+    },
+    "Warranty Description": {
+      "path": "warranty_description",
+      "type": "text"
+    },
+    "Included Components": {
+      "path": "included_components",
+      "type": "text_list"
+    },
+    "Special Features": {
+      "path": "special_feature",
+      "type": "text_list"
+    },
+    "Variation Theme Name": {
+      "path": "variation_theme",
+      "type": "text"
+    },
+    "Parentage Level": {
+      "path": "parentage_level",
+      "type": "parentage"
+    },
+    "Relationship Type": {
+      "path": "_relationship_type",
+      "type": "skip"
+    },
+    "Child Relationship Type": {
+      "path": "_child_rel_type",
+      "type": "skip"
+    },
+    "Parent SKU": {
+      "path": "_parent_sku",
+      "type": "text"
+    },
+    "Listing Action": {
+      "path": "_listing_action",
+      "type": "skip"
+    },
+    "Product Type": {
+      "path": "_product_type",
+      "type": "skip"
+    },
+    "List Price": {
+      "path": "list_price",
+      "type": "list_price"
+    },
+    "Product Id Type": {
+      "path": "externally_assigned_product_identifier",
+      "type": "skip"
+    }
+  }
+}

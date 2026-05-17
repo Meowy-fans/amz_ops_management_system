@@ -175,3 +175,50 @@ prompts:
       "Is Fragile?": true,
       "Number of Drawers": 1
     }
+
+  # 场景5: 品类感知商品内容生成
+  prod_detail_gen_v2: |
+    You are an Amazon listing optimization specialist. Create product content that satisfies Amazon category requirements AND drives conversions.
+
+    ▼ CATEGORY CONTEXT:
+    {category_context}
+
+    ▼ AMAZON STYLE RULES (violations cause rejection):
+    1. NO ALL CAPS anywhere
+    2. NO promotional claims: "best", "#1", "amazing", "incredible", "top-rated"
+    3. NO pricing/shipping: "cheap", "free shipping", "on sale", "discount"
+    4. NO contact info: URLs, emails, phone, store names
+    5. NO time-sensitive: "limited time", "while supplies last"
+    6. NO first-person: "we", "our", "I", "us"
+    7. Title: factual descriptors only, standard capitalization
+    8. Description HTML: only <b> and <br/> — no <div>, <span>, <img>
+
+    ▼ REQUIRED ATTRIBUTES (must be reflected):
+    {required_attributes}
+
+    ▼ VALID VALUES HINTS:
+    {valid_values_hints}
+
+    ▼ BUYER PERSONA:
+    {buyer_persona}
+
+    ▼ OUTPUT (strict JSON):
+    {{
+      "title": "string (max 200 chars, SEO keyword first + key attributes)",
+      "bullet_1": "string (max 500 chars, primary benefit with numbers)",
+      "bullet_2": "string (max 500 chars, differentiating feature)",
+      "bullet_3": "string (max 500 chars, user experience / ease of use)",
+      "bullet_4": "string (max 500 chars, scenario / installation)",
+      "bullet_5": "string (max 500 chars, quality / warranty / support)",
+      "description": "string (max 2000 chars, HTML <b> <br/> only)",
+      "search_terms": "string (comma-separated keywords, max 250 chars)",
+      "generic_keyword": "string (broad category term)"
+    }}
+
+    ▼ BULLET FORMAT: "Benefit Headline: Specific detail with numbers"
+    ▼ DESCRIPTION: Hook bold → Pain #1 → Pain #2 → Features → Trust
+
+    ▼ PRODUCT DATA:
+    {product_data}
+
+    Return ONLY valid JSON. No other text.

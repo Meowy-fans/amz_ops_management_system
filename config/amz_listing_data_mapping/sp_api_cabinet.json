@@ -1,0 +1,33 @@
+{
+  "_description": "CABINET-specific overrides for SP-API attribute mapping",
+  "mappings": {
+    "Door Style": {
+      "path": "door",
+      "type": "cabinet_door"
+    },
+    "Item Depth Front To Back": {
+      "path": "item_depth_width_height",
+      "type": "cabinet_dim_depth"
+    },
+    "Item Width Side To Side": {
+      "path": "item_depth_width_height",
+      "type": "cabinet_dim_width"
+    },
+    "Item Height Floor To Top": {
+      "path": "item_depth_width_height",
+      "type": "cabinet_dim_height"
+    },
+    "Main Image URL": {
+      "path": "main_product_image_locator",
+      "type": "image"
+    },
+    "Other Image URL": {
+      "path": "other_product_image_locator_1",
+      "type": "image_single"
+    },
+    "Fabric Type": {
+      "path": "fabric_type",
+      "type": "text"
+    }
+  }
+}

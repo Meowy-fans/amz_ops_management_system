@@ -58,7 +58,7 @@ def test_get_skus_for_update_sql_contract_filters_incomplete_and_missing_vendor_
     assert 'SELECT alr."seller-sku" AS amazon_sku, msm.vendor_sku AS giga_sku' in sql
     assert "FROM amz_all_listing_report alr" in sql
     assert 'JOIN meow_sku_map msm ON alr."seller-sku" = msm.meow_sku' in sql
-    assert "alr.status <> 'Incomplete'" in sql
+    assert "alr.status = 'Active'" in sql
     assert "msm.vendor_sku IS NOT NULL" in sql
     assert session.calls[0][1] == {}
 

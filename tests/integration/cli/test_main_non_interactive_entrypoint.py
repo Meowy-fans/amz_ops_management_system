@@ -52,6 +52,7 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
         "category": "CABINET",
         "file_path": "/tmp/input.csv",
         "auto_confirm": True,
+        "dry_run": True,
     }
 
 

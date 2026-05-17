@@ -179,3 +179,158 @@ def handle_generate_update_file(db: Session):
     except Exception as e:
         print(f"\n❌ 生成更新文件时发生错误: {e}")
         logging.exception("详细错误:")
+
+
+def handle_update_price_inventory_api(db: Session, dry_run: bool = True):
+    """5.2 通过 Amazon SP-API 更新价格和库存 (patchListingsItem)"""
+    from src.services.amz_inventory_price_updater_service import InventoryPriceUpdaterService
+
+    logger.info("Starting Amazon SP-API price/inventory update (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN (preview)" if dry_run else "LIVE (real submission)"
+    print(f"Amazon SP-API Price & Quantity Update - {mode_label}")
+    print("=" * 70)
+
+    try:
+        service = InventoryPriceUpdaterService(db=db)
+        results = service.submit_updates_via_api(dry_run=dry_run)
+        if results:
+            print(f"\nProcessed {len(results)} SKUs.")
+    except Exception as e:
+        print(f"\nPrice/inventory API update failed: {e}")
+        logging.exception("Detailed error:")
+
+
+def handle_discover_product_type(db: Session, keywords: Optional[str] = None):
+    """6.1 通过 Amazon Product Type Definitions API 搜索品类"""
+    print("\n" + "=" * 70)
+    print("Amazon Product Type Discovery")
+    print("=" * 70)
+
+    if not keywords:
+        keywords = input("\nEnter search keywords (e.g. 'bathroom vanity'): ").strip()
+    if not keywords:
+        print("No keywords provided.")
+        return
+
+    print(f"\nSearching Amazon product types for: {keywords}")
+
+    from infrastructure.amazon.product_type_client import AmazonProductTypeClient
+    from src.services.amazon_schema_service import AmazonSchemaService
+
+    client = AmazonProductTypeClient()
+    schema_svc = AmazonSchemaService(db)
+
+    try:
+        types = client.search_product_types(keywords)
+    except Exception as e:
+        print(f"Search failed: {e}")
+        return
+
+    if not types:
+        print("No matching product types found.")
+        return
+
+    print(f"\nFound {len(types)} candidate(s):\n")
+    for i, pt in enumerate(types, 1):
+        print(f"  [{i}] {pt}")
+        try:
+            required = schema_svc.get_required_properties(pt)
+            if required:
+                print(f"      Required fields ({len(required)}): {', '.join(required[:15])}")
+                if len(required) > 15:
+                    print(f"      ... and {len(required) - 15} more")
+        except Exception:
+            print(f"      (could not fetch requirements)")
+
+    print(f"\n  [0] Cancel")
+    choice = input("\nSelect product type to cache schema and set as mapping target: ").strip()
+    if choice == "0" or not choice:
+        return
+
+    try:
+        idx = int(choice) - 1
+        selected = types[idx]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        return
+
+    # Cache the schema
+    print(f"\nFetching and caching schema for {selected}...")
+    try:
+        schema_svc.fetch_and_cache(selected)
+        print(f"Schema cached ({len(schema_svc.get_required_properties(selected))} required props)")
+    except Exception as e:
+        print(f"Schema fetch failed: {e}")
+        return
+
+    # Optionally write category mapping
+    print(f"\nProduct type '{selected}' is ready.")
+    map_choice = input("Write this to supplier_categories_map? (y/n): ").strip().lower()
+    if map_choice == "y":
+        code = input("Enter supplier_category_code (e.g. '10143'): ").strip()
+        platform = input("Enter supplier_platform [giga]: ").strip() or "giga"
+        if code:
+            db.execute(
+                __import__("sqlalchemy").text(
+                    "UPDATE supplier_categories_map SET standard_category_name = :name "
+                    "WHERE supplier_platform = :plat AND supplier_category_code = :code "
+                    "AND standard_category_name = ''"
+                ),
+                {"name": selected, "plat": platform, "code": code},
+            )
+            db.commit()
+            print(f"Updated: {platform}/{code} -> {selected}")
+
+
+def handle_suggest_category_mappings(db: Session):
+    """6.2 为未映射的 Giga 品类自动建议 Amazon product type"""
+    print("\n" + "=" * 70)
+    print("Auto-Suggest Category Mappings")
+    print("=" * 70)
+
+    from sqlalchemy import text
+
+    # Find unmapped categories with sample products
+    rows = db.execute(text("""
+        SELECT DISTINCT
+            scm.supplier_category_code,
+            scm.supplier_category_name,
+            psr.raw_data->>'name' AS sample_name
+        FROM supplier_categories_map scm
+        JOIN giga_product_sync_records psr
+            ON LOWER(psr.category_code) = LOWER(scm.supplier_category_code)
+        WHERE scm.standard_category_name = ''
+          AND scm.supplier_platform = 'giga'
+        LIMIT 3
+    """)).fetchall()
+
+    if not rows:
+        print("No unmapped categories found.")
+        return
+
+    from infrastructure.amazon.product_type_client import AmazonProductTypeClient
+
+    client = AmazonProductTypeClient()
+
+    for row in rows:
+        code = row[0]
+        cat_name = row[1] or code
+        sample = row[2] or cat_name
+
+        # Use first 3 words as search keywords
+        keywords = " ".join(str(sample).split()[:5])
+        print(f"\n--- {code} ({cat_name}) ---")
+        print(f"  Sample: {sample[:80]}...")
+        print(f"  Searching with: {keywords}")
+
+        try:
+            types = client.search_product_types(keywords)
+            if types:
+                print(f"  Candidates: {', '.join(types[:5])}")
+            else:
+                print("  No matches found")
+        except Exception as e:
+            print(f"  Search failed: {e}")
+
+    print("\nUse 'discover-product-type' to explore and set specific mappings.")

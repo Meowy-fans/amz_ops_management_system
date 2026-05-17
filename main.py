@@ -39,12 +39,14 @@ def main():
     parser.add_argument("--category", help="品类名称，如 CABINET 或 HOME_MIRROR")
     parser.add_argument("--file", help="文件路径，用于需要文件输入的任务")
     parser.add_argument("--auto-confirm", action="store_true", help="自动确认，避免交互式提示")
+    parser.add_argument("--no-dry-run", action="store_true", help="禁用 dry-run，真实提交 API 请求")
     args = parser.parse_args()
 
     non_interactive_task = args.task or os.getenv("APP_TASK")
     param_category = args.category or os.getenv("LISTING_CATEGORY")
     param_file = args.file or os.getenv("INPUT_FILE_PATH")
     auto_confirm = args.auto_confirm or (os.getenv("AUTO_CONFIRM", "false").lower() == "true")
+    dry_run = not args.no_dry_run
 
     if non_interactive_task:
         try:
@@ -55,6 +57,7 @@ def main():
                     category=param_category,
                     file_path=param_file,
                     auto_confirm=auto_confirm,
+                    dry_run=dry_run,
                 )
             sys.exit(0)
         except UnknownTaskError:

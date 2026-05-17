@@ -2,18 +2,23 @@
 Amazon Inventory & Price Updater Service
 亚马逊库存和价格更新服务
 
-生成亚马逊库存和价格更新文件的业务逻辑服务
+生成亚马逊库存和价格更新文件的业务逻辑服务。
+支持通过 SP-API patchListingsItem 直接更新价格和库存。
 """
+import json
+import logging
+import os
+import datetime
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 from sqlalchemy.orm import Session
+
 from src.repositories.amz_listing_data_repository import ListingDataRepository
 from src.services.giga_price_sync_service import GigaPriceSyncService
 from src.services.giga_inventory_sync_service import GigaInventorySyncService
 from src.services.pricing_service import PricingService
 from src.services.progress_reporter import ProgressReporter
-import logging
-import os
-import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +34,18 @@ class InventoryPriceUpdaterService:
     4. 整合数据并生成更新文件
     """
 
-    def __init__(self, db: Session, reporter: ProgressReporter | None = None):
-        """
-        初始化服务
-        
-        Args:
-            db: SQLAlchemy Session 对象
-        """
+    def __init__(
+        self,
+        db: Session,
+        reporter: ProgressReporter | None = None,
+        listings_client: Any = None,
+        submission_repo: Any = None,
+    ):
         self.db = db
         self.repository = ListingDataRepository(db)
         self.reporter = reporter or ProgressReporter()
+        self._listings_client_instance = listings_client
+        self._submission_repo_instance = submission_repo
 
     def _sync_latest_data(self):
         """
@@ -187,3 +194,208 @@ class InventoryPriceUpdaterService:
         except Exception as e:
             self.reporter.emit(f"❌ 生成文件时发生严重错误: {e}")
             logger.error(f"生成文件失败: {e}", exc_info=True)
+
+    # ── SP-API submit path ──────────────────────────────────────────
+
+    def _listings_client(self):
+        if self._listings_client_instance is not None:
+            return self._listings_client_instance
+        from infrastructure.amazon.listings_client import AmazonListingsClient
+
+        self._listings_client_instance = AmazonListingsClient()
+        return self._listings_client_instance
+
+    def _submission_repository(self):
+        if self._submission_repo_instance is not None:
+            return self._submission_repo_instance
+        from src.repositories.amazon_api_submission_repository import (
+            AmazonAPISubmissionRepository,
+        )
+
+        self._submission_repo_instance = AmazonAPISubmissionRepository(self.db)
+        return self._submission_repo_instance
+
+    def _resolve_product_types(self, amazon_skus: List[str]) -> Dict[str, str]:
+        """Map each Amazon SKU to its Amazon product type (CABINET, HOME_MIRROR, etc).
+
+        Falls back to "PRODUCT" when no category mapping exists.
+        """
+        from src.repositories.category_repository import CategoryRepository
+
+        cat_repo = CategoryRepository(self.db)
+        raw = cat_repo.get_sku_to_category_mapping(amazon_skus)
+
+        result: Dict[str, str] = {}
+        for meow_sku, category_name in raw:
+            if category_name:
+                result[meow_sku] = category_name.upper()
+        return result
+
+    @staticmethod
+    def _build_patches(
+        sku: str,
+        price: Optional[float],
+        quantity: Optional[int],
+        marketplace_id: str,
+    ) -> List[Dict[str, Any]]:
+        """Build RFC 6902 JSON Patch operations for price and/or quantity.
+
+        Returns an empty list when neither price nor quantity is available.
+        """
+        patches: List[Dict[str, Any]] = []
+
+        if price is not None:
+            patches.append(
+                {
+                    "op": "replace",
+                    "path": "/attributes/purchasable_offer",
+                    "value": [
+                        {
+                            "currency": "USD",
+                            "our_price": [
+                                {"schedule": [{"value_with_tax": float(price)}]}
+                            ],
+                            "marketplace_id": marketplace_id,
+                        }
+                    ],
+                }
+            )
+
+        if quantity is not None:
+            patches.append(
+                {
+                    "op": "replace",
+                    "path": "/attributes/fulfillment_availability",
+                    "value": [
+                        {
+                            "fulfillment_channel_code": "DEFAULT",
+                            "quantity": int(quantity),
+                        }
+                    ],
+                }
+            )
+
+        return patches
+
+    def submit_updates_via_api(self, dry_run: bool = True) -> List[Dict[str, Any]]:
+        """Build patches and submit them via Listings Items API.
+
+        Args:
+            dry_run: If True, build patches and log without submitting.
+        """
+        logger.info("Starting price/inventory API update flow (dry_run=%s)", dry_run)
+
+        self._sync_latest_data()
+
+        sku_map = self.repository.get_skus_for_update()
+        if not sku_map:
+            self.reporter.emit("No SKUs found for update. Exiting.")
+            return []
+
+        amazon_skus = list(set(item["amazon_sku"] for item in sku_map))
+        giga_skus = list(set(item["giga_sku"] for item in sku_map))
+
+        price_map, quantity_map = self.repository.get_latest_data(amazon_skus, giga_skus)
+        product_type_map = self._resolve_product_types(amazon_skus)
+
+        marketplace_id = os.environ.get("AMAZON_MARKETPLACE_ID", "ATVPDKIKX0DER")
+
+        results: List[Dict[str, Any]] = []
+        listings_client = None if dry_run else self._listings_client()
+        submission_repo = self._submission_repository()
+
+        for item in sku_map:
+            amazon_sku = item["amazon_sku"]
+            giga_sku = item["giga_sku"]
+            price = price_map.get(amazon_sku)
+            quantity = quantity_map.get(giga_sku)
+            product_type = product_type_map.get(amazon_sku, "PRODUCT")
+
+            ops = []
+            if price is not None:
+                ops.append("price")
+            if quantity is not None:
+                ops.append("quantity")
+            operation = "both" if len(ops) == 2 else (ops[0] if ops else "none")
+
+            if operation == "none":
+                self.reporter.emit(f"  SKIP {amazon_sku}: no price or quantity data")
+                continue
+
+            patches = self._build_patches(amazon_sku, price, quantity, marketplace_id)
+            request_payload = {"productType": product_type, "patches": patches}
+
+            if dry_run:
+                self.reporter.emit(f"\n--- DRY RUN: {amazon_sku} ({product_type}) ---")
+                self.reporter.emit(f"  Operation: {operation}")
+                self.reporter.emit(f"  Price: {price}")
+                self.reporter.emit(f"  Quantity: {quantity}")
+                self.reporter.emit(
+                    f"  Patches: {json.dumps(patches, indent=2, ensure_ascii=False)}"
+                )
+                submission_repo.insert_submission(
+                    sku=amazon_sku,
+                    operation=operation,
+                    status="dry_run",
+                    product_type=product_type,
+                    marketplace_id=marketplace_id,
+                    request_payload=request_payload,
+                )
+                results.append({"sku": amazon_sku, "status": "dry_run"})
+            else:
+                try:
+                    response = listings_client.patch_listings_item(
+                        sku=amazon_sku,
+                        product_type=product_type,
+                        patches=patches,
+                    )
+                    request_id = response["headers"].get("x-amzn-RequestId", "")
+                    submission_repo.insert_submission(
+                        sku=amazon_sku,
+                        operation=operation,
+                        status="success",
+                        amazon_request_id=request_id,
+                        product_type=product_type,
+                        marketplace_id=marketplace_id,
+                        request_payload=request_payload,
+                        response_body=response["body"],
+                    )
+                    self.reporter.emit(
+                        f"  OK  {amazon_sku} request_id={request_id}"
+                    )
+                    results.append(
+                        {
+                            "sku": amazon_sku,
+                            "status": "success",
+                            "request_id": request_id,
+                        }
+                    )
+                except Exception as e:
+                    logger.error(
+                        "API submission failed for SKU=%s: %s", amazon_sku, e
+                    )
+                    submission_repo.insert_submission(
+                        sku=amazon_sku,
+                        operation=operation,
+                        status="failed",
+                        product_type=product_type,
+                        marketplace_id=marketplace_id,
+                        request_payload=request_payload,
+                        error_message=str(e),
+                    )
+                    self.reporter.emit(f"  FAIL {amazon_sku}: {e}")
+                    results.append(
+                        {"sku": amazon_sku, "status": "failed", "error": str(e)}
+                    )
+
+        success_count = sum(
+            1 for r in results if r["status"] in ("success", "dry_run")
+        )
+        fail_count = sum(1 for r in results if r["status"] == "failed")
+        self.reporter.emit(f"\n{'=' * 70}")
+        self.reporter.emit(f"API Update Complete: {len(results)} SKUs processed")
+        self.reporter.emit(f"  Success / Dry-run: {success_count}")
+        self.reporter.emit(f"  Failed: {fail_count}")
+        self.reporter.emit(f"{'=' * 70}")
+
+        return results

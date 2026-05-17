@@ -70,3 +70,57 @@ def handle_generate_listing(db: Session, category: Optional[str] = None):
         print("=" * 70)
         logging.exception("详细错误:")
         return None
+
+
+def handle_generate_listing_api(
+    db: Session,
+    category: Optional[str] = None,
+    dry_run: bool = True,
+):
+    """1.9 通过Amazon SP-API提交新品发品"""
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN (预览)" if dry_run else "LIVE (真实提交)"
+    print(f"Amazon SP-API 新品发品 - {mode_label}")
+    print("=" * 70)
+
+    if not category:
+        print("\n可用品类:")
+        print("  1. CABINET")
+        print("  2. HOME_MIRROR")
+        print("  0. 返回")
+        choice = input("\n请选择品类 (输入编号): ").strip()
+        category_map = {"1": "CABINET", "2": "HOME_MIRROR"}
+        if choice == "0":
+            return
+        category = category_map.get(choice)
+        if not category:
+            print("无效的选择")
+            return
+
+    print(f"\n品类: {category}")
+    print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 70 + "\n")
+
+    try:
+        service = ProductListingService(db=db)
+        result = service.generate_listings_via_api(
+            category_name=category,
+            dry_run=dry_run,
+        )
+
+        print("\n" + "=" * 70)
+        if result["success"]:
+            print(f"发品API完成: {len(result.get('results', []))} SKUs")
+            for r in result.get("results", [])[:5]:
+                print(f"  {r['sku']}: {r['status']}")
+            if len(result.get("results", [])) > 5:
+                print(f"  ... and {len(result['results']) - 5} more")
+        else:
+            print(f"失败: {result.get('message', '未知错误')}")
+        print("=" * 70)
+        return result
+
+    except Exception as e:
+        print(f"\n系统错误: {e}")
+        logging.exception("详细错误:")
+        return None

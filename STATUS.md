@@ -5,6 +5,7 @@
 - **里程碑**：测试/CI基线、关键模块文档、入口层拆分、主要 service 输出边界、重点大文件职责拆分、核心链路集成测试持续收敛
 
 ## 最新进展
+- ✅ **2026-05-17 / Codex**: 完成 Phase 4 新品发品 API 出口：`AmazonAttributeMapper` 将 `DataMappingHelper` 输出的 Excel 字段名转换为 SP-API JSON attributes（text/list/image/price/dimension 等类型），`AmazonListingSubmitter` 包装 `putListingsItem` / `VALIDATION_PREVIEW` 提交，`ProductListingService.generate_listings_via_api()` 复用完整发品流水线，新增 `ProductTypeClient` 拉取 Product Type Definitions Schema；现有 Excel 路径不变；验证：12 新测试 + dry-run 生成 19 SKU JSON payload 通过，`pytest -q` 477 passed。
 - ✅ **2026-05-17 / Codex**: Amazon SP-API 私有开发者 / 自用权限已获批，生产凭据已拆分到 `/data/docker-compose/amz-listing-management-system/.env.amazon-sp-api`（不入 Git）；已在阿里云上海 ECS 部署 `amazon-spapi-proxy.service` 固定出口代理（`100.85.252.67:18080`），仅允许家用服务器 `100.95.123.106` 访问 Amazon LWA/SP-API 目标；生产 compose 已加载 `.env.amazon-sp-api`，容器重建后仍 healthy；Amazon LWA token smoke 通过。
 - ✅ **2026-05-17 / Codex**: 完成 Amazon API 基础设施 Phase 1：新增 `infrastructure/amazon/` 的 config、LWA token manager、SP-API client，生产缺少 `AMAZON_HTTPS_PROXY` 时 fail closed，API 请求显式使用堡垒机代理；新增单元测试覆盖凭据校验、代理约束、token refresh、API proxy、429 retry 和敏感字段脱敏。
 - ✅ **2026-05-17 / Codex**: 完成 Amazon Reports API Phase 2 只读同步：新增 `AmazonReportsClient` 和 `AmzFullListImporterService.sync_report_from_api()`，注册非交互任务 `sync-amz-report-api`；生产镜像升级为 `amz-listing-management-system:2026-05-17` 并保持 healthy；真实 API 同步读取 418 行并复用现有清洗/upsert 入库，当前统计总记录 445、Active 254、唯一 ASIN 442。验证：`pytest -q` 通过。
@@ -96,9 +97,10 @@
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 按 `docs/sp-api-integration-plan.md` 推进 Phase 3：接入现有 SKU 价格/库存 API 更新，先做 dry-run 与 `VALIDATION_PREVIEW`，再由用户指定安全 SKU 做小范围真实更新。
+- 🔲 用户审批后，选一个 CABINET SKU 做 `VALIDATION_PREVIEW` 真实验证
+- 🔲 验证通过后做 `--no-dry-run` 真实提交一个新品发品
+- 🔲 支持 HOME_MIRROR 品类发品（补充 sp_api_home_mirror.json 映射覆盖）
 - 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板，或明确排除不发。
-- 🔲 做一次真实小批量 Amazon 后台上传验收，并用 Amazon 报错文件回流验证模板纠错链路。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞

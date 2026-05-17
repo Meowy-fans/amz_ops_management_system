@@ -1,0 +1,86 @@
+"""SQL contract tests for AmazonAPISubmissionRepository."""
+from src.repositories.amazon_api_submission_repository import AmazonAPISubmissionRepository
+
+
+class ScalarResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one(self):
+        return self.value
+
+
+class RecordingSession:
+    def __init__(self, results):
+        self.results = list(results)
+        self.calls = []
+
+    def execute(self, query, params=None):
+        self.calls.append((str(query), params or {}))
+        if not self.results:
+            raise AssertionError("Unexpected execute call")
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    def commit(self):
+        pass
+
+
+def _normalized(sql):
+    return " ".join(sql.split())
+
+
+def test_insert_submission_sql_contract():
+    session = RecordingSession([ScalarResult(1)])
+    repo = AmazonAPISubmissionRepository(session)
+
+    result_id = repo.insert_submission(
+        sku="SKU1",
+        operation="both",
+        status="success",
+        amazon_request_id="REQ-1",
+        marketplace_id="ATVPDKIKX0DER",
+        product_type="CABINET",
+    )
+
+    assert result_id == 1
+    assert len(session.calls) == 1
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "INSERT INTO amazon_api_submissions" in sql
+    assert params["sku"] == "SKU1"
+    assert params["operation"] == "both"
+    assert params["status"] == "success"
+    assert params["amazon_request_id"] == "REQ-1"
+
+
+def test_insert_submission_stores_json_payloads():
+    session = RecordingSession([ScalarResult(2)])
+    repo = AmazonAPISubmissionRepository(session)
+
+    repo.insert_submission(
+        sku="SKU1",
+        operation="price",
+        status="failed",
+        request_payload={"productType": "HOME_MIRROR", "patches": [{"op": "replace"}]},
+        response_body={"errors": [{"message": "bad"}]},
+        error_message="some error",
+    )
+
+    params = session.calls[0][1]
+    assert '"productType"' in params["request_payload"]
+    assert '"errors"' in params["response_body"]
+
+
+def test_insert_submission_nullable_fields_default_none():
+    session = RecordingSession([ScalarResult(3)])
+    repo = AmazonAPISubmissionRepository(session)
+
+    repo.insert_submission(sku="SKU1", operation="quantity", status="dry_run")
+
+    params = session.calls[0][1]
+    assert params["amazon_request_id"] is None
+    assert params["response_body"] is None
+    assert params["error_message"] is None

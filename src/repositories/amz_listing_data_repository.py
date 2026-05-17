@@ -33,7 +33,7 @@ class ListingDataRepository:
         逻辑：
         - 从 amz_all_listing_report 获取 amazon_sku (seller-sku)
         - 通过 meow_sku_map 关联到 giga_sku (vendor_sku)
-        - 排除 status='Incomplete' 的商品
+        - 仅包含 status='Active' 的商品（Inactive/Incomplete 无法接受 API 更新）
         
         Returns:
             SKU映射列表，每个元素包含 amazon_sku 和 giga_sku
@@ -49,7 +49,7 @@ class ListingDataRepository:
             JOIN
                 meow_sku_map msm ON alr."seller-sku" = msm.meow_sku
             WHERE
-                alr.status <> 'Incomplete' 
+                alr.status = 'Active'
                 AND msm.vendor_sku IS NOT NULL;
         """)
         

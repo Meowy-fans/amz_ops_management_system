@@ -92,88 +92,64 @@ class ProductListingService:
         """加载品类配置"""
         return load_category_config(config_path, __file__)
     
+    # ── shared row generation ─────────────────────────────────────
+
+    def _build_rows_for_category(self, category_name: str):
+        """Shared pipeline: SKU selection, variation detection, field mapping.
+
+        Returns (all_rows, variation_logs, single_skus, variation_families)
+        or raises ValueError when no pending SKUs or no template rules.
+        """
+        pending_skus, failure_message = get_pending_skus_for_category(
+            self.product_listing_repo,
+            category_name,
+        )
+        if failure_message:
+            raise ValueError(failure_message)
+
+        variation_data = self.product_listing_repo.get_variation_data(pending_skus)
+        single_skus, variation_families = self.variation_helper.find_variation_families(
+            variation_data
+        )
+        logger.info("单品: %d, 变体家族: %d", len(single_skus), len(variation_families))
+
+        template_rules = self.template_repo.find_template_by_category(category_name)
+        if not template_rules:
+            raise ValueError(f"品类 '{category_name}' 没有模板规则")
+
+        single_rows = self._process_single_products(single_skus, template_rules)
+        variation_rows, variation_logs = self._process_variations(
+            variation_families, template_rules
+        )
+        all_rows = single_rows + variation_rows
+
+        if not all_rows:
+            raise ValueError("没有生成任何数据行")
+
+        logger.info("总共生成 %d 行数据", len(all_rows))
+        return all_rows, variation_logs, single_skus, variation_families
+
+    # ── Excel output path (preserved) ─────────────────────────────
+
     def generate_listings_by_category(self, category_name: str) -> Dict[str, Any]:
-        """
-        按品类生成发品文件
-        
-        这是主要的业务流程方法。
-        
-        Args:
-            category_name: 品类名称（如 'CABINET', 'HOME_MIRROR'）
-        
-        Returns:
-            发品结果字典
-        """
+        """按品类生成发品 Excel 文件（现有路径，不变）。"""
         try:
-            logger.info(f"\n{'='*60}")
-            logger.info(f"开始生成品类 '{category_name}' 的发品文件")
-            logger.info(f"{'='*60}")
-            
+            logger.info("开始生成品类 '%s' 的发品文件", category_name)
             batch_id = uuid.uuid4()
-            
-            pending_skus, failure_message = get_pending_skus_for_category(
-                self.product_listing_repo,
-                category_name,
+
+            all_rows, variation_logs, single_skus, variation_families = (
+                self._build_rows_for_category(category_name)
             )
-            
-            if failure_message:
-                return failure_result(failure_message)
-            
-            # 步骤4: 获取变体关联数据
-            logger.info("步骤4: 获取变体关联数据...")
-            variation_data = self.product_listing_repo.get_variation_data(pending_skus)
-            
-            # 步骤5: 识别变体家族
-            logger.info("步骤5: 识别变体家族...")
-            single_skus, variation_families = self.variation_helper.find_variation_families(variation_data)
-            
-            logger.info(f"  单品: {len(single_skus)} 个")
-            logger.info(f"  变体家族: {len(variation_families)} 个")
-            
-            # 步骤6: 获取品类模板规则
-            logger.info("步骤6: 加载品类模板...")
-            template_rules = self.template_repo.find_template_by_category(category_name)
-            
-            if not template_rules:
-                return failure_result(f"品类 '{category_name}' 没有模板规则")
-            
-            # 步骤7: 处理单品
-            logger.info("步骤7: 处理单品...")
-            single_rows = self._process_single_products(single_skus, template_rules)
-            
-            # 步骤8: 处理变体
-            logger.info("步骤8: 处理变体家族...")
-            variation_rows, variation_logs = self._process_variations(
-                variation_families, 
-                template_rules
-            )
-            
-            # 步骤9: 合并所有行
-            all_rows = single_rows + variation_rows
-            
-            if not all_rows:
-                return failure_result("没有生成任何数据行")
-            
-            logger.info(f"  总共生成 {len(all_rows)} 行数据")
-            
-            # 步骤10: 生成Excel文件
-            logger.info("步骤10: 生成Excel文件...")
+
             excel_file = self.excel_generator.generate_excel(
                 rows_data=all_rows,
                 category_name=category_name,
-                batch_id=batch_id
+                batch_id=batch_id,
             )
-            
-            # 步骤11: 记录日志
-            logger.info("步骤11: 记录发品日志...")
             self._save_listing_logs(single_skus, variation_logs, batch_id)
-            
             self.db.commit()
-            
-            logger.info(f"\n{'='*60}")
-            logger.info(f"✅ 发品文件生成成功！")
-            logger.info(f"{'='*60}")
-            
+
+            logger.info("发品 Excel 生成成功")
             return success_result(
                 batch_id=batch_id,
                 excel_file=excel_file,
@@ -181,11 +157,79 @@ class ProductListingService:
                 variation_count=len(variation_families),
                 total_rows=len(all_rows),
             )
-            
+
+        except ValueError as e:
+            return failure_result(str(e))
         except Exception as e:
             self.db.rollback()
-            logger.error(f"❌ 生成发品文件失败: {e}", exc_info=True)
+            logger.error("生成发品文件失败: %s", e, exc_info=True)
             return failure_result(f"生成失败: {str(e)}")
+
+    # ── SP-API output path (new) ──────────────────────────────────
+
+    def generate_listings_via_api(
+        self,
+        category_name: str,
+        dry_run: bool = True,
+        validation_only: bool = False,
+    ) -> Dict[str, Any]:
+        """按品类生成发品并提交到 Amazon SP-API。
+
+        Args:
+            category_name: 品类名称 (CABINET, HOME_MIRROR).
+            dry_run: True 时仅构建 JSON payload 不提交.
+            validation_only: True 时使用 VALIDATION_PREVIEW 模式.
+
+        Returns:
+            {"success": bool, "results": [...], "excel_file": None|str}
+        """
+        try:
+            logger.info(
+                "开始 SP-API 发品 category=%s dry_run=%s", category_name, dry_run
+            )
+
+            all_rows, variation_logs, single_skus, _vf = (
+                self._build_rows_for_category(category_name)
+            )
+
+            # Map Excel-format rows to SP-API JSON attributes
+            from src.utils.amazon_attribute_mapper import AmazonAttributeMapper
+
+            mapper = AmazonAttributeMapper(product_type=category_name.upper())
+            plans = mapper.map_rows_to_plans(all_rows)
+
+            # Submit via Listings Items API
+            from src.services.amazon_listing_submitter import AmazonListingSubmitter
+
+            submitter = AmazonListingSubmitter(db=self.db)
+            results = submitter.submit(
+                plans,
+                dry_run=dry_run,
+                validation_only=validation_only,
+            )
+
+            # Also save listing logs for audit
+            batch_id = uuid.uuid4()
+            self._save_listing_logs(single_skus, variation_logs, batch_id)
+            self.db.commit()
+
+            return {
+                "success": True,
+                "results": results,
+                "excel_file": None,
+                "message": (
+                    f"DRY RUN: {len(results)} payloads generated"
+                    if dry_run
+                    else f"Submitted {len(results)} listings"
+                ),
+            }
+
+        except ValueError as e:
+            return {"success": False, "results": [], "message": str(e)}
+        except Exception as e:
+            self.db.rollback()
+            logger.error("SP-API 发品失败: %s", e, exc_info=True)
+            return {"success": False, "results": [], "message": str(e)}
     
     def _process_single_products(
         self,
