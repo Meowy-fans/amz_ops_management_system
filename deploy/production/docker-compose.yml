@@ -7,7 +7,10 @@ services:
     container_name: amz-listing-management-system
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env
+        required: true
+      - path: .env.amazon-sp-api
+        required: false
     environment:
       APP_ENV: production
       APP_MODE: ${APP_MODE:-server}

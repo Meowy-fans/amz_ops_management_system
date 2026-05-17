@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     GIGA_CLIENT_ID: Optional[str] = None
     GIGA_CLIENT_SECRET: Optional[str] = None
 
+    # Amazon SP-API Config
+    AMAZON_LWA_CLIENT_ID: Optional[str] = None
+    AMAZON_LWA_CLIENT_SECRET: Optional[str] = None
+    AMAZON_REFRESH_TOKEN: Optional[str] = None
+    AMAZON_SELLER_ID: Optional[str] = None
+    AMAZON_MARKETPLACE_ID: str = "ATVPDKIKX0DER"
+    AMAZON_SP_API_ENDPOINT: str = "https://sellingpartnerapi-na.amazon.com"
+    AMAZON_REGION: str = "NA"
+    AMAZON_HTTPS_PROXY: Optional[str] = None
+    AMAZON_EXPECTED_EGRESS_IP: Optional[str] = None
+
     # AutoGen Config
     AUTOGEN_BASE_URL: str = "http://localhost:8000"
     AUTOGEN_TIMEOUT_SECONDS: int = 300

@@ -3,7 +3,7 @@
 ## Status
 
 - Planning date: 2026-05-17
-- Current state: Amazon private developer / self-use SP-API permission request submitted by the user, waiting for Amazon review.
+- Current state: Amazon private developer / self-use SP-API permission approved. Credentials are stored in the production-only `/data/docker-compose/amz-listing-management-system/.env.amazon-sp-api` file.
 - Target account type: Amazon Seller Central private application for the user's own store.
 - Initial marketplace assumption: US marketplace (`ATVPDKIKX0DER`), NA endpoint.
 
@@ -71,11 +71,13 @@ AMAZON_HTTPS_PROXY=
 
 If roles are changed later, regenerate the refresh token by re-authorizing the private app.
 
-## Network / Egress Plan
+## Network / Egress Requirement
 
-Preferred production egress:
+Hard requirement:
 
-- Route only Amazon API traffic from `amz-listing-management-system` through the Shanghai Aliyun ECS fixed public IP.
+- All Amazon API traffic from `amz-listing-management-system` must go through the bastion / Shanghai Aliyun ECS fixed public IP.
+- Direct outbound Amazon API calls from the home server or container are not allowed in production.
+- The Amazon API client must fail closed when the bastion proxy setting is missing in production.
 - Keep all other project traffic on existing routes unless explicitly changed.
 - Do not set global `https_proxy` for the whole host or container.
 - Add an Amazon-specific client proxy setting such as `AMAZON_HTTPS_PROXY`.
@@ -92,6 +94,13 @@ Recommended infrastructure shape:
 
 If this proxy is deployed, update `/data/README.md` and `/data/TODO.md` because it is an infrastructure change.
 
+Implementation implications:
+
+- `AmazonApiClient` must use the Amazon-specific proxy configuration for every request to `api.amazon.com` and `sellingpartnerapi-*.amazon.com`.
+- Production config validation should reject missing `AMAZON_HTTPS_PROXY`.
+- Smoke tests should verify the observed egress IP is the bastion / ECS IP before any SP-API write operation.
+- Do not use global `http_proxy` / `https_proxy` env vars for this requirement; the route must be explicit in the Amazon client or its dedicated transport.
+
 ## Implementation Phases
 
 ### Phase 1: Amazon API Infrastructure
@@ -100,12 +109,14 @@ Add `infrastructure/amazon/`:
 
 - `config.py`: settings and endpoint selection.
 - `token_manager.py`: LWA refresh-token to access-token exchange, caching, and expiry handling.
-- `api_client.py`: common request wrapper, retries, 429 handling, response parsing, request IDs, and token redaction.
+- `api_client.py`: common request wrapper, bastion proxy enforcement, retries, 429 handling, response parsing, request IDs, and token redaction.
 
 Acceptance:
 
-- Unit tests cover token caching, refresh, 401 handling, 429 retry, and secret redaction.
-- A sandbox or production read-only smoke can exchange a refresh token for an LWA access token.
+- Completed 2026-05-17.
+- Unit tests cover token caching, refresh, 429 retry, secret redaction, and production fail-closed behavior when `AMAZON_HTTPS_PROXY` is missing.
+- Bastion proxy smoke confirms only `api.amazon.com:443` and `sellingpartnerapi-na.amazon.com:443` are allowed; `example.com:443` is rejected.
+- Production read-only LWA token exchange smoke passed without printing tokens.
 
 ### Phase 2: Reports API Read Sync
 

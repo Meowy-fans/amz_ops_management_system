@@ -18,6 +18,10 @@ if [ ! -f "${COMPOSE_DIR}/.env" ]; then
   exit 1
 fi
 
+if [ ! -f "${COMPOSE_DIR}/.env.amazon-sp-api" ]; then
+  echo "Missing optional ${COMPOSE_DIR}/.env.amazon-sp-api; Amazon SP-API features will fail closed in production."
+fi
+
 cd "${COMPOSE_DIR}"
 docker compose build
 docker compose up -d
