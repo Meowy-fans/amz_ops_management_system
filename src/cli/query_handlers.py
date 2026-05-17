@@ -93,8 +93,8 @@ def handle_pending_statistics(db: Session):
         query = text("""
             SELECT
                 COUNT(DISTINCT m.meow_sku) as total_pending,
-                COUNT(DISTINCT CASE WHEN scm.standard_category_name = 'cabinet' THEN m.meow_sku END) as cabinet_count,
-                COUNT(DISTINCT CASE WHEN scm.standard_category_name = 'home_mirror' THEN m.meow_sku END) as mirror_count
+                COUNT(DISTINCT CASE WHEN LOWER(scm.standard_category_name) = 'cabinet' THEN m.meow_sku END) as cabinet_count,
+                COUNT(DISTINCT CASE WHEN LOWER(scm.standard_category_name) = 'home_mirror' THEN m.meow_sku END) as mirror_count
             FROM meow_sku_map m
                 LEFT JOIN amz_all_listing_report r
                     ON m.meow_sku = r."seller-sku"
@@ -171,12 +171,20 @@ def handle_list_categories(db: Session):
 
     try:
         query = text("""
-            SELECT DISTINCT standard_category_name
-            FROM supplier_categories_map
-            WHERE supplier_platform = 'giga'
-              AND standard_category_name IS NOT NULL
-              AND standard_category_name != ''
-            ORDER BY standard_category_name;
+            WITH mapped AS (
+                SELECT lower(NULLIF(standard_category_name, '')) AS category
+                FROM supplier_categories_map
+                WHERE supplier_platform = 'giga'
+                  AND NULLIF(standard_category_name, '') IS NOT NULL
+            ),
+            templated AS (
+                SELECT lower(category) AS category
+                FROM amazon_cat_templates
+            )
+            SELECT DISTINCT upper(mapped.category) AS category
+            FROM mapped
+                JOIN templated USING (category)
+            ORDER BY upper(mapped.category);
         """)
 
         result = db.execute(query).scalars().all()

@@ -96,3 +96,4 @@
 | TASK-090 | 升级 CI checkout action 到 Node 24 运行时 | P1 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | `.github/workflows/ci.yml` 从 `actions/checkout@v4` 升级到 `actions/checkout@v6`；runner 日志确认当前版本 `2.333.1`，满足 checkout v6 的 `2.329.0+` 要求 |
 | TASK-091 | 补齐生产初始迁移运行时表覆盖 | P0 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | Alembic 初始迁移补执行详情、售价、Amazon 模板表，并过滤宿主机 owner 语句；共享 Postgres 临时库验证关键表齐全；`pytest`: 446 passed，覆盖率 95.32% |
 | TASK-092 | 安装生产服务到 `/data/docker-compose` | P0 | ✅ | Codex | 偏移缓解 Phase 8 | 2026-05-05 | 2026-05-05 | 已部署容器 `amz-listing-management-system`，共享 PostgreSQL 独立库 `amz_listing`，健康检查 healthy；HTTP socket、Alembic 版本、关键表和 `list-categories` smoke 通过 |
+| TASK-093 | 收口用户可用发品台 | P0 | ✅ | Codex | 生产就绪 | 2026-05-16 | 2026-05-16 | 开放 `https://amz-listing.meowy.fans`（BasicAuth），Web 首页增加生产就绪面板和固定可发品类下拉；CLI/接口统一品类大小写统计口径；当前支持 `CABINET` / `HOME_MIRROR`，未映射供应商品类不自动发品；`pytest -q` 通过，容器 healthy，`/api/readiness` 与 CLI 冒烟通过 |

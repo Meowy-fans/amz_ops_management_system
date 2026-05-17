@@ -62,6 +62,88 @@ def _run_task(task, category, file_path, auto_confirm):
         raise e
     return None
 
+
+def _readiness_snapshot():
+    """Return a compact operational snapshot for the web console."""
+    import importlib
+    from sqlalchemy import text
+
+    m = importlib.import_module("main")
+    with m.SessionLocal() as db:
+        counts = db.execute(text("""
+            SELECT 'amazon_records' AS metric, count(*) FROM amz_all_listing_report
+            UNION ALL SELECT 'giga_products', count(*) FROM giga_product_sync_records
+            UNION ALL SELECT 'llm_details', count(*) FROM ds_api_product_details
+            UNION ALL SELECT 'sku_mappings', count(*) FROM meow_sku_map
+            UNION ALL SELECT 'base_prices', count(*) FROM giga_product_base_prices
+            UNION ALL SELECT 'inventory_skus', count(*) FROM giga_inventory
+            UNION ALL SELECT 'listing_logs', count(*) FROM amz_listing_log
+            UNION ALL SELECT 'templates', count(*) FROM amazon_cat_templates
+        """)).fetchall()
+
+        pending_rows = db.execute(text("""
+            SELECT
+                upper(COALESCE(NULLIF(scm.standard_category_name, ''), 'UNMAPPED')) AS category,
+                count(DISTINCT m.meow_sku) AS sku_count
+            FROM meow_sku_map m
+                LEFT JOIN amz_all_listing_report r ON m.meow_sku = r."seller-sku"
+                JOIN giga_product_sync_records psr
+                    ON m.vendor_sku = psr.giga_sku
+                    AND m.vendor_source = 'giga'
+                JOIN giga_product_base_prices pbp ON m.vendor_sku = pbp.giga_sku
+                LEFT JOIN supplier_categories_map scm
+                    ON LOWER(psr.category_code) = LOWER(scm.supplier_category_code)
+                    AND scm.supplier_platform = 'giga'
+            WHERE r."seller-sku" IS NULL
+              AND psr.is_oversize IS NOT TRUE
+              AND psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'
+              AND pbp.sku_available IS TRUE
+            GROUP BY upper(COALESCE(NULLIF(scm.standard_category_name, ''), 'UNMAPPED'))
+            ORDER BY sku_count DESC, category
+        """)).fetchall()
+
+        supported_rows = db.execute(text("""
+            WITH mapped AS (
+                SELECT lower(NULLIF(standard_category_name, '')) AS category
+                FROM supplier_categories_map
+                WHERE NULLIF(standard_category_name, '') IS NOT NULL
+            ),
+            templated AS (
+                SELECT lower(category) AS category FROM amazon_cat_templates
+            )
+            SELECT DISTINCT upper(mapped.category) AS category
+            FROM mapped
+                JOIN templated USING (category)
+            ORDER BY upper(mapped.category)
+        """)).fetchall()
+
+        unmapped_rows = db.execute(text("""
+            SELECT supplier_category_code, supplier_category_name
+            FROM supplier_categories_map
+            WHERE standard_category_name IS NULL OR btrim(standard_category_name) = ''
+            ORDER BY supplier_category_code
+        """)).fetchall()
+
+    pending_by_category = {
+        row.category.upper(): int(row.sku_count) for row in pending_rows
+    }
+    supported_categories = [row.category for row in supported_rows]
+    return {
+        "counts": {row.metric: int(row.count) for row in counts},
+        "pending_by_category": pending_by_category,
+        "supported_categories": supported_categories,
+        "unmapped_categories": [
+            {
+                "code": row.supplier_category_code,
+                "name": row.supplier_category_name,
+            }
+            for row in unmapped_rows
+        ],
+        "ready_for_listing": bool(supported_categories)
+        and any(pending_by_category.get(cat, 0) > 0 for cat in supported_categories),
+    }
+
+
 INDEX_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -80,6 +162,7 @@ INDEX_HTML = """<!DOCTYPE html>
             --border: #e2e8f0;
             --danger: #ef4444;
             --success: #22c55e;
+            --warning: #f59e0b;
         }
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -132,6 +215,54 @@ INDEX_HTML = """<!DOCTYPE html>
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1px;
+            background: var(--border);
+        }
+        .metric {
+            background: var(--card-bg);
+            padding: 16px 20px;
+        }
+        .metric-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .metric-label {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            margin-top: 2px;
+        }
+        .status-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: #fbfdff;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.82rem;
+            background: white;
+            color: var(--text-main);
+        }
+        .pill.ready {
+            border-color: #86efac;
+            background: #f0fdf4;
+            color: #166534;
+        }
+        .pill.warn {
+            border-color: #fcd34d;
+            background: #fffbeb;
+            color: #92400e;
         }
         
         /* Task Grid */
@@ -281,6 +412,9 @@ INDEX_HTML = """<!DOCTYPE html>
             outline: none;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
+        select.form-input {
+            background: white;
+        }
         .checkbox-wrapper {
             display: flex;
             align-items: center;
@@ -360,6 +494,19 @@ INDEX_HTML = """<!DOCTYPE html>
         <div class="subtitle">自动化运营管理系统</div>
     </header>
 
+    <section class="section">
+        <div class="section-header">
+            <h2 class="section-title">生产就绪状态</h2>
+        </div>
+        <div id="readinessOverview" class="overview-grid">
+            <div class="metric">
+                <div class="metric-value">--</div>
+                <div class="metric-label">加载中</div>
+            </div>
+        </div>
+        <div id="readinessPills" class="status-strip"></div>
+    </section>
+
     <div id="app">
         <!-- Generated Content -->
     </div>
@@ -383,7 +530,10 @@ INDEX_HTML = """<!DOCTYPE html>
         
         <div id="categoryRow" class="form-group" style="display:none">
             <label class="form-label">品类 (Category)</label>
-            <input id="categoryInput" class="form-input" placeholder="例如: CABINET, HOME_MIRROR">
+            <select id="categoryInput" class="form-input">
+                <option value="CABINET">CABINET</option>
+                <option value="HOME_MIRROR">HOME_MIRROR</option>
+            </select>
         </div>
         
         <label class="checkbox-wrapper">
@@ -405,6 +555,7 @@ INDEX_HTML = """<!DOCTYPE html>
 
 <script>
     // 任务定义
+    let readiness = null;
     const tasks = [
         {
             group: "Giga 商品管理",
@@ -499,6 +650,48 @@ INDEX_HTML = """<!DOCTYPE html>
     const runBtn = document.getElementById('runBtn');
     const runSpinner = document.getElementById('runSpinner');
     const logBox = document.getElementById('logBox');
+
+    function renderReadiness(data) {
+        readiness = data;
+        const counts = data.counts || {};
+        const pending = data.pending_by_category || {};
+        const supported = data.supported_categories || [];
+        const unmapped = data.unmapped_categories || [];
+        const totalPending = Object.values(pending).reduce((sum, n) => sum + Number(n || 0), 0);
+        const readyPending = supported.reduce((sum, cat) => sum + Number(pending[cat] || 0), 0);
+
+        const metrics = [
+            ['可发品 SKU', readyPending],
+            ['待发品总数', totalPending],
+            ['Giga 商品', counts.giga_products || 0],
+            ['SKU 映射', counts.sku_mappings || 0],
+            ['价格 SKU', counts.base_prices || 0],
+            ['库存 SKU', counts.inventory_skus || 0],
+            ['Listing 记录', counts.listing_logs || 0],
+            ['模板记录', counts.templates || 0]
+        ];
+
+        document.getElementById('readinessOverview').innerHTML = metrics.map(([label, value]) => `
+            <div class="metric">
+                <div class="metric-value">${value}</div>
+                <div class="metric-label">${label}</div>
+            </div>
+        `).join('');
+
+        const categoryPills = supported.map(cat => `
+            <span class="pill ready">${cat}: ${pending[cat] || 0}</span>
+        `).join('');
+        document.getElementById('readinessPills').innerHTML = `
+            <span class="pill ${data.ready_for_listing ? 'ready' : 'warn'}">
+                ${data.ready_for_listing ? '发品链路可用' : '暂无可发品类'}
+            </span>
+            ${categoryPills}
+            <span class="pill warn">未映射类目: ${unmapped.length}</span>
+        `;
+
+        const options = supported.length ? supported : ['CABINET', 'HOME_MIRROR'];
+        categoryInput.innerHTML = options.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
     
     // 打开模态框
     window.openModal = (btn) => {
@@ -527,7 +720,9 @@ INDEX_HTML = """<!DOCTYPE html>
         fileInput.value = '';
         
         categoryRow.style.display = currentTask.category ? 'block' : 'none';
-        categoryInput.value = '';
+        if (currentTask.category && readiness && readiness.supported_categories && readiness.supported_categories.length) {
+            categoryInput.value = readiness.supported_categories[0];
+        }
         
         autoConfirm.checked = false;
         // Show inputs wrapper
@@ -700,9 +895,21 @@ INDEX_HTML = """<!DOCTYPE html>
             indicator.style.color = 'var(--danger)';
         }
     }
+
+    async function loadReadiness() {
+        try {
+            const res = await fetch('/api/readiness');
+            if (res.ok) {
+                renderReadiness(await res.json());
+            }
+        } catch (e) {
+            console.error('Readiness error:', e);
+        }
+    }
     
     // 初始化检查
     checkHealth();
+    loadReadiness();
 </script>
 </body>
 </html>
@@ -739,6 +946,24 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
             except Exception as e:
                 logger.error(f"Diagnostics failed: {e}")
+                body = json.dumps({"status": "error", "message": str(e)}).encode("utf-8")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            return
+
+        if self.path == "/api/readiness":
+            try:
+                body = json.dumps(_readiness_snapshot()).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                logger.error(f"Readiness snapshot failed: {e}", exc_info=True)
                 body = json.dumps({"status": "error", "message": str(e)}).encode("utf-8")
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json")

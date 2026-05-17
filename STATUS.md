@@ -87,12 +87,14 @@
 - ✅ **2026-05-05 / Codex**: 补齐生产初始迁移覆盖，Alembic 首次建库现在会创建 `ds_api_product_details`、`product_final_prices`、`amazon_cat_templates` 等运行时表，并在读取历史 SQL 时跳过宿主机专属 owner 语句；共享 PostgreSQL 临时库验证迁移成功且关键表齐全。
 - ✅ **2026-05-05 / Codex**: 生产服务已安装到 `/data/docker-compose/amz-listing-management-system/`，镜像 `amz-listing-management-system:2026-05-05`，容器 `amz-listing-management-system` 当前 `running healthy`；共享 PostgreSQL 独立库 `amz_listing` 已执行 Alembic 迁移，HTTP socket、关键表和 `list-categories` smoke 均通过。
 - ✅ **2026-05-05 / Codex**: 已将可继续使用的 Giga 与 LLM 凭据注入生产 `.env` 并重建容器；配置加载、Giga token、Giga `product_list` 只读接口、Qwen、DeepSeek、统一 LLM service、HTTP socket 和 `list-categories` 全部冒烟通过。
+- ✅ **2026-05-16 / Codex**: 完成用户侧生产就绪收口：RDS 数据已迁入本机 `amz_listing`；Web 发品台开放 `https://amz-listing.meowy.fans` 并挂 BasicAuth/安全头/限流；首页增加生产就绪面板；发品品类固定为已有模板覆盖的 `CABINET` / `HOME_MIRROR`；CLI 与 Web 统一大小写归一后的待发品统计口径。验证：容器 `healthy`，`/api/readiness` 返回 ready，`pending-statistics` 为 CABINET 35 / HOME_MIRROR 21 / 其他 85，`list-categories` 返回 2 个可发品类，`pytest -q` 通过。
 - ✅ **TASK-012**: 完成 `pydantic-settings` 迁移，重构了 `main.py`, `db_pool.py`, `logging`, `llm`, `giga` 等模块。
 - ✅ **TASK-011**: 配置了 Pre-commit Hooks。
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 做受控端到端业务任务演练（小批量同步、详情生成、定价/发品生成），再评估是否通过 Traefik 暴露内部 HTTP 入口。
+- 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板，或明确排除不发。
+- 🔲 做一次真实小批量 Amazon 后台上传验收，并用 Amazon 报错文件回流验证模板纠错链路。
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞

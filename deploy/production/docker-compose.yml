@@ -37,7 +37,14 @@ services:
       retries: 3
       start_period: 30s
     labels:
-      - "traefik.enable=false"
+      - "traefik.enable=true"
+      - "traefik.http.routers.amz-listing.rule=Host(`amz-listing.meowy.fans`)"
+      - "traefik.http.routers.amz-listing.entrypoints=websecure"
+      - "traefik.http.routers.amz-listing.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.amz-listing.tls.domains[0].main=meowy.fans"
+      - "traefik.http.routers.amz-listing.tls.domains[0].sans=*.meowy.fans"
+      - "traefik.http.routers.amz-listing.middlewares=security-headers@file,rate-limit@file,auth-basic@file"
+      - "traefik.http.services.amz-listing.loadbalancer.server.port=8080"
 
 networks:
   proxy:
