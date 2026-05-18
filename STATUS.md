@@ -5,10 +5,11 @@
 - **里程碑**：测试/CI基线、关键模块文档、入口层拆分、主要 service 输出边界、重点大文件职责拆分、核心链路集成测试持续收敛
 
 ## 最新进展
-- ✅ **2026-05-17 / Codex**: 完成 Phase 4 新品发品 API 出口：`AmazonAttributeMapper` 将 `DataMappingHelper` 输出的 Excel 字段名转换为 SP-API JSON attributes（text/list/image/price/dimension 等类型），`AmazonListingSubmitter` 包装 `putListingsItem` / `VALIDATION_PREVIEW` 提交，`ProductListingService.generate_listings_via_api()` 复用完整发品流水线，新增 `ProductTypeClient` 拉取 Product Type Definitions Schema；现有 Excel 路径不变；验证：12 新测试 + dry-run 生成 19 SKU JSON payload 通过，`pytest -q` 477 passed。
-- ✅ **2026-05-17 / Codex**: Amazon SP-API 私有开发者 / 自用权限已获批，生产凭据已拆分到 `/data/docker-compose/amz-listing-management-system/.env.amazon-sp-api`（不入 Git）；已在阿里云上海 ECS 部署 `amazon-spapi-proxy.service` 固定出口代理（`100.85.252.67:18080`），仅允许家用服务器 `100.95.123.106` 访问 Amazon LWA/SP-API 目标；生产 compose 已加载 `.env.amazon-sp-api`，容器重建后仍 healthy；Amazon LWA token smoke 通过。
-- ✅ **2026-05-17 / Codex**: 完成 Amazon API 基础设施 Phase 1：新增 `infrastructure/amazon/` 的 config、LWA token manager、SP-API client，生产缺少 `AMAZON_HTTPS_PROXY` 时 fail closed，API 请求显式使用堡垒机代理；新增单元测试覆盖凭据校验、代理约束、token refresh、API proxy、429 retry 和敏感字段脱敏。
-- ✅ **2026-05-17 / Codex**: 完成 Amazon Reports API Phase 2 只读同步：新增 `AmazonReportsClient` 和 `AmzFullListImporterService.sync_report_from_api()`，注册非交互任务 `sync-amz-report-api`；生产镜像升级为 `amz-listing-management-system:2026-05-17` 并保持 healthy；真实 API 同步读取 418 行并复用现有清洗/upsert 入库，当前统计总记录 445、Active 254、唯一 ASIN 442。验证：`pytest -q` 通过。
+- ✅ **2026-05-18 / Codex**: OTTOMAN Storage Bench 全链路端到端验收通过：Giga Sync → SKU Mapping → Product Type Discovery (OTTOMAN) → Schema Cache → LLM Content Generation → Attribute Mapping → Variation (1 parent + 2 children, COLOR theme) → VALIDATION_PREVIEW → putListingsItem。5/5 ACCEPTED，32/32 fields 数据一致，价格 $123.34 经定价公式验证，库存 0/40 与 Giga 源数据一致。验收文档 `docs/acceptance/ottoman-e2e-2026-05-18.md`。`pytest -q` 512 passed。
+- ✅ **2026-05-18 / Codex**: 新增 `sp_api_ottoman.json` 品类覆盖配置（frame.material / seat / top / base 嵌套对象、variation_theme.name 格式），`AmazonAttributeMapper` 新增 `ottoman_dim_*`、`variation_theme_ottoman` 类型。发现 OTTOMAN 使用 `frame[].material` 而非 `frame_material`、selector 字段 `language_tag` 等品类特定差异。
+- ✅ **2026-05-18 / Codex**: Phase A-E 多源标准化发品改造：`StandardProduct` + `GigaProductNormalizer`、`AmazonSchemaService`（schema 缓存/校验/合法值）、`ProductContentGenerator`（品类感知 LLM + 后验证）、`discover-product-type` / `suggest-category-mappings` CLI、变体 API 映射。23 个 CLI 任务。`pytest -q` 512 passed。
+- ✅ **2026-05-18 / Codex**: 开发规范偏移修复：红线级抽取 `AmazonProductTypeSchemaRepository`、拆分 `_convert()`（104→5 个 group handler）、拆分 `product_content_generator.py`（320→284 行）+ `content_validator.py` 提取、`amazon_attribute_mapper.py`（318→298 行）、修复死 logger/export/类型注解。
+- ✅ **2026-05-17 / Codex**: 完成 Phase 4 新品发品 API 出口 + Phase 3 价格库存更新 + Phase 2 Reports API + Phase 1 基础设施。所有 SP-API 操作经上海阿里云 ECS 堡垒机固定出口。
 - ✅ **2026-05-04 / Codex**: 修复库存同步单测挂起问题，完整测试从卡住恢复为 `52 passed in 1.34s`。
 - ✅ **2026-05-04 / Codex**: 调整 `.gitignore`，不再屏蔽 `tests/` 下的正式 `test_*.py` 单测文件。
 - ✅ **2026-05-04 / Codex**: 建立覆盖率基线：当前 `127 passed in 9.12s`，总覆盖率 `60.60%`。
@@ -97,10 +98,10 @@
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
-- 🔲 用户审批后，选一个 CABINET SKU 做 `VALIDATION_PREVIEW` 真实验证
-- 🔲 验证通过后做 `--no-dry-run` 真实提交一个新品发品
-- 🔲 支持 HOME_MIRROR 品类发品（补充 sp_api_home_mirror.json 映射覆盖）
-- 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板，或明确排除不发。
+- 🔲 补充 HOME_MIRROR 品类 SP-API 映射覆盖（`sp_api_home_mirror.json`）
+- 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板
+- 🔲 Phase 5：Feeds API 批量提交 + Notifications API 自动监控
+- 🔲 Grey SKU 价格数据同步（当前 `giga_product_base_prices` 中无记录）
 - ✅ 当前已消除本轮识别出的 300+ 行文件规模预警。
 
 ## 风险与阻塞
