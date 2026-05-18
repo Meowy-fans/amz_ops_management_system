@@ -103,14 +103,14 @@ class AmazonAttributeMapper:
             if new_val is None:
                 continue
 
-            # Handle cabinet dimension collector types
-            if attr_type == "cabinet_dim_depth":
+            # Collect dimensions for combined item_depth_width_height
+            if attr_type in ("cabinet_dim_depth", "ottoman_dim_depth"):
                 dim_collector["depth"] = new_val
                 continue
-            if attr_type == "cabinet_dim_width":
+            if attr_type in ("cabinet_dim_width", "ottoman_dim_width"):
                 dim_collector["width"] = new_val
                 continue
-            if attr_type == "cabinet_dim_height":
+            if attr_type in ("cabinet_dim_height", "ottoman_dim_height"):
                 dim_collector["height"] = new_val
                 continue
 
@@ -221,7 +221,8 @@ class AmazonAttributeMapper:
         if attr_type == "dimension":
             num = self._to_float(value)
             return [{"value": num, "unit": "inches"}] if num is not None else None
-        if attr_type in ("cabinet_dim_depth", "cabinet_dim_width", "cabinet_dim_height"):
+        if attr_type in ("cabinet_dim_depth", "cabinet_dim_width", "cabinet_dim_height",
+                         "ottoman_dim_depth", "ottoman_dim_width", "ottoman_dim_height"):
             return self._to_float(value)
         if attr_type == "weight":
             num = self._to_float(value)
@@ -235,6 +236,9 @@ class AmazonAttributeMapper:
         if attr_type == "cabinet_door":
             text = value[0] if isinstance(value, list) else str(value)
             return [{"style": [{"value": text.strip()}]}]
+        if attr_type == "variation_theme_ottoman":
+            text = value[0] if isinstance(value, list) else str(value)
+            return [{"name": text.strip()}]
         return _NOT_FOUND
 
     _COUNTRY_TO_ISO = {

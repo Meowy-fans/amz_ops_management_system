@@ -1,0 +1,53 @@
+{
+  "_description": "OTTOMAN-specific overrides for SP-API attribute mapping",
+  "mappings": {
+    "Item Depth Front To Back": {
+      "path": "item_depth_width_height",
+      "type": "ottoman_dim_depth"
+    },
+    "Item Width Side To Side": {
+      "path": "item_depth_width_height",
+      "type": "ottoman_dim_width"
+    },
+    "Item Height Floor To Top": {
+      "path": "item_depth_width_height",
+      "type": "ottoman_dim_height"
+    },
+    "Room Type": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Mounting Type": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Construction Type": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Special Features": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Door Style": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Number of Drawers": {
+      "path": "_skip_ottoman",
+      "type": "skip"
+    },
+    "Main Image URL": {
+      "path": "main_product_image_locator",
+      "type": "image"
+    },
+    "Other Image URL": {
+      "path": "other_product_image_locator_1",
+      "type": "image_single"
+    },
+    "Variation Theme Name": {
+      "path": "variation_theme",
+      "type": "variation_theme_ottoman"
+    }
+  }
+}

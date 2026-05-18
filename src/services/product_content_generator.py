@@ -102,16 +102,15 @@ class ProductContentGenerator:
         )
 
         # Call LLM
-        llm = self._get_llm()
         try:
-            response = llm.generate(
-                task_type="product_generation",
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                json_mode=True,
-                temperature=0.4,
-            )
-            raw_text = response.content if hasattr(response, "content") else str(response)
+            llm = self._get_llm()
+            request = self._make_llm_request(system_prompt, user_prompt)
+            response = llm.generate(request)
+            raw = response.content if hasattr(response, "content") else response
+            if isinstance(raw, dict):
+                raw_text = json.dumps(raw)
+            else:
+                raw_text = str(raw)
         except Exception as e:
             logger.error("LLM generation failed: %s", e)
             return EnrichedProductContent(
@@ -199,15 +198,23 @@ class ProductContentGenerator:
 
     # ── LLM ───────────────────────────────────────────────────────
 
+    def _make_llm_request(self, system_prompt: str, user_prompt: str):
+        from infrastructure.llm.types import LLMRequest
+
+        return LLMRequest(
+            task_type="product_generation",
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            json_mode=True,
+            temperature=0.4,
+        )
+
     def _get_llm(self):
         if self._llm is not None:
             return self._llm
-        try:
-            from infrastructure.llm import get_llm_service
-            self._llm = get_llm_service()
-        except Exception:
-            from infrastructure.llm.factory import get_llm_service
-            self._llm = get_llm_service()
+        from infrastructure.llm.factory import get_llm_service
+
+        self._llm = get_llm_service()
         return self._llm
 
     def _get_prompt(self) -> str:

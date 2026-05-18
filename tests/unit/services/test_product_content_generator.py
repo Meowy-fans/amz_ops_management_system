@@ -1,6 +1,12 @@
 """Unit tests for ProductContentGenerator."""
 import json
+import os
 from unittest.mock import MagicMock
+
+os.environ.setdefault("DATABASE_HOST", "test")
+os.environ.setdefault("DATABASE_NAME", "test")
+os.environ.setdefault("DATABASE_USER", "test")
+os.environ.setdefault("DATABASE_PASSWORD", "test")
 
 from src.models.product import DimensionSpec, StandardProduct
 from src.services.product_content_generator import (
@@ -19,8 +25,8 @@ class FakeLLMService:
         self.response_text = response_text or json.dumps(_valid_response())
         self.calls = []
 
-    def generate(self, **kwargs):
-        self.calls.append(kwargs)
+    def generate(self, request):
+        self.calls.append(request)
         return FakeLLMResponse(self.response_text)
 
 
@@ -86,7 +92,7 @@ def test_generate_injects_category_in_prompt():
 
     gen.generate(product, product_type="CABINET")
 
-    user_prompt = llm.calls[0]["user_prompt"]
+    user_prompt = llm.calls[0].user_prompt
     assert "CABINET" in user_prompt
     assert "30 inch" in user_prompt
 
@@ -148,7 +154,7 @@ def test_validate_no_warnings_for_clean_content():
 
 def test_llm_failure_returns_empty_content():
     class FailingLLM:
-        def generate(self, **kwargs):
+        def generate(self, request):
             raise RuntimeError("LLM down")
 
     gen = ProductContentGenerator(llm_service=FailingLLM())
