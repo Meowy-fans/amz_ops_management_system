@@ -172,6 +172,158 @@ class CompetitiveIntelService:
                 )
         return results
 
+    # ── keyword-based competitor discovery 🆕 ────────────────────────
+
+    def discover_by_keywords(
+        self,
+        keywords: List[str],
+        exclude_asin: Optional[str] = None,
+        max_competitors: int = 10,
+    ) -> List[CompetitorProfile]:
+        """Discover competitors by searching catalog with keywords.
+
+        Uses Catalog Items API searchCatalogItems to find competing
+        ASINs, then enriches each with BSR + pricing data.
+
+        Args:
+            keywords: Search keywords (e.g. ["LED bathroom mirror"]).
+            exclude_asin: Our own ASIN to exclude from results.
+            max_competitors: Max number of competitor profiles to return.
+
+        Returns:
+            List of CompetitorProfile with title, brand, BSR, pricing.
+        """
+        catalog = self._get_catalog_client()
+        pricing = self._get_pricing_client()
+        if catalog is None:
+            logger.warning("Catalog Items API not available")
+            return []
+
+        # Step 1 — keyword search
+        try:
+            resp = catalog.search_catalog_items(
+                keywords=keywords,
+                included_data=["summaries", "salesRanks"],
+            )
+            body = resp.get("body") or resp
+            items = body.get("items") or []
+        except Exception as exc:
+            logger.error("Keyword search failed: %s", exc)
+            return []
+
+        logger.info("Keyword search returned %d items for %s", len(items), keywords)
+
+        # Step 2 — build profiles with BSR from search results
+        profiles: List[CompetitorProfile] = []
+        for item in items:
+            asin = item.get("asin", "")
+            if exclude_asin and asin == exclude_asin:
+                continue
+
+            summaries = item.get("summaries") or []
+            s = summaries[0] if summaries else {}
+            ranks_list = item.get("salesRanks") or []
+            bsr = None
+            bsr_cat = ""
+            if ranks_list:
+                cr = ranks_list[0].get("classificationRanks") or []
+                if cr:
+                    bsr = cr[0].get("rank")
+                    bsr_cat = cr[0].get("title", "")
+
+            profiles.append(CompetitorProfile(
+                asin=asin,
+                title=s.get("itemName", ""),
+                brand=s.get("brand", ""),
+                bsr=bsr,
+                bsr_category=bsr_cat,
+            ))
+
+            if len(profiles) >= max_competitors:
+                break
+
+        # Step 3 — enrich with pricing data
+        if pricing:
+            for profile in profiles:
+                try:
+                    resp = pricing.get_item_offers(profile.asin)
+                    profile.lowest_fba_price = self._parse_price(
+                        pricing.extract_lowest_price(resp)
+                    )
+                    profile.buy_box_price = self._parse_price(
+                        pricing.extract_buy_box_price(resp)
+                    )
+                    profile.offer_count = pricing.extract_offer_count(resp)
+                except Exception:
+                    pass  # pricing enrichment is best-effort
+
+        logger.info(
+            "Discovered %d competitors for keywords=%s",
+            len(profiles), keywords,
+        )
+        return profiles
+
+    def analyze_by_keywords(
+        self,
+        keywords: List[str],
+        target_asin: str = "",
+        target_sku: str = "",
+        target_price: Optional[float] = None,
+        target_cost: Optional[float] = None,
+        max_competitors: int = 10,
+    ) -> CompetitiveLandscape:
+        """Full competitive analysis via keyword-based competitor discovery.
+
+        1. Search keywords → discover competitor ASINs
+        2. Pull each competitor's price + BSR
+        3. Compute competitiveness score + pricing recommendation
+
+        This is the primary flow for exclusive-brand products
+        (no same-ASIN sellers).
+        """
+        landscape = CompetitiveLandscape(
+            target_asin=target_asin,
+            target_sku=target_sku,
+            target_price=target_price,
+            target_cost=target_cost,
+            snapshot_time=datetime.now().isoformat(),
+        )
+
+        # Discover competitors by keyword
+        landscape.competitors = self.discover_by_keywords(
+            keywords=keywords,
+            exclude_asin=target_asin if target_asin else None,
+            max_competitors=max_competitors,
+        )
+
+        if not landscape.competitors:
+            landscape.alerts.append(
+                f"未发现竞品（关键词: {', '.join(keywords[:3])}）。尝试更换关键词或扩大搜索范围。"
+            )
+            return landscape
+
+        # Get our own data for comparison
+        if target_asin:
+            our_offer = self._get_our_offer(target_asin)
+            if our_offer:
+                landscape.our_position = our_offer
+
+        # Compute metrics
+        landscape.seller_density = sum(c.offer_count for c in landscape.competitors)
+        landscape.median_bsr = self._compute_median_bsr(landscape.competitors)
+        landscape.price_percentile = self._compute_price_percentile(
+            target_price, landscape.competitors
+        )
+        landscape.competitiveness_score, landscape.competitive_label = (
+            self._score_competitiveness(landscape)
+        )
+        landscape.suggested_price, landscape.estimated_margin_at_suggested = (
+            self._suggest_price(landscape)
+        )
+        landscape.alerts = self._generate_alerts(landscape)
+
+        return landscape
+
     # ── data collection ─────────────────────────────────────────────
 
     def _get_our_offer(self, asin: str) -> Optional[CompetitorProfile]:
@@ -447,6 +599,16 @@ class CompetitiveIntelService:
                 alerts.append(f"毛利率偏低（{m:.1%}），盈利空间有限")
 
         return alerts
+
+    @staticmethod
+    def _parse_price(price_dict: Optional[Dict]) -> Optional[float]:
+        """Extract landed price amount from a pricing response dict."""
+        if not price_dict:
+            return None
+        try:
+            return float(price_dict.get("LandedPrice", {}).get("Amount", 0))
+        except (TypeError, ValueError):
+            return None
 
     # ── lazy client access ──────────────────────────────────────────
 

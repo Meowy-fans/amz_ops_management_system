@@ -566,74 +566,87 @@ def _get_active_listings(db: Session) -> List[Dict[str, Any]]:
 def handle_competitive_analysis(
     db: Session, category: Optional[str] = None, auto_confirm: bool = False
 ):
-    """Run competitive landscape analysis for products in a category."""
+    """Run competitive landscape analysis — keyword-based competitor discovery.
+
+    Flow:
+      1. Get our active ASINs from database
+      2. For each product, search keywords → discover competitor ASINs
+      3. Pull each competitor's price + BSR
+      4. Compute competitiveness score + pricing recommendation
+    """
     from src.services.competitive_intel_service import CompetitiveIntelService
-    from src.repositories.product_listing_repository import ProductListingRepository
 
     if not category:
         print("Please specify --category (e.g. CABINET)")
         return
 
-    listing_repo = ProductListingRepository(db)
-    pending = listing_repo.get_pending_listing_skus()
     active = _get_active_listings(db)
-
-    # Build sku→asin from real data
-    sku_to_asin = _resolve_sku_to_asin(db, pending)
-    # Also include active listings
-    for item in active:
-        sku = item["sku"]
-        asin = item["asin"]
-        if sku and asin and sku not in sku_to_asin:
-            sku_to_asin[sku] = asin
-
-    if not sku_to_asin:
-        print("No products with ASINs found. Run 'import-amz-report' first to import listing data.")
+    if not active:
+        print("No active listings found. Run 'import-amz-report' first.")
         return
+
+    # Category → search keyword mapping
+    CATEGORY_KEYWORDS = {
+        "CABINET": ["bathroom vanity", "bathroom cabinet with sink"],
+        "HOME_MIRROR": ["LED bathroom mirror", "wall mounted vanity mirror"],
+        "BATHTUB_SHOWER_TRIM_KIT": ["bathtub shower trim kit", "shower faucet set"],
+    }
+    keywords = CATEGORY_KEYWORDS.get(category.upper(), [category.lower().replace("_", " ")])
 
     print(f"\n{'='*60}")
     print(f"Competitive Analysis — {category}")
-    print(f"Products with ASINs: {len(sku_to_asin)}")
+    print(f"Search keywords: {keywords}")
+    print(f"Active products: {len(active)}")
     print(f"{'='*60}\n")
 
     service = CompetitiveIntelService()
 
-    # Get costs for margin calculation
-    meow_to_giga = _resolve_meow_to_giga(db, list(sku_to_asin.keys()))
-    giga_skus = list(meow_to_giga.values())
+    # Get costs + SKU mappings
+    meow_skus = [item["sku"] for item in active if item["sku"]]
+    meow_to_giga = _resolve_meow_to_giga(db, meow_skus)
+    giga_skus = list(set(meow_to_giga.values()))
     giga_to_cost = _resolve_giga_to_cost(db, giga_skus)
-    sku_to_price = _resolve_meow_to_price(db, list(sku_to_asin.keys()))
 
     count = 0
-    limit = min(len(sku_to_asin), 10)  # API rate constraint
-    for sku, asin in list(sku_to_asin.items())[:limit]:
-        target_price = sku_to_price.get(sku)
+    limit = min(len(active), 5)  # Per-product keyword search + pricing calls
+    for item in active[:limit]:
+        sku = item["sku"]
+        asin = item["asin"]
+        our_price = item["price"]
         giga_sku = meow_to_giga.get(sku, "")
         cost_data = giga_to_cost.get(giga_sku, {})
         landed_cost = cost_data.get("base_price", 0) + cost_data.get("shipping_fee", 0)
 
         count += 1
-        print(f"  [{count}] {sku} / {asin}")
-        landscape = service.analyze(
+        name = (item["name"] or sku)[:50]
+        print(f"  [{count}] {name}")
+        print(f"      ASIN: {asin}  Our Price: ${our_price:.2f}" if our_price else f"      ASIN: {asin}")
+        print(f"      Landed Cost: ${landed_cost:.2f}" if landed_cost else f"      Landed Cost: N/A")
+        print(f"      Searching keywords: {keywords}")
+
+        landscape = service.analyze_by_keywords(
+            keywords=keywords,
             target_asin=asin,
             target_sku=sku,
-            target_price=target_price,
+            target_price=our_price if our_price > 0 else None,
             target_cost=landed_cost if landed_cost > 0 else None,
+            max_competitors=8,
         )
 
-        if landscape.our_position:
-            print(f"    Our Price: ${landscape.our_position.lowest_fba_price or 'N/A'}")
-            print(f"    Buy Box: ${landscape.our_position.buy_box_price or 'N/A'}")
-            print(f"    Sellers: {landscape.our_position.offer_count}")
+        print(f"      Competitors found: {len(landscape.competitors)}")
+        for c in landscape.competitors[:5]:
+            bsr_str = f"BSR=#{c.bsr}" if c.bsr else ""
+            price_str = f"${c.lowest_fba_price:.2f}" if c.lowest_fba_price else "N/A"
+            print(f"        {c.asin}: {c.title[:50]}")
+            print(f"          Brand={c.brand}  Price={price_str}  {bsr_str}  Sellers={c.offer_count}")
 
-        print(f"    Score: {landscape.competitiveness_score:.0f}/100 → {landscape.competitive_label}")
-        print(f"    Price Percentile: {landscape.price_percentile or 'N/A'}")
-        print(f"    Seller Density: {landscape.seller_density}")
-        print(f"    Median BSR: {landscape.median_bsr or 'N/A'}")
-        if landscape.suggested_price:
-            print(f"    Suggested Price: ${landscape.suggested_price:.2f} (est. margin: {landscape.estimated_margin_at_suggested or 0:.1%})")
+        print(f"      Score: {landscape.competitiveness_score:.0f}/100 → {landscape.competitive_label}")
+        print(f"      Median BSR: {landscape.median_bsr or 'N/A'}")
+        if landscape.suggested_price and landscape.target_price:
+            print(f"      Suggested Price: ${landscape.suggested_price:.2f} (vs our ${landscape.target_price:.2f})")
+            print(f"      Est. Margin: {landscape.estimated_margin_at_suggested or 0:.1%}")
         for alert in landscape.alerts:
-            print(f"    ⚠️  {alert}")
+            print(f"      ⚠️  {alert}")
         print()
 
     print(f"Competitive analysis complete for {count} products.")
