@@ -26,6 +26,13 @@ INTERACTIVE_TASK_CHOICES = {
     "3.5": "update-mappings-from-csv",
     "4.1": "sku-sync-from-csv",
     "5.1": "generate-update-file",
+    "5.2": "keyword-research",
+    "5.3": "competitive-analysis",
+    "5.4": "daily-check",
+    "5.5": "weekly-report",
+    "5.6": "profit-analysis",
+    "5.7": "inventory-health",
+    "5.8": "lifecycle-summary",
 }
 
 
@@ -65,6 +72,13 @@ def print_menu():
     print("  4.1 从CSV批量同步SKU映射 🚧 (待实现)")
     print("\n【5】亚马逊运营每日常规 ⭐")
     print("  5.1 (一键) 生成亚马逊价格与库存更新文件")
+    print("  5.2 关键词研究 (LLM扩词+分层)")
+    print("  5.3 竞品分析 (价格+BSR+竞争力评分)")
+    print("  5.4 每日巡检 (Listing问题+库存+飞书推送)")
+    print("  5.5 每周运营报告 (关键词排名+竞品+利润)")
+    print("  5.6 利润分析 (单品利润核算) 🆕")
+    print("  5.7 库存健康检查 (补货+滞销) 🆕")
+    print("  5.8 商品生命周期总览 🆕")
     print("\n【0】退出系统")
     print("-" * 70)
 

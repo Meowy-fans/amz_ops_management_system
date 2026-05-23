@@ -11,19 +11,27 @@ from src.cli.category_handlers import (
 )
 from src.cli.listing_handlers import handle_generate_listing, handle_generate_listing_api
 from src.cli.operation_handlers import (
+    handle_competitive_analysis,
+    handle_daily_check,
     handle_discover_product_type,
     handle_generate_details,
     handle_generate_update_file,
     handle_import_amazon_report,
+    handle_inventory_health,
+    handle_keyword_research,
+    handle_lifecycle_summary,
+    handle_profit_analysis,
     handle_suggest_category_mappings,
     handle_sync_amazon_report_api,
     handle_sku_sync_from_csv,
+    handle_sync_listing_issues,
     handle_sync_inventory,
     handle_sync_prices,
     handle_sync_products,
     handle_update_listing_status,
     handle_update_price_inventory_api,
     handle_update_prices,
+    handle_weekly_report,
 )
 from src.cli.query_handlers import (
     handle_list_categories,
@@ -98,11 +106,29 @@ TASK_HANDLERS = {
     "update-price-inventory-api": lambda db, **kwargs: handle_update_price_inventory_api(
         db, dry_run=kwargs.get("dry_run", True)
     ),
+    "sync-listing-issues": lambda db, **kwargs: handle_sync_listing_issues(
+        db, dry_run=kwargs.get("dry_run", True)
+    ),
     "sku-sync-from-csv": lambda db, **kwargs: handle_sku_sync_from_csv(db),
     "discover-product-type": lambda db, **kwargs: handle_discover_product_type(
         db, keywords=kwargs.get("category")
     ),
     "suggest-category-mappings": lambda db, **kwargs: handle_suggest_category_mappings(db),
+    "keyword-research": lambda db, **kwargs: handle_keyword_research(
+        db,
+        category=kwargs.get("category"),
+        auto_confirm=kwargs.get("auto_confirm", False),
+    ),
+    "daily-check": lambda db, **kwargs: handle_daily_check(db),
+    "competitive-analysis": lambda db, **kwargs: handle_competitive_analysis(
+        db,
+        category=kwargs.get("category"),
+        auto_confirm=kwargs.get("auto_confirm", False),
+    ),
+    "weekly-report": lambda db, **kwargs: handle_weekly_report(db),
+    "profit-analysis": lambda db, **kwargs: handle_profit_analysis(db),
+    "inventory-health": lambda db, **kwargs: handle_inventory_health(db),
+    "lifecycle-summary": lambda db, **kwargs: handle_lifecycle_summary(db),
 }
 
 

@@ -1130,6 +1130,16 @@ def run():
     port = int(os.getenv("PORT") or os.getenv("IO_SERVER_PORT", "8080"))
     host = os.getenv("IO_SERVER_HOST", "0.0.0.0")
     print(f"🚀 Starting IO Server on {host}:{port}...")
+    try:
+        import importlib
+
+        m = importlib.import_module("main")
+        from src.services.listing_issue_scheduler import start_listing_issue_scheduler
+
+        if start_listing_issue_scheduler(m.SessionLocal):
+            print("Amazon listing issue scheduler enabled.")
+    except Exception as e:
+        logger.error("Failed to start listing issue scheduler: %s", e, exc_info=True)
     server = ThreadedHTTPServer((host, port), Handler)
     try:
         server.serve_forever()

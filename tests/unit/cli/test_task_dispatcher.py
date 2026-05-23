@@ -57,3 +57,18 @@ def test_dispatch_sync_amz_report_api_uses_cli_handler(monkeypatch):
 
     assert result is None
     assert calls == [db]
+
+
+def test_dispatch_sync_listing_issues_passes_dry_run(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_sync_listing_issues",
+        lambda db, dry_run=True: calls.append((db, dry_run)),
+    )
+
+    db = object()
+    result = dispatch_task(db, "sync-listing-issues", dry_run=False)
+
+    assert result is None
+    assert calls == [(db, False)]

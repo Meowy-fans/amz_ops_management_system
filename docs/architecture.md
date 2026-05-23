@@ -2,52 +2,78 @@
 
 ## 1. Overview
 
-The **Amazon Listing Management System** is a CLI-based application designed to automate the lifecycle of Amazon product listings. It integrates with external suppliers (Giga), manages product data locally, uses AI for content generation, and produces Amazon-ready upload files.
+The **Amazon Listing Management System** is a full-lifecycle operations platform covering product selection → listing creation → growth → maturity → decline. It integrates with GigaCloud (supplier), Amazon SP-API (listings/pricing/catalog/reports), Amazon Ads API (campaign management), Brand Analytics (search query performance), and multiple LLM providers (DeepSeek/Qwen) for content generation and analysis.
 
 ## 2. Architecture Patterns
 
-The system follows a **Layered Architecture** pattern:
+The system follows a **Layered Architecture** pattern with three new layers added in Phase 1-3:
 
-1.  **Presentation Layer (CLI)**: `main.py` is a thin entrypoint. CLI menus, task routing, and command handlers live under `src/cli/`.
-2.  **Service Layer**: Orchestrates business logic (e.g., `ProductListingService`, `GigaSyncService`).
-3.  **Repository Layer**: Abstraction for data access (e.g., `ProductDataRepository`).
-4.  **Infrastructure Layer**: Database connections and low-level utilities.
-5.  **Reporting Boundary**: Services that need progress output emit through `ProgressReporter`, allowing CLI output by default and silent reporters for tests/non-interactive callers.
+1.  **Presentation Layer (CLI + Web)**: `main.py` (thin CLI entry), `src/cli/` (menu + task dispatcher + handlers), `scripts/io_server.py` (web dashboard).
+2.  **Orchestration Layer** (🆕 Phase 3): `ProductLifecycleManager` (6-stage state machine), `DailyCheckService`, `WeeklyReportService`.
+3.  **Service Layer**: 37 business modules covering listing generation, keyword research, competitive intelligence, PPC management, profit analysis, inventory planning, content performance.
+4.  **Repository Layer**: 16 data access modules with SQLAlchemy.
+5.  **Infrastructure Layer**: SP-API clients (6 APIs), Giga API, LLM providers, Feishu notifications.
+6.  **Reporting Boundary**: `ProgressReporter` for testable output; `FeishuClient` for operational alerts.
 
 ### 2.1 Module Dependency Graph
 
 ```mermaid
 graph TD
-    Entry[main.py] --> CLI[src/cli]
-    CLI --> S_List[ProductListingService]
-    CLI --> S_Sync[GigaSyncService]
-    CLI --> S_Price[PricingService]
-    CLI --> Reporter[ProgressReporter]
+    Entry[main.py] --> CLI[src/cli task_dispatcher 31 tasks]
+    CLI --> S_Lifecycle[ProductLifecycleManager 🆕]
     
-    subgraph Services
-        S_List --> R_Data[ProductDataRepository]
-        S_List --> R_List[ProductListingRepository]
-        S_List --> R_Templ[AmzTemplateRepository]
-        S_List --> U_Map[DataMappingHelper]
-        U_Map --> U_MapLLM[data_mapping_llm]
-        U_Map --> U_FieldMap[DataFieldMapper]
-        S_List --> U_Excel[ExcelGenerator]
-        S_List --> U_Var[VariationHelper]
-        S_List --> S_VarBuild[ProductListingVariationBuilder]
+    subgraph Orchestration 🆕
+        S_Lifecycle --> S_Daily[DailyCheckService]
+        S_Lifecycle --> S_Weekly[WeeklyReportService]
+        S_Daily --> I_Feishu[FeishuClient]
+        S_Weekly --> I_Feishu
+    end
+    
+    subgraph Core Services
+        CLI --> S_List[ProductListingService]
+        CLI --> S_Sync[GigaSyncService]
+        CLI --> S_Price[PricingService]
+        CLI --> S_AmazonIssue[AmazonListingIssueSyncService]
+        CLI --> S_AmazonSubmit[AmazonListingSubmitter]
         
-        S_Sync --> R_Sync[GigaProductSyncRepository]
+        S_AmazonSubmit --> S_QualityGate[AmazonListingQualityGate]
+        S_AmazonIssue --> S_IssueRepair[AmazonListingIssueRepairService]
+        
+        S_List --> S_KW[KeywordResearchService 🆕]
+        S_List --> S_Content[ProductContentGenerator]
     end
     
-    subgraph Repositories
-        R_Data --> DB[(PostgreSQL)]
-        R_List --> DB
-        R_Templ --> DB
-        R_Sync --> DB
+    subgraph Growth Services 🆕
+        CLI --> S_CompIntel[CompetitiveIntelService]
+        CLI --> S_PPC[PPCManagementService]
+        CLI --> S_Profit[ProfitAnalyzer]
+        CLI --> S_Inventory[InventoryPlanner]
+        CLI --> S_Review[ReviewSentimentAnalyzer]
+        CLI --> S_KWTracker[KeywordRankingTracker]
+        CLI --> S_ContentPerf[ContentPerformanceAnalyzer]
+        
+        S_CompIntel --> I_PricingClient[AmazonPricingClient]
+        S_CompIntel --> I_CatalogClient[AmazonCatalogClient]
+        S_PPC --> I_AdsClient[AmazonAdsClient]
+        S_KWTracker --> I_CatalogClient
     end
     
-    subgraph External
-        S_Sync -- API --> GigaCloud
-        S_List -- API --> LLM[DeepSeek/OpenAI]
+    subgraph Repositories 16 repos
+        S_List --> R_DB[(PostgreSQL)]
+        S_Sync --> R_DB
+        S_Price --> R_DB
+        S_AmazonIssue --> R_DB
+    end
+    
+    subgraph External APIs
+        S_Sync --> GigaCloud
+        S_List --> LLM[DeepSeek/Qwen]
+        S_AmazonIssue --> Amazon[Amazon SP-API]
+        S_AmazonSubmit --> Amazon
+        I_PricingClient --> Amazon
+        I_CatalogClient --> Amazon
+        I_AdsClient --> AdsAPI[Amazon Ads API]
+        I_BAClient[AmazonBrandAnalyticsClient] --> Amazon
     end
 ```
 
@@ -67,6 +93,11 @@ graph TD
 | **GigaSyncService** | Synchronizes product details from GigaCloud API to local DB. |
 | **PricingService** | Calculates selling prices based on costs and margin rules. |
 | **ProductDetailGenerationService** | Uses LLM to generate titles, bullets, and descriptions. |
+| **AmazonListingSubmitter** | Submits new listing plans through Listings Items API, preserving dry-run and validation-preview modes. |
+| **AmazonListingQualityGate** | Pre-submit listing quality gate; auto-fills safe attributes and blocks known compliance, image, schema, and issue-derived risks before SP-API writes. |
+| **AmazonListingIssueSyncService** | Polls official Amazon listing issue sources, including Listings Items issues and FYP suppressed report, then queues repair actions. |
+| **AmazonListingIssueRepairService** | Converts synced issues into safe automatic PATCH plans or manual-review actions. |
+| **listing_issue_scheduler** | Optional server-mode background scheduler for periodic issue scans; disabled unless explicitly enabled by env. |
 | **variation_theme_helpers** | Prepares variation-theme LLM prompts, validates attribute uniqueness, and formats child attributes. |
 | **ProgressReporter** | Output boundary used by services to keep CLI display separate from business logic. |
 
@@ -88,6 +119,7 @@ graph TD
 | **ProductDataRepository** | Read-only access to aggregated product data (Base + LLM + Specs). |
 | **ProductListingRepository** | Manages listing status and pending queues. |
 | **AmzTemplateRepository** | Manages Amazon specific category templates and rules. |
+| **AmazonListingIssueRepository** | Persists listing issue scan runs, open/resolved issue state, and repair action history. |
 | **giga_price_transform** | Pure transforms for Giga price filtering, SKU deduplication, and base/tier row construction before repository persistence. |
 
 ### 3.3 Utilities (`src/utils/`)
@@ -107,8 +139,17 @@ graph TD
 2.  **Fetch**: `ProductListingService` retrieves pending SKUs for that category from `ProductListingRepository`.
 3.  **Group**: SKUs are grouped into Variation Families by `VariationHelper`.
 4.  **Map**: Each SKU's data is mapped to Amazon fields via `DataMappingHelper`. LLM may be used for specific fields.
-5.  **Generate**: Mapped data is written to an Excel template via `ExcelGenerator`.
-6.  **Log**: Results are saved to `amz_listing_log`.
+5.  **Quality Gate**: API submissions pass through `AmazonListingQualityGate` to block known risky claims, missing main images, cached-schema required-field gaps, and issue-derived dimension risks.
+6.  **Generate / Submit**: Mapped data is written to an Excel template via `ExcelGenerator`, or converted to SP-API attributes and submitted by `AmazonListingSubmitter`.
+7.  **Log**: Results are saved to `amz_listing_log` and `amazon_api_submissions`.
+
+## 4.1 Data Flow: Listing Issue Monitoring
+
+1.  **Trigger**: User runs `sync-listing-issues` or enables the optional scheduler in server mode.
+2.  **Fetch**: `AmazonListingIssueSyncService` calls Listings Items API with `includedData=issues` for local report SKUs.
+3.  **Suppressed Report**: The same service optionally requests `GET_MERCHANTS_LISTINGS_FYP_REPORT` through Reports API to capture search-suppressed listing reasons.
+4.  **Persist**: `AmazonListingIssueRepository` upserts issue state by `sku + marketplace + issue_key` and marks missing issues resolved.
+5.  **Repair Plan**: `AmazonListingIssueRepairService` generates dry-run actions by default. Only schema-confirmed `recommended_uses_for_product` gaps are safe automatic PATCH candidates; image, qualification, pesticide/device, and unknown issues stay in manual review.
 
 ## 5. Technology Stack
 

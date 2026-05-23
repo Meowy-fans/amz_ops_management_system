@@ -70,6 +70,57 @@ def test_get_listings_item_builds_correct_request():
     }
 
 
+def test_get_listings_item_can_include_issue_data():
+    api = FakeAPIClient()
+    api.responses.append({"headers": {}, "body": {"sku": "SKU1", "issues": []}})
+    client = AmazonListingsClient(
+        api_client=api, marketplace_id="ATVPDKIKX0DER", seller_id="SELLER2"
+    )
+
+    client.get_listings_item(
+        sku="SKU1",
+        included_data=["summaries", "issues", "productTypes"],
+    )
+
+    assert api.calls[0]["params"]["includedData"] == "summaries,issues,productTypes"
+
+
+def test_search_listings_items_builds_issue_query():
+    api = FakeAPIClient()
+    api.responses.append({"headers": {}, "body": {"items": []}})
+    client = AmazonListingsClient(
+        api_client=api, marketplace_id="ATVPDKIKX0DER", seller_id="SELLER2"
+    )
+
+    client.search_listings_items(
+        included_data=["summaries", "issues"],
+        with_issue_severity=["ERROR", "WARNING"],
+        page_size=10,
+    )
+
+    call = api.calls[0]
+    assert call["method"] == "GET"
+    assert call["path"] == "/listings/2021-08-01/items/SELLER2"
+    assert call["params"]["includedData"] == "summaries,issues"
+    assert call["params"]["withIssueSeverity"] == "ERROR,WARNING"
+    assert call["params"]["pageSize"] == 10
+
+
+def test_search_listings_items_page_token_uses_token_context():
+    api = FakeAPIClient()
+    api.responses.append({"headers": {}, "body": {"items": []}})
+    client = AmazonListingsClient(
+        api_client=api, marketplace_id="ATVPDKIKX0DER", seller_id="SELLER2"
+    )
+
+    client.search_listings_items(page_token="NEXT")
+
+    assert api.calls[0]["params"] == {
+        "marketplaceIds": "ATVPDKIKX0DER",
+        "pageToken": "NEXT",
+    }
+
+
 def test_patch_listings_item_uses_injected_ids():
     api = FakeAPIClient()
     api.responses.append({"headers": {}, "body": {}})

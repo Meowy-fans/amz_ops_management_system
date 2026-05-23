@@ -3,6 +3,9 @@
 Replaces the dual-pipeline pattern (ProductDetailGenerationService +
 DataMappingLLM) with a single LLM call that produces title, bullets,
 description, search terms, and enriched attributes.
+
+Keyword research integration: optionally accepts KeywordResearchResult
+to guide title/keyword placement and COSMO attribute population.
 """
 
 import json
@@ -66,6 +69,7 @@ class ProductContentGenerator:
         product_type: str,
         schema_service: Any = None,
         extra_context: Optional[Dict[str, str]] = None,
+        keyword_result: Any = None,
     ) -> EnrichedProductContent:
         """Generate enriched content for a single product.
 
@@ -75,6 +79,8 @@ class ProductContentGenerator:
             schema_service: Optional AmazonSchemaService for requirements.
             extra_context: Optional dict with keys like buyer_persona,
                            category_description, etc.
+            keyword_result: Optional KeywordResearchResult to guide
+                           keyword placement in title/bullets/search_terms.
         """
         # Build prompt parameters
         category_context = self._build_category_context(
@@ -83,7 +89,12 @@ class ProductContentGenerator:
         required_attrs = self._build_required_attrs(product_type, schema_service)
         valid_hints = self._build_valid_hints(product_type, schema_service)
         persona = self._build_persona(product_type, extra_context)
-        product_data = self._format_product_data(product)
+        product_data = self._format_product_data(product, keyword_result)
+
+        # Inject keyword guidance into the prompt
+        keyword_guidance = self._build_keyword_guidance(keyword_result)
+        if keyword_guidance:
+            product_data = keyword_guidance + "\n\n" + product_data
 
         # Get prompt template
         prompt_template = self._get_prompt()
@@ -165,7 +176,31 @@ class ProductContentGenerator:
             return extra["buyer_persona"]
         return _BUYER_PERSONAS.get(product_type.upper(), _BUYER_PERSONAS["default"])
 
-    def _format_product_data(self, product: StandardProduct) -> str:
+    def _build_keyword_guidance(self, keyword_result: Any) -> str:
+        """Build keyword guidance section from KeywordResearchResult."""
+        if keyword_result is None:
+            return ""
+
+        parts = ["▼ KEYWORD RESEARCH GUIDANCE (use these keywords in your output):"]
+        if keyword_result.core_keywords:
+            parts.append(f"Core Keywords: {', '.join(keyword_result.core_keywords[:10])}")
+        if keyword_result.long_tail_keywords:
+            parts.append(f"Long-Tail Keywords: {', '.join(keyword_result.long_tail_keywords[:10])}")
+        if keyword_result.scenario_intent_keywords:
+            parts.append(f"Scenario/Intent Keywords: {', '.join(keyword_result.scenario_intent_keywords[:10])}")
+        if keyword_result.title_recommendation:
+            parts.append(f"Suggested Title Structure: {keyword_result.title_recommendation}")
+        if keyword_result.backend_search_terms:
+            parts.append(f"Backend Search Terms (for reference, avoid repeating these): {keyword_result.backend_search_terms}")
+        if keyword_result.target_audience:
+            parts.append(f"Target Audience: {keyword_result.target_audience}")
+        if keyword_result.intended_use:
+            parts.append(f"Intended Use: {keyword_result.intended_use}")
+        return "\n".join(parts)
+
+    def _format_product_data(
+        self, product: StandardProduct, keyword_result: Any = None
+    ) -> str:
         lines = [
             f"Name: {product.name}",
             f"Vendor SKU: {product.vendor_sku}",

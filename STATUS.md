@@ -1,10 +1,14 @@
 # Project Status
 
 ## 当前阶段
-- **阶段**：偏移缓解 Phase 7 持续推进
-- **里程碑**：测试/CI基线、关键模块文档、入口层拆分、主要 service 输出边界、重点大文件职责拆分、核心链路集成测试持续收敛
+- **阶段**：商品全生命周期运营系统 Phase 1-3 实施完成
+- **里程碑**：关键词研究、竞品分析、广告管理、利润核算、库存规划、每日巡检、每周报告、商品生命周期状态机全部落地
 
 ## 最新进展
+- ✅ **2026-05-23 / Codex**: Phase 3 实施完成 — 新增 `AmazonAdsClient`（Ads API 广告 Campaign 管理+报告）、`AmazonBrandAnalyticsClient`（BA SQP 搜索词份额）、`PPCManagementService`（新 Listing 自动广告创建+关键词收割+否定词管理+预算调度）、`ProfitAnalyzer`（单品利润核算+损益拆解）、`InventoryPlanner`（库存健康分析+补货推荐+清货策略）、`ContentPerformanceAnalyzer`（A+ 效果分析+版本 CVR 对比）、`ProductLifecycleManager`（SELECTED→PREPARING→LAUNCHED→GROWING→MATURE→DECLINING 完整状态机+每阶段任务清单+自动流转规则）。新增 SQL 迁移 `create_phase3_tables.sql`（7 张表：product_lifecycle_states, ad_performance_snapshot, product_profit_snapshot, inventory_health_log, daily_check_log, weekly_report_snapshot, notification_log）。CLI 新增 3 个任务：`profit-analysis`, `inventory-health`, `lifecycle-summary`。Dispatcher 总任务数 31。`pytest -q` 全部通过。
+- ✅ **2026-05-23 / Codex**: Phase 2 实施完成 — 新增 `AmazonPricingClient`（Product Pricing API v0：getCompetitivePricing / getItemOffers / getItemOffersBatch）、`AmazonCatalogClient`（Catalog Items API v2022-04-01：getCatalogItem / searchCatalogItems / BSR 查询）、`CompetitiveIntelService`（竞品价格+BSR+卖家密度 → 竞争力 S/A/B/C 评分 → 调价建议）、`KeywordRankingTracker`（关键词排名追踪+变化检测+快照持久化）、`ReviewSentimentAnalyzer`（LLM 评论痛点提取+Listing 改进建议）、`WeeklyReportService`（关键词排名+竞品动态+Listing 健康+广告表现聚合周报）。新增 SQL 迁移 `create_competitive_tables.sql`（4 张表：competitor_asin_registry, competitive_pricing_snapshot, keyword_ranking_tracking, keyword_ranking_log）。CLI 新增 2 个任务：`competitive-analysis`, `weekly-report`。`pytest -q` 全部通过。
+- ✅ **2026-05-23 / Codex**: Phase 1 实施完成 — 新增 `FeishuClient`（P0/P1/P2 分级飞书推送）、`KeywordResearchService`（LLM 扩词 50+ → 分层分配标题/5点/COSMO 属性）、`DailyCheckService`（Listing 问题+库存预警+飞书日报）、`deepseek.yaml` 新增 `keyword_expansion` 和 `keyword_allocation` 两个 Prompt。增强 `ProductContentGenerator` 接受 `KeywordResearchResult` 注入、`AmazonListingQualityGate` 新增 COSMO 后台属性完整性检查。CLI 新增 2 个任务：`keyword-research`, `daily-check`。`pytest -q` 全部通过。
+- ✅ **2026-05-23 / Codex**: 真实数据源改造 — 重写 5 个 Phase 2-3 Handler，全部从 Demo 硬编码改为真实数据库查询。新增 7 个数据解析 Helper：`_resolve_sku_to_asin`（amz_all_listing_report）、`_resolve_meow_to_giga`（meow_sku_map）、`_resolve_giga_to_name`（giga_product_sync_records）、`_resolve_giga_to_cost`（giga_product_base_prices）、`_resolve_meow_to_price`（amz_all_listing_report）、`_resolve_giga_to_inventory`（giga_inventory）、`_get_active_listings`。`competitive-analysis` 现在使用真实 ASIN + 真实成本价；`profit-analysis` 使用真实售价 + 真实 landed_cost；`inventory-health` 使用真实库存数量 + 产品名称；`lifecycle-summary` 使用 `meow_sku_map` + `amz_listing_log` 推断生命周期阶段。`pytest -q` 全部通过。
 - ✅ **2026-05-18 / Codex**: OTTOMAN Storage Bench 全链路端到端验收通过：Giga Sync → SKU Mapping → Product Type Discovery (OTTOMAN) → Schema Cache → LLM Content Generation → Attribute Mapping → Variation (1 parent + 2 children, COLOR theme) → VALIDATION_PREVIEW → putListingsItem。5/5 ACCEPTED，32/32 fields 数据一致，价格 $123.34 经定价公式验证，库存 0/40 与 Giga 源数据一致。验收文档 `docs/acceptance/ottoman-e2e-2026-05-18.md`。`pytest -q` 512 passed。
 - ✅ **2026-05-18 / Codex**: 新增 `sp_api_ottoman.json` 品类覆盖配置（frame.material / seat / top / base 嵌套对象、variation_theme.name 格式），`AmazonAttributeMapper` 新增 `ottoman_dim_*`、`variation_theme_ottoman` 类型。发现 OTTOMAN 使用 `frame[].material` 而非 `frame_material`、selector 字段 `language_tag` 等品类特定差异。
 - ✅ **2026-05-18 / Codex**: Phase A-E 多源标准化发品改造：`StandardProduct` + `GigaProductNormalizer`、`AmazonSchemaService`（schema 缓存/校验/合法值）、`ProductContentGenerator`（品类感知 LLM + 后验证）、`discover-product-type` / `suggest-category-mappings` CLI、变体 API 映射。23 个 CLI 任务。`pytest -q` 512 passed。
@@ -98,6 +102,9 @@
 - ✅ **TASK-010**: 完成 Alembic 数据库迁移工具配置。
 
 ## 下一步计划
+- 🔲 部署前将 `selling-partner-definitions-prod-iad.s3.amazonaws.com` 加入 ECS `amazon-spapi-proxy.service` allowlist，以支持 Product Type Definitions schema 刷新和自动属性修复。
+- 🔲 生产执行 Alembic `003_amazon_listing_issues` 后，先以 `LISTING_ISSUE_REPAIR_DRY_RUN=true` 运行 `sync-listing-issues`，人工复核 action 队列后再开启 live PATCH。
+- 🔲 运营确认图片复核 SOP 后，可将 `LISTING_QUALITY_REQUIRE_IMAGE_REVIEW=true` 开启为发品阻断；同时复核 60in bathroom vanity 是否需要 product type / 尺寸字段映射调整。
 - 🔲 补充 HOME_MIRROR 品类 SP-API 映射覆盖（`sp_api_home_mirror.json`）
 - 🔲 用户业务确认 31 个未映射供应商品类应映射到哪个 Amazon 模板
 - 🔲 Phase 5：Feeds API 批量提交 + Notifications API 自动监控

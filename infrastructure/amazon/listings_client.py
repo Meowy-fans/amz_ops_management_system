@@ -52,6 +52,7 @@ class AmazonListingsClient:
         self,
         sku: str,
         issue_locale: str = "en_US",
+        included_data: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Retrieve an existing listing item by SKU."""
         path = f"/listings/2021-08-01/items/{self.seller_id}/{sku}"
@@ -59,6 +60,32 @@ class AmazonListingsClient:
             "marketplaceIds": self.marketplace_id,
             "issueLocale": issue_locale,
         }
+        if included_data:
+            params["includedData"] = ",".join(included_data)
+        return self.api_client.request("GET", path, params=params)
+
+    def search_listings_items(
+        self,
+        issue_locale: str = "en_US",
+        included_data: Optional[List[str]] = None,
+        with_issue_severity: Optional[List[str]] = None,
+        page_size: int = 20,
+        page_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Search listing items and optionally include issue details."""
+        path = f"/listings/2021-08-01/items/{self.seller_id}"
+        params: Dict[str, Any] = {
+            "marketplaceIds": self.marketplace_id,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        else:
+            params["issueLocale"] = issue_locale
+            params["pageSize"] = page_size
+            if included_data:
+                params["includedData"] = ",".join(included_data)
+            if with_issue_severity:
+                params["withIssueSeverity"] = ",".join(with_issue_severity)
         return self.api_client.request("GET", path, params=params)
 
     # ── new listing creation ─────────────────────────────────────

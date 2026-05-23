@@ -14,6 +14,7 @@ class AmazonReportsClient:
     """Retrieves Amazon listing reports through SP-API."""
 
     MERCHANT_LISTINGS_ALL_DATA = "GET_MERCHANT_LISTINGS_ALL_DATA"
+    MERCHANT_LISTINGS_FYP = "GET_MERCHANTS_LISTINGS_FYP_REPORT"
     DONE = "DONE"
     TERMINAL_FAILURES = {"CANCELLED", "FATAL"}
 
@@ -35,6 +36,22 @@ class AmazonReportsClient:
             json={
                 "reportType": self.MERCHANT_LISTINGS_ALL_DATA,
                 "marketplaceIds": [self.marketplace_id],
+            },
+        )
+        return response["body"]["reportId"]
+
+    def create_suppressed_listings_report(
+        self,
+        locale: str = "en_US",
+    ) -> str:
+        """Request the Search Suppressed Listings report and return its id."""
+        response = self.api_client.request(
+            "POST",
+            "/reports/2021-06-30/reports",
+            json={
+                "reportType": self.MERCHANT_LISTINGS_FYP,
+                "marketplaceIds": [self.marketplace_id],
+                "reportOptions": {"preferredReportDocumentLocale": locale},
             },
         )
         return response["body"]["reportId"]

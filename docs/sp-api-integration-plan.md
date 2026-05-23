@@ -4,6 +4,7 @@
 
 - Planning date: 2026-05-17
 - Current state: Amazon private developer / self-use SP-API permission approved. Credentials are stored in the production-only `/data/docker-compose/amz-listing-management-system/.env.amazon-sp-api` file.
+- Implementation update: Phase 1 Reports/Listings infrastructure, Phase 2 report sync, Phase 3 price/inventory PATCH path, Phase 4 single-SKU listing API output, and listing issue monitoring are implemented in the repo as of 2026-05-23. Production deployment of the 2026-05-23 changes is still pending.
 - Target account type: Amazon Seller Central private application for the user's own store.
 - Initial marketplace assumption: US marketplace (`ATVPDKIKX0DER`), NA endpoint.
 
@@ -90,6 +91,7 @@ Recommended infrastructure shape:
 - Allow outbound HTTPS only to the needed Amazon endpoints:
   - `api.amazon.com`
   - `sellingpartnerapi-na.amazon.com`
+  - `selling-partner-definitions-prod-iad.s3.amazonaws.com` for Product Type Definitions schema documents.
   - Add EU/FE endpoints only if future marketplaces need them.
 
 If this proxy is deployed, update `/data/README.md` and `/data/TODO.md` because it is an infrastructure change.
@@ -145,9 +147,10 @@ Extend `InventoryPriceUpdaterService` from file generation into submission plann
 
 Acceptance:
 
+- Completed 2026-05-17.
 - Dry-run mode shows payloads without submitting.
-- One controlled SKU can update price / quantity.
-- Submission status and issues are persisted.
+- Controlled price / quantity PATCH path is available through `update-price-inventory-api`.
+- Submission status and issues are persisted in `amazon_api_submissions`.
 - Existing tab-separated update file output remains available.
 
 ### Phase 4: New Listing API Output
@@ -165,10 +168,30 @@ Current fields such as `Item Name`, `Your Price USD (Sell on Amazon, US)`, and `
 
 Acceptance:
 
+- Completed 2026-05-18 for the Listings Items output path and OTTOMAN end-to-end validation.
 - Product Type Definitions schemas are cached per marketplace and product type.
-- `VALIDATION_PREVIEW` is run before real new-listing submission.
-- One CABINET or HOME_MIRROR SKU can pass preview before any real submission.
+- `VALIDATION_PREVIEW` is available before real new-listing submission.
+- `AmazonListingQualityGate` now runs before SP-API submission to block known issue-derived and compliance risks.
 - Existing Excel workflow remains the fallback path.
+
+### Phase 4.1: Listing Issue Monitoring and Repair Queue
+
+Add an operational loop for Seller Central listing quality issues:
+
+- `AmazonListingsClient.get_listings_item(... includedData=issues ...)` captures per-SKU listing issues.
+- `AmazonListingsClient.search_listings_items(...)` supports issue discovery and manual diagnostics.
+- `AmazonReportsClient.create_suppressed_listings_report()` requests `GET_MERCHANTS_LISTINGS_FYP_REPORT`.
+- `AmazonListingIssueSyncService` persists current/open/resolved issue state.
+- `AmazonListingIssueRepairService` creates dry-run repair actions by default and only live-submits safe, schema-confirmed PATCHes.
+- `listing_issue_scheduler` can run the loop in server mode when explicitly enabled.
+
+Acceptance:
+
+- Completed 2026-05-23 in code.
+- Official SP-API read paths were validated against current listings: missing `recommended_uses_for_product`, pesticide/device qualification, dimension range warnings, and FYP image suppression can be retrieved.
+- `sync-listing-issues` defaults to dry-run and records action plans before any Amazon write.
+- Image, qualification, pesticide/device, and unknown issues remain manual-review actions.
+- Full test suite passes with 551 tests.
 
 ### Phase 5: JSON_LISTINGS_FEED Bulk Submit
 
@@ -228,12 +251,64 @@ Proposed tables:
 - `schema`
 - `retrieved_at`
 
+### Implemented 2026-05-23: `amazon_listing_issue_scan_runs`
+
+- `id`
+- `source`
+- `status`
+- `started_at`
+- `finished_at`
+- `checked_count`
+- `issue_count`
+- `action_count`
+- `error_message`
+
+### Implemented 2026-05-23: `amazon_listing_issues`
+
+- `id`
+- `scan_run_id`
+- `sku`
+- `asin`
+- `marketplace_id`
+- `product_type`
+- `issue_key`
+- `issue_code`
+- `severity`
+- `message`
+- `attribute_names`
+- `categories`
+- `enforcements`
+- `raw_issue`
+- `source`
+- `status`
+- `first_seen_at`
+- `last_seen_at`
+- `resolved_at`
+
+### Implemented 2026-05-23: `amazon_listing_issue_actions`
+
+- `id`
+- `issue_id`
+- `scan_run_id`
+- `sku`
+- `marketplace_id`
+- `product_type`
+- `action_type`
+- `status`
+- `reason`
+- `request_payload`
+- `response_body`
+- `error_message`
+- `created_at`
+- `executed_at`
+
 ## Risk Notes
 
 - Amazon role approval is the current external blocker.
 - `putListingsItem` is a full replace operation and can drop omitted attributes; use `patchListingsItem` for existing SKU updates where possible.
 - Accepted API responses do not guarantee final listing success; asynchronous issues must be retrieved.
 - Product Type Definitions requirements can change, so schema retrieval/cache invalidation must be deliberate.
+- Product Type Definitions schema document downloads use Amazon pre-signed S3 URLs. The fixed egress proxy allowlist must include the observed definitions host before relying on automatic schema refresh in production.
 - New listing API submission is higher risk than price/inventory updates. Implement read sync and existing-SKU updates first.
 - Keep tokens and refresh tokens out of logs, source code, and front-end responses.
 

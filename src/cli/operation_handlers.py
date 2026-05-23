@@ -2,7 +2,7 @@
 import logging
 import os
 import sys
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -201,6 +201,34 @@ def handle_update_price_inventory_api(db: Session, dry_run: bool = True):
         logging.exception("Detailed error:")
 
 
+def handle_sync_listing_issues(db: Session, dry_run: bool = True):
+    """5.3 同步 Amazon listing issues 并启动修复流程"""
+    from src.services.amazon_listing_issue_sync_service import (
+        AmazonListingIssueSyncService,
+    )
+
+    logger.info("Starting Amazon listing issue sync (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN (plan repairs)" if dry_run else "LIVE (submit safe patches)"
+    print(f"Amazon Listing Issue Sync - {mode_label}")
+    print("=" * 70)
+
+    limit_text = os.getenv("LISTING_ISSUE_SYNC_LIMIT")
+    limit = int(limit_text) if limit_text else None
+    include_report = os.getenv("LISTING_ISSUE_INCLUDE_SUPPRESSED_REPORT", "true").lower()
+
+    try:
+        service = AmazonListingIssueSyncService(db=db)
+        service.sync_and_repair(
+            limit=limit,
+            dry_run=dry_run,
+            include_suppressed_report=include_report not in {"0", "false", "no"},
+        )
+    except Exception as e:
+        print(f"\nListing issue sync failed: {e}")
+        logging.exception("Detailed error:")
+
+
 def handle_discover_product_type(db: Session, keywords: Optional[str] = None):
     """6.1 通过 Amazon Product Type Definitions API 搜索品类"""
     print("\n" + "=" * 70)
@@ -334,3 +362,576 @@ def handle_suggest_category_mappings(db: Session):
             print(f"  Search failed: {e}")
 
     print("\nUse 'discover-product-type' to explore and set specific mappings.")
+
+
+def handle_keyword_research(
+    db: Session, category: Optional[str] = None, auto_confirm: bool = False
+):
+    """Run keyword research for pending products in a category."""
+    from src.services.keyword_research_service import KeywordResearchService
+    from src.repositories.product_data_repository import ProductDataRepository
+    from src.repositories.product_listing_repository import ProductListingRepository
+    from src.services.product_normalizer import GigaProductNormalizer
+
+    if not category:
+        print("Please specify --category (e.g. CABINET, HOME_MIRROR)")
+        return
+
+    listing_repo = ProductListingRepository(db)
+    product_repo = ProductDataRepository(db)
+
+    all_pending = listing_repo.get_pending_listing_skus()
+    if not all_pending:
+        print("No pending products found.")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"Keyword Research — {category}")
+    print(f"Scanning {len(all_pending)} pending SKUs...")
+    print(f"{'='*60}\n")
+
+    service = KeywordResearchService()
+    normalizer = GigaProductNormalizer()
+
+    count = 0
+    for meow_sku in all_pending:
+        raw_data = product_repo.get_full_product_data(meow_sku)
+        if not raw_data:
+            continue
+
+        try:
+            product = normalizer.normalize(raw_data)
+        except Exception:
+            continue
+
+        count += 1
+        print(f"  [{count}] {meow_sku}: {product.name[:60]}...")
+        result = service.research(product, product_type=category, category=category)
+
+        if result.core_keywords:
+            print(f"    Core: {', '.join(result.core_keywords[:5])}")
+            print(f"    Long-tail: {', '.join(result.long_tail_keywords[:5])}")
+            print(f"    Search Terms: {result.backend_search_terms[:80]}...")
+            print(f"    Target: {result.target_audience} | Use: {result.intended_use}")
+            print(f"    Room: {result.room_type} | Style: {result.style}")
+        if result.warnings:
+            print(f"    Warnings: {result.warnings}")
+        print()
+
+    print(f"Keyword research complete for {count} products.")
+
+
+def _resolve_sku_to_asin(db: Session, meow_skus: List[str]) -> Dict[str, str]:
+    """Resolve meow_sku → ASIN from amz_all_listing_report."""
+    from sqlalchemy import text
+
+    if not meow_skus:
+        return {}
+    rows = db.execute(
+        text("""
+            SELECT "seller-sku", asin1 FROM amz_all_listing_report
+            WHERE "seller-sku" = ANY(:skus) AND asin1 IS NOT NULL AND asin1 != ''
+        """),
+        {"skus": meow_skus},
+    ).fetchall()
+    return {r[0]: r[1] for r in rows if r[1]}
+
+
+def _resolve_meow_to_giga(db: Session, meow_skus: List[str]) -> Dict[str, str]:
+    """Resolve meow_sku → giga_sku via meow_sku_map."""
+    from sqlalchemy import text
+
+    if not meow_skus:
+        return {}
+    rows = db.execute(
+        text("SELECT meow_sku, vendor_sku FROM meow_sku_map WHERE meow_sku = ANY(:skus)"),
+        {"skus": meow_skus},
+    ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+def _resolve_giga_to_name(db: Session, giga_skus: List[str]) -> Dict[str, str]:
+    """Resolve giga_sku → product name from giga_product_sync_records."""
+    from sqlalchemy import text
+
+    if not giga_skus:
+        return {}
+    rows = db.execute(
+        text("""
+            SELECT giga_sku, raw_data->>'name' AS name
+            FROM giga_product_sync_records
+            WHERE giga_sku = ANY(:skus)
+        """),
+        {"skus": giga_skus},
+    ).fetchall()
+    return {r[0]: (r[1] or "") for r in rows}
+
+
+def _resolve_giga_to_cost(db: Session, giga_skus: List[str]) -> Dict[str, Dict[str, float]]:
+    """Resolve giga_sku → {base_price, shipping_fee} from giga_product_base_prices."""
+    from sqlalchemy import text
+
+    if not giga_skus:
+        return {}
+    rows = db.execute(
+        text("""
+            SELECT DISTINCT ON (giga_sku)
+                giga_sku, base_price, shipping_fee
+            FROM giga_product_base_prices
+            WHERE giga_sku = ANY(:skus) AND sku_available = TRUE
+            ORDER BY giga_sku, updated_at DESC
+        """),
+        {"skus": giga_skus},
+    ).fetchall()
+    return {
+        r[0]: {
+            "base_price": float(r[1]) if r[1] else 0.0,
+            "shipping_fee": float(r[2]) if r[2] else 0.0,
+        }
+        for r in rows
+    }
+
+
+def _resolve_meow_to_price(db: Session, meow_skus: List[str]) -> Dict[str, float]:
+    """Resolve meow_sku → selling price from amz_all_listing_report."""
+    from sqlalchemy import text
+
+    if not meow_skus:
+        return {}
+    rows = db.execute(
+        text("""
+            SELECT "seller-sku", price FROM amz_all_listing_report
+            WHERE "seller-sku" = ANY(:skus) AND price IS NOT NULL AND price > 0
+        """),
+        {"skus": meow_skus},
+    ).fetchall()
+    return {r[0]: float(r[1]) for r in rows if r[1]}
+
+
+def _resolve_giga_to_inventory(db: Session, giga_skus: List[str]) -> List[Dict[str, Any]]:
+    """Get inventory items from giga_inventory table."""
+    from sqlalchemy import text
+
+    if not giga_skus:
+        return []
+    rows = db.execute(
+        text("""
+            SELECT giga_sku, quantity, next_arrival_date, next_arrival_qty
+            FROM giga_inventory
+            WHERE giga_sku = ANY(:skus)
+        """),
+        {"skus": giga_skus},
+    ).fetchall()
+    return [
+        {
+            "giga_sku": r[0],
+            "quantity": int(r[1]) if r[1] else 0,
+            "next_arrival_date": str(r[2]) if r[2] and str(r[2]) != "1970-01-01" else "",
+            "next_arrival_qty": int(r[3]) if r[3] else 0,
+        }
+        for r in rows
+    ]
+
+
+def _get_active_listings(db: Session) -> List[Dict[str, Any]]:
+    """Get all active listings from amz_all_listing_report."""
+    from sqlalchemy import text
+
+    rows = db.execute(
+        text("""
+            SELECT "seller-sku", asin1, "item-name", price, status, "open-date"
+            FROM amz_all_listing_report
+            WHERE asin1 IS NOT NULL AND asin1 != ''
+            ORDER BY "open-date" DESC NULLS LAST
+        """)
+    ).fetchall()
+    return [
+        {
+            "sku": r[0] or "",
+            "asin": r[1] or "",
+            "name": r[2] or "",
+            "price": float(r[3]) if r[3] else 0.0,
+            "status": r[4] or "",
+            "open_date": str(r[5]) if r[5] else "",
+        }
+        for r in rows
+    ]
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Phase 1-3 Handlers (real data)
+# ══════════════════════════════════════════════════════════════════════
+
+
+def handle_competitive_analysis(
+    db: Session, category: Optional[str] = None, auto_confirm: bool = False
+):
+    """Run competitive landscape analysis for products in a category."""
+    from src.services.competitive_intel_service import CompetitiveIntelService
+    from src.repositories.product_listing_repository import ProductListingRepository
+
+    if not category:
+        print("Please specify --category (e.g. CABINET)")
+        return
+
+    listing_repo = ProductListingRepository(db)
+    pending = listing_repo.get_pending_listing_skus()
+    active = _get_active_listings(db)
+
+    # Build sku→asin from real data
+    sku_to_asin = _resolve_sku_to_asin(db, pending)
+    # Also include active listings
+    for item in active:
+        sku = item["sku"]
+        asin = item["asin"]
+        if sku and asin and sku not in sku_to_asin:
+            sku_to_asin[sku] = asin
+
+    if not sku_to_asin:
+        print("No products with ASINs found. Run 'import-amz-report' first to import listing data.")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"Competitive Analysis — {category}")
+    print(f"Products with ASINs: {len(sku_to_asin)}")
+    print(f"{'='*60}\n")
+
+    service = CompetitiveIntelService()
+
+    # Get costs for margin calculation
+    meow_to_giga = _resolve_meow_to_giga(db, list(sku_to_asin.keys()))
+    giga_skus = list(meow_to_giga.values())
+    giga_to_cost = _resolve_giga_to_cost(db, giga_skus)
+    sku_to_price = _resolve_meow_to_price(db, list(sku_to_asin.keys()))
+
+    count = 0
+    limit = min(len(sku_to_asin), 10)  # API rate constraint
+    for sku, asin in list(sku_to_asin.items())[:limit]:
+        target_price = sku_to_price.get(sku)
+        giga_sku = meow_to_giga.get(sku, "")
+        cost_data = giga_to_cost.get(giga_sku, {})
+        landed_cost = cost_data.get("base_price", 0) + cost_data.get("shipping_fee", 0)
+
+        count += 1
+        print(f"  [{count}] {sku} / {asin}")
+        landscape = service.analyze(
+            target_asin=asin,
+            target_sku=sku,
+            target_price=target_price,
+            target_cost=landed_cost if landed_cost > 0 else None,
+        )
+
+        if landscape.our_position:
+            print(f"    Our Price: ${landscape.our_position.lowest_fba_price or 'N/A'}")
+            print(f"    Buy Box: ${landscape.our_position.buy_box_price or 'N/A'}")
+            print(f"    Sellers: {landscape.our_position.offer_count}")
+
+        print(f"    Score: {landscape.competitiveness_score:.0f}/100 → {landscape.competitive_label}")
+        print(f"    Price Percentile: {landscape.price_percentile or 'N/A'}")
+        print(f"    Seller Density: {landscape.seller_density}")
+        print(f"    Median BSR: {landscape.median_bsr or 'N/A'}")
+        if landscape.suggested_price:
+            print(f"    Suggested Price: ${landscape.suggested_price:.2f} (est. margin: {landscape.estimated_margin_at_suggested or 0:.1%})")
+        for alert in landscape.alerts:
+            print(f"    ⚠️  {alert}")
+        print()
+
+    print(f"Competitive analysis complete for {count} products.")
+
+
+def handle_weekly_report(db: Session, **kwargs):
+    """Generate and send the weekly operations report using real data."""
+    from src.services.weekly_report_service import WeeklyReportService
+    from src.services.daily_check_service import DailyCheckService
+    from infrastructure.feishu_client import FeishuClient
+
+    print("\nGenerating weekly report...\n")
+
+    # Collect daily check summary
+    daily = DailyCheckService(db)
+    check_result = daily.run()
+
+    # Collect listing issue stats from the database
+    listing_issue_summary = {"open_issues": 0, "resolved_this_week": 0, "new_this_week": 0}
+    try:
+        from sqlalchemy import text
+        open_row = db.execute(
+            text("SELECT COUNT(*) FROM amazon_listing_issues WHERE status = 'open'")
+        ).fetchone()
+        listing_issue_summary["open_issues"] = open_row[0] if open_row else 0
+    except Exception:
+        pass
+
+    # Get active listings for competitive context
+    active = _get_active_listings(db)
+    active_count = len(active)
+
+    # Build report
+    report_service = WeeklyReportService()
+    report = report_service.generate(
+        ranking_data={
+            "total_tracked": 0,
+            "improved_count": 0,
+            "declined_count": 0,
+            "new_count": 0,
+            "lost_count": 0,
+        },
+        competitive_data={
+            "total_monitored": active_count,
+            "price_alerts": [],
+            "new_entrants": 0,
+            "score_distribution": {},
+        },
+        listing_issue_summary=listing_issue_summary,
+    )
+
+    # Display in console
+    print(f"Week: {report.week_start} → {report.week_end}")
+    print(f"Active Listings: {active_count}")
+    print(f"Overall Status: {report.overall_status}")
+    print()
+    print("Top Actions:")
+    for i, action in enumerate(report.top_actions, 1):
+        print(f"  {i}. {action}")
+    print()
+
+    for sec in report.sections:
+        print(f"[{sec.status}] {sec.title}")
+        print(f"  {sec.summary}")
+        for detail in sec.details[:3]:
+            print(f"    • {detail}")
+        print()
+
+    # Push to Feishu
+    feishu = FeishuClient.from_env()
+    sections = report_service.to_feishu_sections(report)
+    feishu.send_weekly_report(
+        title=f"亚马逊运营周报 — {report.week_start}~{report.week_end}",
+        sections=sections,
+    )
+    print("Weekly report pushed to Feishu.")
+
+
+def handle_profit_analysis(db: Session, **kwargs):
+    """Run per-unit profit analysis using real cost and pricing data."""
+    from src.services.profit_analyzer import ProfitAnalyzer
+    from src.repositories.product_listing_repository import ProductListingRepository
+
+    print("\nProfit Analysis Report\n" + "=" * 60)
+
+    analyzer = ProfitAnalyzer()
+    listing_repo = ProductListingRepository(db)
+
+    all_skus = listing_repo.get_pending_listing_skus()
+    active = _get_active_listings(db)
+
+    # Merge: pending + active, deduplicated
+    all_skus_set = set(all_skus)
+    for item in active:
+        sku = item["sku"]
+        if sku:
+            all_skus_set.add(sku)
+    all_skus = list(all_skus_set)
+
+    if not all_skus:
+        print("No products found. Import listing data first.")
+        return
+
+    print(f"Analyzing {len(all_skus)} products...\n")
+
+    # Real data chains
+    meow_to_giga = _resolve_meow_to_giga(db, all_skus)
+    giga_skus = list(set(meow_to_giga.values()))
+    giga_to_cost = _resolve_giga_to_cost(db, giga_skus)
+    sku_to_price = _resolve_meow_to_price(db, all_skus)
+    giga_to_name = _resolve_giga_to_name(db, giga_skus)
+
+    sku_data = []
+    for sku in all_skus:
+        giga_sku = meow_to_giga.get(sku, sku)
+        cost_data = giga_to_cost.get(giga_sku, {})
+        landed_cost = cost_data.get("base_price", 0) + cost_data.get("shipping_fee", 0)
+        selling_price = sku_to_price.get(sku, 0.0)
+        product_name = giga_to_name.get(giga_sku, "")
+
+        if landed_cost <= 0 and selling_price <= 0:
+            continue  # no meaningful data
+
+        sku_data.append({
+            "sku": sku,
+            "asin": "",
+            "product_name": product_name,
+            "selling_price": selling_price or 0.0,
+            "units_sold": 0,  # requires Orders API for real data
+            "landed_cost": landed_cost,
+            "fba_fee_estimate": analyzer.estimate_fba_fee("CABINET", 40, 36, False),
+            "ad_spend": 0,  # requires Ads API for real data
+            "refund_amount": 0,  # requires Finances API for real data
+            "category": "CABINET",
+        })
+
+    if not sku_data:
+        print("No products have cost/price data. Sync prices first (sync-prices).")
+        return
+
+    report = analyzer.analyze_batch(sku_data, category="CABINET")
+
+    print(f"Products analyzed: {len(report.sku_breakdowns)}")
+    print(f"Total Revenue: ${float(report.total_revenue):.2f}")
+    print(f"Total Cost:    ${float(report.total_cost):.2f}")
+    print(f"Total Profit:  ${float(report.total_profit):.2f}")
+    print(f"Overall Margin: {float(report.overall_margin):.1%}")
+    print(f"\nTop 5 Most Profitable:")
+    for b in report.top_profitable:
+        print(f"  {b.sku}: margin={float(b.margin):.1%}, profit=${float(b.net_profit):.2f}")
+    if report.bottom_profitable:
+        print(f"\nBottom 5 Least Profitable:")
+        for b in report.bottom_profitable:
+            print(f"  {b.sku}: margin={float(b.margin):.1%}, profit=${float(b.net_profit):.2f}")
+
+    print(f"\nProfit analysis complete for {len(report.sku_breakdowns)} products.")
+    print("Note: units_sold and ad_spend fields use 0 values — requires Orders/Ads API for full accuracy.")
+
+
+def handle_inventory_health(db: Session, **kwargs):
+    """Run inventory health analysis using real giga_inventory data."""
+    from src.services.inventory_planner import InventoryPlanner
+
+    print("\nInventory Health Report\n" + "=" * 60)
+
+    planner = InventoryPlanner()
+
+    # Pull real inventory data from giga_inventory
+    from sqlalchemy import text
+    inv_rows = db.execute(
+        text("SELECT giga_sku, quantity FROM giga_inventory ORDER BY giga_sku")
+    ).fetchall()
+
+    if not inv_rows:
+        print("No inventory data found. Run sync-inventory first.")
+        return
+
+    print(f"Found {len(inv_rows)} inventory records.\n")
+
+    # Resolve names
+    giga_skus = [r[0] for r in inv_rows]
+    giga_to_name = _resolve_giga_to_name(db, giga_skus)
+
+    items = []
+    for row in inv_rows:
+        giga_sku = row[0]
+        quantity = int(row[1]) if row[1] else 0
+        name = giga_to_name.get(giga_sku, giga_sku)
+        items.append({
+            "sku": giga_sku,
+            "asin": "",
+            "product_name": name,
+            "current_stock": quantity,
+            "fba_stock": 0,  # requires FBA Inventory API
+            "reserved_stock": 0,
+            "units_sold_7d": 0,  # requires Orders API
+            "units_sold_30d": 0,
+        })
+
+    report = planner.analyze(items)
+
+    print(f"Total: {report.total_skus} | Healthy: {report.healthy_skus} | Low: {report.low_stock_skus}")
+    print(f"Critical: {report.critical_stock_skus} | Excess: {report.excess_stock_skus} | Stale: {report.stale_stock_skus}")
+    print(f"\nItems Needing Action ({len(report.items_needing_action)}):")
+    for item in report.items_needing_action[:15]:
+        print(f"  {item.sku}: {item.stock_status} ({item.days_of_stock:.0f} days stock), recommended order: {item.recommended_order_qty}")
+
+    if report.liquidation_suggestions:
+        print(f"\nLiquidation Suggestions ({len(report.liquidation_suggestions)}):")
+        for s in report.liquidation_suggestions[:5]:
+            print(f"  • {s}")
+
+    print(f"\nInventory analysis complete.")
+    print("Note: units_sold uses 0 values — requires Orders API for velocity-based recommendations.")
+
+
+def handle_lifecycle_summary(db: Session, **kwargs):
+    """Display product lifecycle summary using real product data."""
+    from src.services.product_lifecycle_service import (
+        ProductLifecycleManager,
+        LifecycleStage,
+        STAGE_LABELS,
+    )
+    from sqlalchemy import text
+
+    manager = ProductLifecycleManager()
+
+    # Get all products with meow_sku from meow_sku_map
+    map_rows = db.execute(
+        text("SELECT meow_sku, vendor_sku FROM meow_sku_map ORDER BY meow_sku")
+    ).fetchall()
+
+    if not map_rows:
+        print("No products found in SKU mapping. Run sync-products first.")
+        return
+
+    # Get listing log for status inference
+    listed_rows = db.execute(
+        text("SELECT meow_sku, status FROM amz_listing_log")
+    ).fetchall()
+    listed_map = {r[0]: r[1] for r in listed_rows}
+
+    # Get active listings for ASIN lookup
+    active = _get_active_listings(db)
+    active_skus = {item["sku"] for item in active}
+
+    # Infer lifecycle stage from available data
+    stage_counts = {s: 0 for s in LifecycleStage}
+    for row in map_rows:
+        meow_sku = row[0]
+        log_status = listed_map.get(meow_sku, "")
+
+        if log_status in ("PUBLISHED", "LISTED") or meow_sku in active_skus:
+            stage = LifecycleStage.GROWING  # Assume growing once listed
+        elif log_status == "GENERATED":
+            stage = LifecycleStage.PREPARING
+        else:
+            stage = LifecycleStage.SELECTED
+
+        manager.register(meow_sku, stage=stage)
+        stage_counts[stage] += 1
+
+    print("\n" + "=" * 60)
+    print("Product Lifecycle Summary")
+    print("=" * 60)
+
+    summary = manager.get_lifecycle_summary()
+    for stage_name, count in summary.items():
+        label = STAGE_LABELS.get(LifecycleStage(stage_name), stage_name)
+        bar = "█" * min(count, 40)
+        print(f"  {label:8s} ({stage_name:12s}): {count:3d} {bar}")
+
+    print(f"\nTotal products tracked: {sum(summary.values())}")
+
+    # Show tasks per stage
+    for stage in LifecycleStage:
+        rec = manager.get_stage_recommendations(stage)
+        if rec["product_count"] > 0:
+            print(f"\n📋 {rec['label']} ({rec['product_count']} products)")
+            print(f"   Focus: {rec['key_focus']}")
+            for task in rec["tasks"][:3]:
+                tag = "🤖" if task["auto"] else "👤"
+                print(f"   {tag} {task['label']}")
+
+    print()
+
+
+def handle_daily_check(db: Session, **kwargs):
+    """Run the daily health check and push alerts."""
+    from src.services.daily_check_service import run_daily_check
+
+    print("\nRunning daily health check...\n")
+    result = run_daily_check(db, notify=True)
+    print(f"Overall Status: {result.overall_status}")
+    for section_title, section_body in result.sections.items():
+        print(f"\n{section_title}:")
+        print(f"  {section_body}")
+    if result.alerts:
+        print(f"\n{len(result.alerts)} alerts pushed to Feishu.")
+    else:
+        print("\nNo alerts. All systems normal.")

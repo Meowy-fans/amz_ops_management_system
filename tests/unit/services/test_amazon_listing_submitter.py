@@ -30,14 +30,37 @@ class FakeSubmissionRepo:
         return len(self.inserts)
 
 
+class NullQualityGate:
+    def prepare_plans(self, plans):
+        return [
+            {
+                "plan": plan,
+                "blocked": False,
+                "findings": [],
+            }
+            for plan in plans
+        ]
+
+
+def _valid_attrs(**overrides):
+    attrs = {
+        "item_name": [{"value": "Bathroom Cabinet"}],
+        "product_description": [{"value": "Modern bathroom cabinet."}],
+        "main_product_image_locator": [{"media_location": "https://img.example/main.jpg"}],
+    }
+    attrs.update(overrides)
+    return attrs
+
+
 def test_dry_run_does_not_call_api():
     repo = FakeSubmissionRepo()
     submitter = AmazonListingSubmitter(
         db=MagicMock(spec=Session),
         reporter=ProgressReporter(),
         submission_repo=repo,
+        quality_gate=NullQualityGate(),
     )
-    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": {}}]
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
 
     results = submitter.submit(plans, dry_run=True)
 
@@ -54,8 +77,9 @@ def test_real_mode_calls_api():
         reporter=ProgressReporter(),
         listings_client=client,
         submission_repo=repo,
+        quality_gate=NullQualityGate(),
     )
-    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": {"item_name": [{"value": "X"}]}}]
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
 
     results = submitter.submit(plans, dry_run=False)
 
@@ -83,10 +107,11 @@ def test_real_mode_per_sku_isolation():
         reporter=ProgressReporter(),
         listings_client=client,
         submission_repo=repo,
+        quality_gate=NullQualityGate(),
     )
     plans = [
-        {"sku": "A", "product_type": "CABINET", "attributes": {}},
-        {"sku": "B", "product_type": "CABINET", "attributes": {}},
+        {"sku": "A", "product_type": "CABINET", "attributes": _valid_attrs()},
+        {"sku": "B", "product_type": "CABINET", "attributes": _valid_attrs()},
     ]
 
     results = submitter.submit(plans, dry_run=False)
@@ -94,6 +119,38 @@ def test_real_mode_per_sku_isolation():
     assert results[0]["status"] == "failed"
     assert results[1]["status"] == "ACCEPTED"
     assert len(repo.inserts) == 2
+
+
+def test_quality_gate_blocks_high_risk_payload_before_api_call():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+    )
+    plans = [
+        {
+            "sku": "SKU1",
+            "product_type": "CABINET",
+            "attributes": _valid_attrs(
+                product_description=[
+                    {"value": "This cabinet resists bacteria buildup."}
+                ]
+            ),
+        }
+    ]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "blocked"
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "blocked_quality_gate"
+    assert any(
+        item["code"] == "PESTICIDE_CLAIM_RISK"
+        for item in repo.inserts[0]["request_payload"]["qualityFindings"]
+    )
 
 
 def test_empty_plans_returns_empty():

@@ -22,12 +22,14 @@ class AmazonListingSubmitter:
         listings_client: Any = None,
         submission_repo: Any = None,
         schema_service: Any = None,
+        quality_gate: Any = None,
     ):
         self.db = db
         self.reporter = reporter or ProgressReporter()
         self._listings_client_instance = listings_client
         self._submission_repo_instance = submission_repo
         self._schema_service_instance = schema_service
+        self._quality_gate_instance = quality_gate
 
     def submit(
         self,
@@ -49,20 +51,57 @@ class AmazonListingSubmitter:
             self.reporter.emit("No listing plans to submit.")
             return []
 
+        quality_results = self._get_quality_gate().prepare_plans(plans)
+        submittable_plans = [
+            item["plan"] for item in quality_results if not item["blocked"]
+        ]
+
         # Pre-validation: local schema check (best-effort, Amazon is authoritative)
-        self._pre_validate(plans)
+        self._pre_validate(submittable_plans)
 
         listings_client = None if dry_run else self._get_listings_client()
         submission_repo = self._get_submission_repo()
 
         results: List[Dict[str, Any]] = []
-        for plan in plans:
+        for quality_result in quality_results:
+            plan = quality_result["plan"]
             sku = plan["sku"]
             product_type = plan["product_type"]
             attributes = plan["attributes"]
+            quality_findings = quality_result["findings"]
+
+            if quality_result["blocked"]:
+                submission_repo.insert_submission(
+                    sku=sku,
+                    operation="create",
+                    status="blocked_quality_gate",
+                    product_type=product_type,
+                    request_payload={
+                        "productType": product_type,
+                        "attributes": attributes,
+                        "qualityFindings": quality_findings,
+                    },
+                )
+                self.reporter.emit(
+                    f"  BLOCK {sku}: quality gate findings={len(quality_findings)}"
+                )
+                results.append(
+                    {
+                        "sku": sku,
+                        "status": "blocked",
+                        "issues": len(quality_findings),
+                        "quality_findings": quality_findings,
+                    }
+                )
+                continue
 
             if dry_run:
                 self.reporter.emit(f"\n--- DRY RUN: {sku} ({product_type}) ---")
+                for finding in quality_findings:
+                    self.reporter.emit(
+                        f"  QUALITY {finding['severity']} {finding['code']}: "
+                        f"{finding['message']}"
+                    )
                 self.reporter.emit(
                     json.dumps(attributes, indent=2, ensure_ascii=False)[:2000]
                 )
@@ -74,9 +113,16 @@ class AmazonListingSubmitter:
                     request_payload={
                         "productType": product_type,
                         "attributes": attributes,
+                        "qualityFindings": quality_findings,
                     },
                 )
-                results.append({"sku": sku, "status": "dry_run"})
+                results.append(
+                    {
+                        "sku": sku,
+                        "status": "dry_run",
+                        "quality_findings": quality_findings,
+                    }
+                )
             else:
                 try:
                     if validation_only:
@@ -104,6 +150,7 @@ class AmazonListingSubmitter:
                         request_payload={
                             "productType": product_type,
                             "attributes": attributes,
+                            "qualityFindings": quality_findings,
                         },
                         response_body=body,
                     )
@@ -117,6 +164,7 @@ class AmazonListingSubmitter:
                             "status": status,
                             "request_id": request_id,
                             "issues": issue_count,
+                            "quality_findings": quality_findings,
                         }
                     )
                 except Exception as e:
@@ -129,6 +177,7 @@ class AmazonListingSubmitter:
                         request_payload={
                             "productType": product_type,
                             "attributes": attributes,
+                            "qualityFindings": quality_findings,
                         },
                         error_message=str(e),
                     )
@@ -173,6 +222,16 @@ class AmazonListingSubmitter:
 
         self._schema_service_instance = AmazonSchemaService(self.db)
         return self._schema_service_instance
+
+    def _get_quality_gate(self):
+        if self._quality_gate_instance is not None:
+            return self._quality_gate_instance
+        from src.services.amazon_listing_quality_gate import AmazonListingQualityGate
+
+        self._quality_gate_instance = AmazonListingQualityGate(
+            schema_service=self._get_schema_service()
+        )
+        return self._quality_gate_instance
 
     # ── pre-validation ────────────────────────────────────────────
 

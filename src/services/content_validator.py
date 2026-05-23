@@ -15,6 +15,21 @@ _PROHIBITED = [
 
 _UNSAFE_HTML = re.compile(r"<(?!b>|/b>|br\s*/?>)[a-zA-Z][^>]*>", re.IGNORECASE)
 
+_PESTICIDE_CLAIM_PATTERNS = [
+    r"\banti[-\s]?bacterial\b",
+    r"\banti[-\s]?microbial\b",
+    r"\bantimicrobial\b",
+    r"\bbacteria(?:l)?\b",
+    r"\bgerms?\b",
+    r"\bdisinfect\w*\b",
+    r"\bsanitiz\w*\b",
+    r"\bvirus(?:es)?\b",
+    r"\banti[-\s]?mold\b",
+    r"\bmildew\b",
+    r"\bpesticid\w*\b",
+    r"\binsect(?:s)?\b",
+]
+
 
 def validate_content(
     title: str = "",
@@ -41,11 +56,18 @@ def validate_content(
         warnings.append(f"Search terms too long ({len(search_terms)}/250 chars)")
 
     # Prohibited words
-    combined = f"{title} {description}"
+    combined = " ".join([title, description, search_terms, *bullets])
     for pattern in _PROHIBITED:
         match = re.search(pattern, combined, re.IGNORECASE)
         if match:
             warnings.append(f"Prohibited pattern '{match.group()}' found")
+
+    for pattern in _PESTICIDE_CLAIM_PATTERNS:
+        match = re.search(pattern, combined, re.IGNORECASE)
+        if match:
+            warnings.append(
+                f"Potential pesticide/device claim '{match.group()}' found"
+            )
 
     # HTML safety
     if description and _UNSAFE_HTML.search(description):

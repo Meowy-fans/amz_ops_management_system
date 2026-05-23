@@ -55,6 +55,21 @@ def test_create_report_uses_listing_report_type_and_marketplace():
     ]
 
 
+def test_create_suppressed_listings_report_uses_fyp_report_type():
+    api = FakeAPIClient()
+    api.responses.append({"body": {"reportId": "R-FYP"}})
+    client = AmazonReportsClient(api_client=api, marketplace_id="ATVPDKIKX0DER")
+
+    report_id = client.create_suppressed_listings_report(locale="en_US")
+
+    assert report_id == "R-FYP"
+    assert api.calls[0]["json"] == {
+        "reportType": "GET_MERCHANTS_LISTINGS_FYP_REPORT",
+        "marketplaceIds": ["ATVPDKIKX0DER"],
+        "reportOptions": {"preferredReportDocumentLocale": "en_US"},
+    }
+
+
 def test_get_report_and_get_document_call_expected_paths():
     api = FakeAPIClient()
     api.responses.extend([

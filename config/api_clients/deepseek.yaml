@@ -120,9 +120,140 @@ prompts:
 
   test_prompt: |
     你是一个友好的助手，请用简洁的方式回答用户的问题。
-    
 
-# 场景4: 产品属性批量智能丰富
+
+# 场景4: 关键词研究 - 基于产品信息扩写关键词
+  keyword_expansion: |
+    You are an Amazon keyword research specialist. Based on the product information provided, generate a comprehensive keyword list optimized for Amazon search in 2025-2026 (COSMO + Rufus AI era).
+
+    ▼ PRODUCT DATA:
+    {product_data}
+
+    ▼ KEYWORD GENERATION RULES:
+    1. Core Keywords (高搜索量、高相关度的核心词):
+       - What customers type to find this product category
+       - Include primary material, type, function
+       - 5-10 keywords
+
+    2. Long-Tail Keywords (中等搜索量、高转化意图的长尾词):
+       - Include specific dimensions, colors, features
+       - Include use-case combinations ("X for Y")
+       - 10-15 keywords
+
+    3. Scenario/Intent Keywords (场景词和意图词 — CRITICAL for COSMO):
+       - WHO is this for? (target audience: "for small bathroom", "for contractor")
+       - WHERE is it used? (location: "bedroom storage", "kitchen organization")
+       - WHAT problem solved? (pain point: "space saving", "easy assembly")
+       - WHEN? (timing/season: "summer outdoor", "holiday gift")
+       - 15-20 keywords
+
+    4. Purchase Intent Keywords (购买意图词):
+       - Price-sensitive: "affordable", "luxury", "budget"
+       - Comparison: "vs", "alternative to"
+       - 5-10 keywords
+
+    5. Spanish/Alternate Language Keywords (for US marketplace):
+       - Common Spanish terms shoppers use
+       - Common misspellings of core terms
+       - 5-8 keywords
+
+    ▼ CRITICAL FORMAT:
+    - All keywords MUST be in English (except Spanish section)
+    - Lowercase only
+    - No brand names
+    - No commas within a keyword phrase
+    - Separate keywords with commas
+
+    ▼ OUTPUT (strict JSON):
+    {{
+      "core_keywords": ["keyword1", "keyword2", ...],
+      "long_tail_keywords": ["keyword1", "keyword2", ...],
+      "scenario_intent_keywords": ["keyword1", "keyword2", ...],
+      "purchase_intent_keywords": ["keyword1", "keyword2", ...],
+      "alternate_language_keywords": ["keyword1", "keyword2", ...],
+      "recommended_search_terms_field": "comma-separated string for Amazon backend search_terms field (max 250 chars)",
+      "recommended_generic_keyword": "single broad category term for generic_keyword field",
+      "target_audience": "primary target audience description",
+      "intended_use": "primary intended use description",
+      "room_type": "recommended room_type from [Bathroom, Bedroom, Kitchen, Living Room, Office, Outdoor, Garage, Other]",
+      "style": "recommended style descriptor (e.g., Modern, Traditional, Rustic, Industrial)"
+    }}
+
+    Return ONLY valid JSON. No other text.
+
+# 场景5: 关键词分层 - 将关键词分配到Listing各字段
+  keyword_allocation: |
+    You are an Amazon listing optimization expert. Your task is to allocate a keyword list into the optimal positions across an Amazon listing, following 2025-2026 COSMO + Rufus AI optimization principles.
+
+    ▼ KEYWORD POOL:
+    {keyword_pool}
+
+    ▼ PRODUCT CONTEXT:
+    Product Type: {product_type}
+    Category: {category}
+
+    ▼ ALLOCATION RULES (COSMO + Rufus Era):
+    1. TITLE (front-load core keyword in first 80 chars):
+       - 1-2 primary core keywords
+       - Must read naturally for humans (A10 penalizes keyword stuffing)
+       - Include key differentiator (size, material, feature)
+       - NO all-caps, NO promotional claims
+
+    2. BULLET POINTS (5 bullets, each with intent context):
+       - Bullet 1: Primary benefit with core keyword + numbers
+       - Bullet 2: Differentiating feature + long-tail usage scenario
+       - Bullet 3: User experience / ease of use + scenario keyword
+       - Bullet 4: Installation/setup context + target audience keyword
+       - Bullet 5: Quality/warranty + trust keyword
+       - Each bullet must follow "Benefit Headline: detail with context so that [intent]"
+
+    3. DESCRIPTION (HTML, 2000 chars max):
+       - Opening hook with primary keyword
+       - Pain point sections with scenario keywords
+       - Feature sections with long-tail keywords
+       - Trust section with quality keywords
+
+    4. BACKEND SEARCH_TERMS (250 chars, comma-separated):
+       - Scenario/intent keywords NOT already in title/bullets
+       - Misspellings and Spanish terms
+       - Purchase intent keywords
+       - NO repetition of title/bullet words
+       - NO brand names, NO commas within phrases
+
+    5. BACKEND ATTRIBUTES (for COSMO knowledge graph):
+       - target_audience: Who is this for?
+       - intended_use: What problem does it solve?
+       - room_type: Where is it used?
+       - style: Visual/design style
+       - These are NOT search keywords, they feed COSMO's understanding
+
+    ▼ OUTPUT (strict JSON):
+    {{
+      "title_keywords": ["keyword1", "keyword2"],
+      "title_recommendation": "Recommended title structure with keywords placed",
+      "bullet_keywords": {{
+        "bullet_1": ["keyword"],
+        "bullet_2": ["keyword"],
+        "bullet_3": ["keyword"],
+        "bullet_4": ["keyword"],
+        "bullet_5": ["keyword"]
+      }},
+      "description_keywords": ["keyword1", "keyword2", ...],
+      "backend_search_terms": "comma-separated string for backend search_terms (NO repeats of title/bullet words)",
+      "generic_keyword": "single broad category term",
+      "backend_attributes": {{
+        "target_audience": "value",
+        "intended_use": "value",
+        "room_type": "value",
+        "style": "value"
+      }},
+      "negative_keywords_for_ppc": ["keyword1", "keyword2"],
+      "keyword_priority_order": ["ranked list of top 20 keywords for PPC targeting"]
+    }}
+
+    Return ONLY valid JSON. No other text.
+
+# 场景6: 产品属性批量智能丰富
   prod_attribute_enrichment: |
     You are a meticulous Product Data Enrichment Specialist. Your task is to accurately complete missing product attributes based on the provided information.
 
