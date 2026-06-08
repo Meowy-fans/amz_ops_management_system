@@ -6,12 +6,12 @@ from typing import List, Tuple, Optional, Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlalchemy.orm import Session
 
-from infrastructure.llm import get_llm_service, LLMRequest
+from infrastructure.llm import get_llm_service
 from infrastructure.db_pool import SessionLocal
 from src.repositories.llm_product_detail_repository import LLMProductDetailRepository
+from src.services.product_content_generator import ProductContentGenerator
+from src.services.product_normalizer import GigaProductNormalizer
 from src.services.progress_reporter import ProgressReporter
-from src.utils.data_cleaner import DataCleaner
-from src.utils.prompt_manager import PromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,8 @@ class ProductDetailGenerationService:
         self.db = db
         self.repository = LLMProductDetailRepository(db)
         self.llm_service = get_llm_service()
-        self.prompt_manager = PromptManager()
+        self.content_generator = ProductContentGenerator(llm_service=self.llm_service)
+        self.normalizer = GigaProductNormalizer()
         self.reporter = reporter or ProgressReporter()
         
         # 配置参数
@@ -60,52 +61,28 @@ class ProductDetailGenerationService:
                 if not raw_data:
                     logger.warning(f"SKU {sku} 无原始数据")
                     return None
-                
-                # 2. 清洗数据
-                cleaned_data = DataCleaner.deep_clean(raw_data)
-                
-                # 3. 智能截断（保持JSON完整性）
-                user_prompt = DataCleaner.smart_truncate(
-                    cleaned_data, 
-                    max_json_length=self.max_input_length
+
+                product_type = thread_repo.get_product_type_for_sku(sku) or "UNKNOWN"
+                standard_product = self.normalizer.normalize(
+                    raw_data=raw_data,
+                    vendor_sku=sku,
                 )
-                
-                # 4. 获取Prompt
-                system_prompt = self.prompt_manager.get_prompt('prod_detail_gen_amz')
-                if not system_prompt:
-                    logger.error(f"SKU {sku}: 无法加载Prompt")
-                    return None
-                
-                # 5. 调用LLM（带重试）
+
+                # 2. 调用 v2 品类感知内容生成器（带重试）
                 for attempt in range(self.max_retries):
                     try:
-                        request = LLMRequest(
-                            task_type='product_generation',
-                            system_prompt=system_prompt,
-                            user_prompt=user_prompt,
-                            json_mode=True,
-                            temperature=0.3
+                        content = self.content_generator.generate(
+                            standard_product,
+                            product_type=product_type,
                         )
-                        
-                        response = self.llm_service.generate(request)
-                        result = response.content
-                        
-                        # 6. 验证并补全结果
-                        self._validate_and_fill_result(result)
-                        
-                        # 7. 构造返回数据
-                        return (
-                            sku,
-                            result.get('产品名称', ''),
-                            result.get('产品卖点 1', ''),
-                            result.get('产品卖点 2', ''),
-                            result.get('产品卖点 3', ''),
-                            result.get('产品卖点 4', ''),
-                            result.get('产品卖点 5', ''),
-                            result.get('产品描述', ''),
-                            f'llm_service_{response.provider}',
-                            json.dumps(result, ensure_ascii=False)
-                        )
+
+                        if not content.title or not content.description:
+                            warning_text = "; ".join(content.validation_warnings)
+                            raise ValueError(
+                                warning_text or "v2 content generator returned empty content"
+                            )
+
+                        return self._build_detail_tuple(sku, product_type, content)
                         
                     except Exception as e:
                         if attempt < self.max_retries - 1:
@@ -129,6 +106,37 @@ class ProductDetailGenerationService:
         
         for key in required_keys:
             result.setdefault(key, '')
+
+    @staticmethod
+    def _build_detail_tuple(sku: str, product_type: str, content) -> Tuple:
+        """Convert v2 generated content into the existing detail-table contract."""
+        raw_payload = {
+            "generator_version": "v2",
+            "product_type": product_type,
+            "title": content.title,
+            "bullet_1": content.bullet_1,
+            "bullet_2": content.bullet_2,
+            "bullet_3": content.bullet_3,
+            "bullet_4": content.bullet_4,
+            "bullet_5": content.bullet_5,
+            "description": content.description,
+            "search_terms": content.search_terms,
+            "generic_keyword": content.generic_keyword,
+            "enriched_attributes": content.enriched_attributes,
+            "validation_warnings": content.validation_warnings,
+        }
+        return (
+            sku,
+            content.title,
+            content.bullet_1,
+            content.bullet_2,
+            content.bullet_3,
+            content.bullet_4,
+            content.bullet_5,
+            content.description,
+            "product_content_generator_v2",
+            json.dumps(raw_payload, ensure_ascii=False),
+        )
     
     def process_batch(self, sku_list: List[str]) -> int:
         """

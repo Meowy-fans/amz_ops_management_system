@@ -23,11 +23,11 @@ class TestProductListingRepository:
         assert skus == ['SKU1', 'SKU2']
         # Verify execute called
         mock_db_session.execute.assert_called_once()
-        # Verify SQL contains expected table names
+        # Verify SQL contains expected table names and no offline Amazon report dependency
         call_args = mock_db_session.execute.call_args
         sql_text = str(call_args[0][0])
         assert "FROM meow_sku_map" in sql_text
-        assert "amz_all_listing_report" in sql_text
+        assert "amz_all_listing_report" not in sql_text
 
     def test_get_variation_data(self, repo, mock_db_session):
         # Mock result: list of (meow, vendor, list)

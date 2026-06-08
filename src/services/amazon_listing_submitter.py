@@ -1,8 +1,10 @@
 """Amazon Listing Submitter — submits new listing plans via putListingsItem."""
 import json
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
+from infrastructure.amazon.api_client import AmazonAPIException
 from src.services.progress_reporter import ProgressReporter
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ class AmazonListingSubmitter:
         submission_repo: Any = None,
         schema_service: Any = None,
         quality_gate: Any = None,
+        confirmation_delay_seconds: float = 0,
     ):
         self.db = db
         self.reporter = reporter or ProgressReporter()
@@ -30,6 +33,7 @@ class AmazonListingSubmitter:
         self._submission_repo_instance = submission_repo
         self._schema_service_instance = schema_service
         self._quality_gate_instance = quality_gate
+        self.confirmation_delay_seconds = confirmation_delay_seconds
 
     def submit(
         self,
@@ -125,6 +129,57 @@ class AmazonListingSubmitter:
                 )
             else:
                 try:
+                    existing_listing = self._get_existing_listing(
+                        listings_client=listings_client,
+                        sku=sku,
+                    )
+                except Exception as e:
+                    logger.error("Existing listing check failed for SKU=%s: %s", sku, e)
+                    submission_repo.insert_submission(
+                        sku=sku,
+                        operation="create",
+                        status="failed_existing_check",
+                        product_type=product_type,
+                        request_payload={
+                            "productType": product_type,
+                            "attributes": attributes,
+                            "qualityFindings": quality_findings,
+                        },
+                        error_message=str(e),
+                    )
+                    self.reporter.emit(
+                        f"  FAIL {sku}: existing listing check failed: {e}"
+                    )
+                    results.append({"sku": sku, "status": "failed", "error": str(e)})
+                    continue
+
+                if existing_listing is not None:
+                    submission_repo.insert_submission(
+                        sku=sku,
+                        operation="create",
+                        status="skipped_existing",
+                        product_type=product_type,
+                        request_payload={
+                            "productType": product_type,
+                            "attributes": attributes,
+                            "qualityFindings": quality_findings,
+                        },
+                        response_body=existing_listing,
+                    )
+                    self.reporter.emit(
+                        f"  SKIP {sku}: listing already exists on Amazon"
+                    )
+                    results.append(
+                        {
+                            "sku": sku,
+                            "status": "skipped_existing",
+                            "issues": 0,
+                            "quality_findings": quality_findings,
+                        }
+                    )
+                    continue
+
+                try:
                     if validation_only:
                         response = listings_client.validation_preview(
                             sku=sku,
@@ -141,10 +196,38 @@ class AmazonListingSubmitter:
                     request_id = response["headers"].get("x-amzn-RequestId", "")
                     issues = body.get("issues", [])
                     status = body.get("status", "ACCEPTED")
+                    if issues:
+                        submission_status = "issues_found"
+                    elif status != "ACCEPTED":
+                        submission_status = "not_accepted"
+                    else:
+                        submission_status = "success"
+                    response_body = body
+                    result_status = status
+                    result_issue_count = len(issues)
+                    confirmation_error = None
+                    if (
+                        not validation_only
+                        and status == "ACCEPTED"
+                        and not issues
+                    ):
+                        confirmation = self._confirm_submitted_listing(
+                            listings_client=listings_client,
+                            sku=sku,
+                        )
+                        submission_status = confirmation["status"]
+                        response_body = {
+                            "put_response": body,
+                            "confirm_response": confirmation.get("body"),
+                        }
+                        result_status = confirmation["status"]
+                        result_issue_count = confirmation.get("issues", 0)
+                        confirmation_error = confirmation.get("error")
+
                     submission_repo.insert_submission(
                         sku=sku,
                         operation="create",
-                        status="success" if not issues else "issues_found",
+                        status=submission_status,
                         amazon_request_id=request_id,
                         product_type=product_type,
                         request_payload={
@@ -152,16 +235,17 @@ class AmazonListingSubmitter:
                             "attributes": attributes,
                             "qualityFindings": quality_findings,
                         },
-                        response_body=body,
+                        response_body=response_body,
+                        error_message=confirmation_error,
                     )
-                    issue_count = len(issues)
+                    issue_count = result_issue_count
                     self.reporter.emit(
-                        f"  {status} {sku} request_id={request_id} issues={issue_count}"
+                        f"  {result_status} {sku} request_id={request_id} issues={issue_count}"
                     )
                     results.append(
                         {
                             "sku": sku,
-                            "status": status,
+                            "status": result_status,
                             "request_id": request_id,
                             "issues": issue_count,
                             "quality_findings": quality_findings,
@@ -186,9 +270,15 @@ class AmazonListingSubmitter:
                         {"sku": sku, "status": "failed", "error": str(e)}
                     )
 
-        success = sum(1 for r in results if r["status"] in ("success", "ACCEPTED", "dry_run"))
+        success = sum(
+            1 for r in results
+            if r["status"] in ("ACCEPTED", "dry_run", "listing_confirmed")
+        )
         fail = sum(1 for r in results if r["status"] == "failed")
-        issues = sum(1 for r in results if r["status"] == "issues_found")
+        issues = sum(
+            1 for r in results
+            if r["status"] in ("issues_found", "confirmed_with_issues")
+        )
         self.reporter.emit(
             f"\nSubmission Complete: {len(results)} SKUs "
             f"(ok={success} fail={fail} with_issues={issues})"
@@ -234,6 +324,63 @@ class AmazonListingSubmitter:
         return self._quality_gate_instance
 
     # ── pre-validation ────────────────────────────────────────────
+
+    def _get_existing_listing(
+        self,
+        listings_client: Any,
+        sku: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Return Amazon listing body when SKU exists; return None on 404.
+
+        Any non-404 error is raised so create submissions fail closed instead
+        of risking a full replacement with putListingsItem.
+        """
+        try:
+            response = listings_client.get_listings_item(
+                sku=sku,
+                included_data=["summaries", "issues", "attributes", "productTypes"],
+            )
+            return response.get("body", {})
+        except AmazonAPIException as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+
+    def _confirm_submitted_listing(
+        self,
+        listings_client: Any,
+        sku: str,
+    ) -> Dict[str, Any]:
+        """Confirm a submitted listing without rewriting the PUT outcome."""
+        if self.confirmation_delay_seconds > 0:
+            time.sleep(self.confirmation_delay_seconds)
+        try:
+            body = self._get_existing_listing(listings_client=listings_client, sku=sku)
+        except Exception as exc:
+            return {
+                "status": "confirmation_failed",
+                "issues": 0,
+                "body": None,
+                "error": str(exc),
+            }
+        if body is None:
+            return {
+                "status": "accepted_pending_confirmation",
+                "issues": 0,
+                "body": None,
+            }
+        issues = body.get("issues", []) if isinstance(body, dict) else []
+        if issues:
+            return {
+                "status": "confirmed_with_issues",
+                "issues": len(issues),
+                "body": body,
+            }
+        return {
+            "status": "listing_confirmed",
+            "issues": 0,
+            "body": body,
+        }
 
     def _pre_validate(self, plans: List[Dict[str, Any]]) -> None:
         """Run local schema validation against cached Product Type Definitions.

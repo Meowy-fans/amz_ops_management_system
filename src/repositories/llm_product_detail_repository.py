@@ -58,6 +58,29 @@ class LLMProductDetailRepository:
         except Exception as e:
             logger.error(f"获取SKU {sku} 原始数据失败: {e}")
             return None
+
+    def get_product_type_for_sku(self, sku: str) -> Optional[str]:
+        """Resolve the Amazon standard category/product type for a Giga SKU."""
+        try:
+            query = text("""
+                SELECT scm.standard_category_name
+                FROM giga_product_sync_records psr
+                    LEFT JOIN supplier_categories_map scm
+                        ON LOWER(psr.category_code) = LOWER(scm.supplier_category_code)
+                        AND scm.supplier_platform = 'giga'
+                WHERE psr.giga_sku = :sku
+                ORDER BY psr.id DESC
+                LIMIT 1
+            """)
+
+            result = self.db.execute(query, {"sku": sku}).fetchone()
+            if not result or not result[0]:
+                return None
+            return str(result[0]).upper()
+
+        except Exception as e:
+            logger.error(f"获取SKU {sku} 标准品类失败: {e}")
+            return None
     
     def batch_save_details(self, details: List[Tuple]) -> int:
         """批量保存商品详情"""

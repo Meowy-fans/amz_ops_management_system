@@ -87,7 +87,15 @@ class ProductDataRepository:
                 ds.selling_point_5,
                 psr.raw_data,
                 pfp.final_price,
-                (COALESCE(inv.quantity, 0) + COALESCE(inv.buyer_qty, 0)) AS total_quantity
+                pfp.currency AS price_currency,
+                pfp.cost_at_pricing,
+                pfp.pricing_formula_version,
+                pfp.updated_at AS price_updated_at,
+                COALESCE(inv.quantity, 0) AS inventory_quantity,
+                COALESCE(inv.buyer_qty, 0) AS buyer_qty,
+                COALESCE(inv.seller_qty, 0) AS seller_qty,
+                inv.last_updated AS inventory_last_updated,
+                COALESCE(inv.quantity, 0) AS total_quantity
             FROM meow_sku_map m
                 LEFT JOIN ds_api_product_details ds 
                     ON m.vendor_sku = ds.sku_id

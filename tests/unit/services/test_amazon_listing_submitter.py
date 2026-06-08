@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
 
+from infrastructure.amazon.api_client import AmazonAPIException
 from src.services.amazon_listing_submitter import AmazonListingSubmitter
 from src.services.progress_reporter import ProgressReporter
 
@@ -10,13 +11,55 @@ from src.services.progress_reporter import ProgressReporter
 class FakeListingsClient:
     def __init__(self):
         self.calls = []
+        self.get_calls = []
+        self.existing_skus = set()
+        self.submitted_skus = set()
+        self.lookup_error = None
+        self.confirm_error = None
+        self.confirm_issues = []
+        self.confirm_not_found = False
+        self.validation_calls = []
+        self.put_body = {"status": "ACCEPTED", "issues": []}
+
+    def get_listings_item(self, sku, issue_locale="en_US", included_data=None):
+        self.get_calls.append(
+            {
+                "sku": sku,
+                "issue_locale": issue_locale,
+                "included_data": included_data,
+            }
+        )
+        if self.lookup_error:
+            raise self.lookup_error
+        if sku in self.existing_skus:
+            return {"headers": {"x-amzn-RequestId": "REQ-GET"}, "body": {"sku": sku}}
+        if sku in self.submitted_skus:
+            if self.confirm_error:
+                raise self.confirm_error
+            if self.confirm_not_found:
+                raise AmazonAPIException("not found", status_code=404)
+            return {
+                "headers": {"x-amzn-RequestId": "REQ-GET"},
+                "body": {"sku": sku, "issues": self.confirm_issues},
+            }
+        raise AmazonAPIException("not found", status_code=404)
 
     def put_listings_item(self, sku, product_type, attributes, issue_locale="en_US"):
         self.calls.append(
             {"sku": sku, "product_type": product_type, "attributes": attributes}
         )
+        self.submitted_skus.add(sku)
         return {
             "headers": {"x-amzn-RequestId": "REQ-OK"},
+            "body": self.put_body,
+        }
+
+    def validation_preview(self, sku, product_type, attributes, issue_locale="en_US"):
+        self.validation_calls.append(
+            {"sku": sku, "product_type": product_type, "attributes": attributes}
+        )
+        return {
+            "headers": {"x-amzn-RequestId": "REQ-VALID"},
             "body": {"status": "ACCEPTED", "issues": []},
         }
 
@@ -69,7 +112,7 @@ def test_dry_run_does_not_call_api():
     assert repo.inserts[0]["status"] == "dry_run"
 
 
-def test_real_mode_calls_api():
+def test_real_mode_confirms_listing_after_put():
     repo = FakeSubmissionRepo()
     client = FakeListingsClient()
     submitter = AmazonListingSubmitter(
@@ -83,9 +126,79 @@ def test_real_mode_calls_api():
 
     results = submitter.submit(plans, dry_run=False)
 
-    assert results[0]["status"] == "ACCEPTED"
+    assert results[0]["status"] == "listing_confirmed"
+    assert results[0]["issues"] == 0
+    assert client.get_calls == [
+        {
+            "sku": "SKU1",
+            "issue_locale": "en_US",
+            "included_data": ["summaries", "issues", "attributes", "productTypes"],
+        },
+        {
+            "sku": "SKU1",
+            "issue_locale": "en_US",
+            "included_data": ["summaries", "issues", "attributes", "productTypes"],
+        },
+    ]
     assert len(client.calls) == 1
-    assert repo.inserts[0]["status"] == "success"
+    assert repo.inserts[0]["status"] == "listing_confirmed"
+    assert repo.inserts[0]["response_body"]["put_response"] == {
+        "status": "ACCEPTED",
+        "issues": [],
+    }
+    assert repo.inserts[0]["response_body"]["confirm_response"] == {
+        "sku": "SKU1",
+        "issues": [],
+    }
+
+
+def test_real_mode_skips_existing_amazon_sku_before_put():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.existing_skus.add("SKU1")
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results == [
+        {
+            "sku": "SKU1",
+            "status": "skipped_existing",
+            "issues": 0,
+            "quality_findings": [],
+        }
+    ]
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "skipped_existing"
+    assert repo.inserts[0]["response_body"] == {"sku": "SKU1"}
+
+
+def test_real_mode_blocks_when_existing_check_fails():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.lookup_error = AmazonAPIException("rate limited", status_code=429)
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "failed"
+    assert "rate limited" in results[0]["error"]
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "failed_existing_check"
 
 
 def test_real_mode_per_sku_isolation():
@@ -117,8 +230,114 @@ def test_real_mode_per_sku_isolation():
     results = submitter.submit(plans, dry_run=False)
 
     assert results[0]["status"] == "failed"
-    assert results[1]["status"] == "ACCEPTED"
+    assert results[1]["status"] == "listing_confirmed"
     assert len(repo.inserts) == 2
+
+
+def test_real_mode_records_confirmed_with_issues_after_put():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.confirm_issues = [{"code": "MISSING_ATTRIBUTE"}]
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "confirmed_with_issues"
+    assert results[0]["issues"] == 1
+    assert repo.inserts[0]["status"] == "confirmed_with_issues"
+    assert repo.inserts[0]["response_body"]["confirm_response"]["issues"] == [
+        {"code": "MISSING_ATTRIBUTE"}
+    ]
+
+
+def test_real_mode_does_not_confirm_when_put_is_not_accepted():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.put_body = {"status": "INVALID", "issues": []}
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "INVALID"
+    assert len(client.get_calls) == 1
+    assert repo.inserts[0]["status"] == "not_accepted"
+
+
+def test_real_mode_records_pending_confirmation_when_get_still_404():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.confirm_not_found = True
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "accepted_pending_confirmation"
+    assert repo.inserts[0]["status"] == "accepted_pending_confirmation"
+    assert repo.inserts[0]["response_body"]["put_response"]["status"] == "ACCEPTED"
+    assert repo.inserts[0]["response_body"]["confirm_response"] is None
+
+
+def test_real_mode_records_confirmation_failed_without_reclassifying_put_failure():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.confirm_error = AmazonAPIException("rate limited", status_code=429)
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "confirmation_failed"
+    assert repo.inserts[0]["status"] == "confirmation_failed"
+    assert repo.inserts[0]["error_message"] == "rate limited"
+    assert repo.inserts[0]["response_body"]["put_response"]["status"] == "ACCEPTED"
+
+
+def test_validation_only_does_not_run_post_submit_confirmation():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False, validation_only=True)
+
+    assert results[0]["status"] == "ACCEPTED"
+    assert len(client.validation_calls) == 1
+    assert len(client.calls) == 0
+    assert len(client.get_calls) == 1
+    assert repo.inserts[0]["status"] == "success"
 
 
 def test_quality_gate_blocks_high_risk_payload_before_api_call():

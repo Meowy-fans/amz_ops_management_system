@@ -76,6 +76,21 @@ class AmazonSchemaService:
         self, product_type: str, field_name: str
     ) -> Optional[List[str]]:
         data = self.get_or_fetch_schema(product_type)
+        return self._extract_valid_values(data, field_name)
+
+    def get_cached_valid_values(
+        self, product_type: str, field_name: str
+    ) -> Optional[List[str]]:
+        data = self.get_cached_schema(product_type)
+        if not data:
+            return None
+        return self._extract_valid_values(data, field_name)
+
+    def _extract_valid_values(
+        self,
+        data: Dict[str, Any],
+        field_name: str,
+    ) -> Optional[List[str]]:
         schema = data.get("schema_json", {})
         if not schema:
             return None

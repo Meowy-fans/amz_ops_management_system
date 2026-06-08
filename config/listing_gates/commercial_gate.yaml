@@ -1,0 +1,21 @@
+version: commercial_gate_v1
+
+defaults:
+  allowed_currency: USD
+  price_max_age_hours: 24
+  inventory_max_age_hours: 6
+  min_margin_rate: 0.25
+  min_price: 1.0
+  max_price: 9999.0
+  max_publish_quantity: 20
+  allow_zero_inventory_listing: true
+  quantity_source: inventory_quantity
+  allowed_pricing_formula_versions: []
+
+categories:
+  CABINET:
+    min_margin_rate: 0.30
+    max_publish_quantity: 10
+  HOME_MIRROR:
+    min_margin_rate: 0.25
+    max_publish_quantity: 20

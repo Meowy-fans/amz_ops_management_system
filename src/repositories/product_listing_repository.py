@@ -4,7 +4,7 @@ Product Listing Repository
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,16 +31,18 @@ class ProductListingRepository:
     
     def get_pending_listing_skus(self) -> List[str]:
         """
-        筛选所有待发布的meow_sku
-        
+        筛选所有具备本地发布资格的meow_sku
+
         业务规则：
-        1. 未在Amazon报告中（amz_full_list_report表中不存在）
-        2. 非超大件商品（is_oversize != TRUE）
-        3. 普通卖家类型（sellerType = 'GENERAL'）
-        4. 有可用价格（sku_available = TRUE）
+        1. 非超大件商品（is_oversize != TRUE）
+        2. 普通卖家类型（sellerType = 'GENERAL'）
+        3. 有可用价格（sku_available = TRUE）
+
+        是否已存在于 Amazon 不再依赖 amz_all_listing_report，
+        真实 API 发品前由 Listings Items API 实时查重。
         
         Returns:
-            待发布的meow_sku列表
+            具备本地发布资格的meow_sku列表
             
         Raises:
             Exception: 数据库查询失败时抛出
@@ -48,15 +50,12 @@ class ProductListingRepository:
         query = text("""
             SELECT DISTINCT m.meow_sku
             FROM meow_sku_map m
-                LEFT JOIN amz_all_listing_report r 
-                    ON m.meow_sku = r."seller-sku"
                 JOIN giga_product_sync_records psr 
                     ON m.vendor_sku = psr.giga_sku 
                     AND m.vendor_source = 'giga'
                 JOIN giga_product_base_prices pbp 
                     ON m.vendor_sku = pbp.giga_sku
-            WHERE r."seller-sku" IS NULL
-              AND psr.is_oversize IS NOT TRUE
+            WHERE psr.is_oversize IS NOT TRUE
               AND psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'
               AND pbp.sku_available IS TRUE
             ORDER BY m.meow_sku;
@@ -140,6 +139,30 @@ class ProductListingRepository:
             
         except Exception as e:
             logger.error(f"❌ 获取变体数据时失败: {e}", exc_info=True)
+            raise
+
+    def get_meow_skus_by_vendor_skus(self, vendor_skus: List[str]) -> Dict[str, str]:
+        """Return Giga vendor SKU to meow SKU mapping for existing family lookup."""
+        if not vendor_skus:
+            logger.warning("get_meow_skus_by_vendor_skus 接收到空的SKU列表")
+            return {}
+
+        query = text("""
+            SELECT vendor_sku, meow_sku
+            FROM meow_sku_map
+            WHERE vendor_source = 'giga'
+              AND vendor_sku = ANY(:vendor_sku_list);
+        """)
+
+        try:
+            logger.info("映射 %d 个 Giga SKU 到 meow_sku...", len(vendor_skus))
+            results = self.db.execute(
+                query,
+                {"vendor_sku_list": vendor_skus},
+            ).fetchall()
+            return {vendor_sku: meow_sku for vendor_sku, meow_sku in results}
+        except Exception as e:
+            logger.error("❌ Giga SKU 映射 meow_sku 失败: %s", e, exc_info=True)
             raise
     
     def get_sku_to_category_mapping(self, meow_skus: List[str]) -> List[Tuple[str, str]]:

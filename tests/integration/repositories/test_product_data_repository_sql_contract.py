@@ -52,6 +52,14 @@ def test_get_full_product_data_sql_contract_returns_mapping_dict():
         "selling_point_5": "Point 5",
         "raw_data": {"category_code": "CAB001"},
         "final_price": 199.99,
+        "price_currency": "USD",
+        "cost_at_pricing": 120.00,
+        "pricing_formula_version": "v1",
+        "price_updated_at": "2026-06-08T00:00:00Z",
+        "inventory_quantity": 12,
+        "buyer_qty": 5,
+        "seller_qty": 0,
+        "inventory_last_updated": "2026-06-08T01:00:00Z",
         "total_quantity": 12,
     }
     session = RecordingSession([FetchResult(mapping_row=row)])
@@ -79,9 +87,15 @@ def test_get_full_product_data_sql_contract_returns_mapping_dict():
     assert "LEFT JOIN giga_inventory inv ON m.vendor_sku = inv.giga_sku" in (
         normalized_sql
     )
-    assert "(COALESCE(inv.quantity, 0) + COALESCE(inv.buyer_qty, 0)) AS total_quantity" in (
-        normalized_sql
-    )
+    assert "pfp.currency AS price_currency" in normalized_sql
+    assert "pfp.cost_at_pricing" in normalized_sql
+    assert "pfp.pricing_formula_version" in normalized_sql
+    assert "pfp.updated_at AS price_updated_at" in normalized_sql
+    assert "COALESCE(inv.quantity, 0) AS inventory_quantity" in normalized_sql
+    assert "COALESCE(inv.buyer_qty, 0) AS buyer_qty" in normalized_sql
+    assert "COALESCE(inv.seller_qty, 0) AS seller_qty" in normalized_sql
+    assert "inv.last_updated AS inventory_last_updated" in normalized_sql
+    assert "COALESCE(inv.quantity, 0) AS total_quantity" in normalized_sql
     assert "WHERE m.meow_sku = :meow_sku" in normalized_sql
     assert "ORDER BY psr.id DESC, ds.id DESC LIMIT 1" in normalized_sql
     assert params == {"meow_sku": "M001"}

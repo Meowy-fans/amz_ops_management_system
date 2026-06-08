@@ -188,25 +188,23 @@ class ProductListingService:
                 "开始 SP-API 发品 category=%s dry_run=%s", category_name, dry_run
             )
 
-            all_rows, variation_logs, single_skus, _vf = (
-                self._build_rows_for_category(category_name)
+            plans, variation_logs, single_skus, _vf, pre_submit_results = (
+                self._build_api_native_plans_for_category(category_name)
             )
-
-            # Map Excel-format rows to SP-API JSON attributes
-            from src.utils.amazon_attribute_mapper import AmazonAttributeMapper
-
-            mapper = AmazonAttributeMapper(product_type=category_name.upper())
-            plans = mapper.map_rows_to_plans(all_rows)
 
             # Submit via Listings Items API
             from src.services.amazon_listing_submitter import AmazonListingSubmitter
 
             submitter = AmazonListingSubmitter(db=self.db)
-            results = submitter.submit(
-                plans,
-                dry_run=dry_run,
-                validation_only=validation_only,
-            )
+            results = list(pre_submit_results)
+            if plans:
+                results.extend(
+                    submitter.submit(
+                        plans,
+                        dry_run=dry_run,
+                        validation_only=validation_only,
+                    )
+                )
 
             # Also save listing logs for audit
             batch_id = uuid.uuid4()
@@ -230,6 +228,13 @@ class ProductListingService:
             self.db.rollback()
             logger.error("SP-API 发品失败: %s", e, exc_info=True)
             return {"success": False, "results": [], "message": str(e)}
+
+    def _build_api_native_plans_for_category(self, category_name: str):
+        from src.services.product_listing_api_plan_builder import (
+            ProductListingAPIPlanBuilder,
+        )
+
+        return ProductListingAPIPlanBuilder(self).build_for_category(category_name)
     
     def _process_single_products(
         self,

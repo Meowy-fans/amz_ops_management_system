@@ -70,11 +70,10 @@ def test_pending_listing_skus_sql_contract_filters_publishability_rules():
     assert result == ["MEOW-001", "MEOW-002"]
     assert "SELECT DISTINCT m.meow_sku" in sql
     assert "FROM meow_sku_map m" in sql
-    assert 'LEFT JOIN amz_all_listing_report r ON m.meow_sku = r."seller-sku"' in sql
+    assert "amz_all_listing_report" not in sql
     assert "JOIN giga_product_sync_records psr ON m.vendor_sku = psr.giga_sku" in sql
     assert "AND m.vendor_source = 'giga'" in sql
     assert "JOIN giga_product_base_prices pbp ON m.vendor_sku = pbp.giga_sku" in sql
-    assert 'WHERE r."seller-sku" IS NULL' in sql
     assert "psr.is_oversize IS NOT TRUE" in sql
     assert "psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'" in sql
     assert "pbp.sku_available IS TRUE" in sql
@@ -115,6 +114,34 @@ def test_variation_data_empty_input_does_not_hit_database():
     repo = ProductListingRepository(session)
 
     assert repo.get_variation_data([]) == []
+    assert session.calls == []
+
+
+def test_meow_sku_mapping_by_vendor_skus_sql_contract():
+    session = RecordingSession([
+        ExecuteResult(rows=[
+            ("GIGA-A", "MEOW-A"),
+            ("GIGA-B", "MEOW-B"),
+        ]),
+    ])
+    repo = ProductListingRepository(session)
+
+    result = repo.get_meow_skus_by_vendor_skus(["GIGA-A", "GIGA-B"])
+
+    sql = _normalized(session.last_sql)
+    assert result == {"GIGA-A": "MEOW-A", "GIGA-B": "MEOW-B"}
+    assert "SELECT vendor_sku, meow_sku" in sql
+    assert "FROM meow_sku_map" in sql
+    assert "WHERE vendor_source = 'giga'" in sql
+    assert "vendor_sku = ANY(:vendor_sku_list)" in sql
+    assert session.last_params == {"vendor_sku_list": ["GIGA-A", "GIGA-B"]}
+
+
+def test_meow_sku_mapping_by_vendor_skus_empty_input_does_not_hit_database():
+    session = RecordingSession([])
+    repo = ProductListingRepository(session)
+
+    assert repo.get_meow_skus_by_vendor_skus([]) == {}
     assert session.calls == []
 
 

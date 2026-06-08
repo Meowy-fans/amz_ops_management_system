@@ -123,6 +123,33 @@ def test_get_product_raw_data_returns_none_for_missing_empty_invalid_or_failed_r
     ).get_product_raw_data("GIGA-1") is None
 
 
+def test_get_product_type_for_sku_resolves_standard_category():
+    session = RecordingSession([
+        FetchResult(one_row=("cabinet",)),
+    ])
+    repo = LLMProductDetailRepository(session)
+
+    assert repo.get_product_type_for_sku("GIGA-1") == "CABINET"
+    sql, params = session.calls[0]
+    normalized = _normalized(sql)
+    assert "SELECT scm.standard_category_name" in normalized
+    assert "FROM giga_product_sync_records psr" in normalized
+    assert "LEFT JOIN supplier_categories_map scm" in normalized
+    assert "LOWER(psr.category_code) = LOWER(scm.supplier_category_code)" in normalized
+    assert "scm.supplier_platform = 'giga'" in normalized
+    assert "WHERE psr.giga_sku = :sku" in normalized
+    assert params == {"sku": "GIGA-1"}
+
+
+def test_get_product_type_for_sku_returns_none_when_missing_or_database_fails():
+    assert LLMProductDetailRepository(
+        RecordingSession([FetchResult(one_row=None)])
+    ).get_product_type_for_sku("GIGA-1") is None
+    assert LLMProductDetailRepository(
+        RecordingSession([RuntimeError("database unavailable")])
+    ).get_product_type_for_sku("GIGA-1") is None
+
+
 def test_batch_save_details_empty_input_short_circuits():
     session = RecordingSession()
     repo = LLMProductDetailRepository(session)

@@ -1,0 +1,30 @@
+version: variation_theme_strategy_v1
+
+defaults:
+  weights:
+    uniqueness: 40
+    buyer_relevance: 25
+    data_confidence: 20
+    simplicity: 10
+    coverage: 5
+  minimum_auto_pass_score: 70
+
+categories:
+  CABINET:
+    allowed_themes:
+      - Color
+      - Size
+      - Color/Size
+    buyer_theme_priority:
+      Size: 100
+      Color: 90
+      Color/Size: 85
+    attribute_sources:
+      color_name:
+        - raw.attributes.Main Color
+        - raw.attributes.Color
+        - raw.color
+      size_name:
+        - raw.attributes.Product Size
+        - raw.attributes.Size
+        - raw.assembledLength
