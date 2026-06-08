@@ -105,3 +105,90 @@ def test_insert_action_sql_contract():
     assert "INSERT INTO amazon_listing_issue_actions" in sql
     assert params["action_type"] == "patch_listing_attribute"
     assert '"patches"' in params["request_payload"]
+
+
+def test_get_open_issues_can_filter_by_source():
+    session = RecordingSession([ScalarResult(0)])
+    repo = AmazonListingIssueRepository(session)
+
+    repo.get_open_issues(limit=50, source="price_inventory_confirmation")
+
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "FROM amazon_listing_issues" in sql
+    assert "WHERE status = 'open'" in sql
+    assert "AND source = :source" in sql
+    assert "LIMIT :limit" in sql
+    assert params == {"source": "price_inventory_confirmation", "limit": 50}
+
+
+def test_mark_resolved_for_sku_source_sql_contract():
+    session = RecordingSession([ScalarResult(0)])
+    repo = AmazonListingIssueRepository(session)
+
+    repo.mark_resolved_for_sku_source(
+        sku="SKU1",
+        marketplace_id="ATVPDKIKX0DER",
+        source="price_inventory_confirmation",
+        seen_issue_keys=["KEY1"],
+    )
+
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "UPDATE amazon_listing_issues" in sql
+    assert "AND source = :source" in sql
+    assert "AND issue_key NOT IN" in sql
+    assert params["source"] == "price_inventory_confirmation"
+
+
+def test_get_submitted_actions_for_confirmation_sql_contract():
+    session = RecordingSession([ScalarResult(0)])
+    repo = AmazonListingIssueRepository(session)
+
+    repo.get_submitted_actions_for_confirmation(older_than_minutes=30, limit=100)
+
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "FROM amazon_listing_issue_actions action" in sql
+    assert "JOIN amazon_listing_issues issue" in sql
+    assert "action.status = 'submitted'" in sql
+    assert "action.executed_at <= NOW()" in sql
+    assert "confirm_patch_listing_attribute" in sql
+    assert params == {"older_than_minutes": 30, "limit": 100}
+
+
+def test_mark_issue_resolved_sql_contract():
+    session = RecordingSession([ScalarResult(0)])
+    repo = AmazonListingIssueRepository(session)
+
+    repo.mark_issue_resolved(issue_id=11)
+
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "UPDATE amazon_listing_issues" in sql
+    assert "SET status = 'resolved'" in sql
+    assert "WHERE id = :issue_id" in sql
+    assert params["issue_id"] == 11
+
+
+def test_has_confirmed_repair_after_sql_contract():
+    session = RecordingSession([ScalarResult(True)])
+    repo = AmazonListingIssueRepository(session)
+
+    result = repo.has_confirmed_repair_after(
+        sku="SKU1",
+        marketplace_id="ATVPDKIKX0DER",
+        issue_code="18448",
+        attribute_names=["recommended_uses_for_product"],
+        submitted_at="2026-06-09T02:41:00+08:00",
+    )
+
+    assert result is True
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "FROM amazon_listing_issue_actions confirm_action" in sql
+    assert "confirm_action.status = 'repair_confirmed'" in sql
+    assert "confirm_action.executed_at > :submitted_at" in sql
+    assert "issue.issue_code = :issue_code" in sql
+    assert "issue.attribute_names = CAST(:attribute_names AS jsonb)" in sql
+    assert params["attribute_names"] == '["recommended_uses_for_product"]'

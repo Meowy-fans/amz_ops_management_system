@@ -10,6 +10,14 @@ class ScalarResult:
         return self.value
 
 
+class MappingResult:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def mappings(self):
+        return self.rows
+
+
 class RecordingSession:
     def __init__(self, results):
         self.results = list(results)
@@ -84,3 +92,58 @@ def test_insert_submission_nullable_fields_default_none():
     assert params["amazon_request_id"] is None
     assert params["response_body"] is None
     assert params["error_message"] is None
+
+
+def test_get_delayed_confirmation_candidates_sql_contract():
+    session = RecordingSession([
+        MappingResult([
+            {
+                "id": 1123,
+                "sku": "SKU1",
+                "operation": "both",
+                "status": "confirmed_with_mismatch",
+            }
+        ])
+    ])
+    repo = AmazonAPISubmissionRepository(session)
+
+    rows = repo.get_delayed_confirmation_candidates(
+        older_than_minutes=30,
+        limit=25,
+    )
+
+    assert rows[0]["id"] == 1123
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "source.status IN" in sql
+    assert "'confirmed_with_mismatch'" in sql
+    assert "'confirmed_with_issues'" in sql
+    assert "source.submitted_at <= NOW()" in sql
+    assert "child.operation = 'delayed_confirmation'" in sql
+    assert "child.response_body->>'source_submission_id' = source.id::text" in sql
+    assert "ORDER BY source.submitted_at ASC" in sql
+    assert params == {"older_than_minutes": 30, "limit": 25}
+
+
+def test_get_latest_delayed_confirmation_items_sql_contract():
+    session = RecordingSession([
+        MappingResult([
+            {
+                "id": 1942,
+                "sku": "SKU1",
+                "status": "delayed_confirmed_with_issues",
+            }
+        ])
+    ])
+    repo = AmazonAPISubmissionRepository(session)
+
+    rows = repo.get_latest_delayed_confirmation_items(limit=10)
+
+    assert rows[0]["id"] == 1942
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "DISTINCT ON (sku, marketplace_id)" in sql
+    assert "operation = 'delayed_confirmation'" in sql
+    assert "response_body->>'source_submission_id'" in sql
+    assert "ORDER BY sku, marketplace_id, submitted_at DESC" in sql
+    assert params == {"limit": 10}

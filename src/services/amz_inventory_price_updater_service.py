@@ -278,124 +278,22 @@ class InventoryPriceUpdaterService:
         return patches
 
     def submit_updates_via_api(self, dry_run: bool = True) -> List[Dict[str, Any]]:
-        """Build patches and submit them via Listings Items API.
+        """Build patches and submit them via Listings Items API-native flow.
 
         Args:
             dry_run: If True, build patches and log without submitting.
         """
-        logger.info("Starting price/inventory API update flow (dry_run=%s)", dry_run)
-
-        self._sync_latest_data()
-
-        sku_map = self.repository.get_skus_for_update()
-        if not sku_map:
-            self.reporter.emit("No SKUs found for update. Exiting.")
-            return []
-
-        amazon_skus = list(set(item["amazon_sku"] for item in sku_map))
-        giga_skus = list(set(item["giga_sku"] for item in sku_map))
-
-        price_map, quantity_map = self.repository.get_latest_data(amazon_skus, giga_skus)
-        product_type_map = self._resolve_product_types(amazon_skus)
-
-        marketplace_id = os.environ.get("AMAZON_MARKETPLACE_ID", "ATVPDKIKX0DER")
-
-        results: List[Dict[str, Any]] = []
-        listings_client = None if dry_run else self._listings_client()
-        submission_repo = self._submission_repository()
-
-        for item in sku_map:
-            amazon_sku = item["amazon_sku"]
-            giga_sku = item["giga_sku"]
-            price = price_map.get(amazon_sku)
-            quantity = quantity_map.get(giga_sku)
-            product_type = product_type_map.get(amazon_sku, "PRODUCT")
-
-            ops = []
-            if price is not None:
-                ops.append("price")
-            if quantity is not None:
-                ops.append("quantity")
-            operation = "both" if len(ops) == 2 else (ops[0] if ops else "none")
-
-            if operation == "none":
-                self.reporter.emit(f"  SKIP {amazon_sku}: no price or quantity data")
-                continue
-
-            patches = self._build_patches(amazon_sku, price, quantity, marketplace_id)
-            request_payload = {"productType": product_type, "patches": patches}
-
-            if dry_run:
-                self.reporter.emit(f"\n--- DRY RUN: {amazon_sku} ({product_type}) ---")
-                self.reporter.emit(f"  Operation: {operation}")
-                self.reporter.emit(f"  Price: {price}")
-                self.reporter.emit(f"  Quantity: {quantity}")
-                self.reporter.emit(
-                    f"  Patches: {json.dumps(patches, indent=2, ensure_ascii=False)}"
-                )
-                submission_repo.insert_submission(
-                    sku=amazon_sku,
-                    operation=operation,
-                    status="dry_run",
-                    product_type=product_type,
-                    marketplace_id=marketplace_id,
-                    request_payload=request_payload,
-                )
-                results.append({"sku": amazon_sku, "status": "dry_run"})
-            else:
-                try:
-                    response = listings_client.patch_listings_item(
-                        sku=amazon_sku,
-                        product_type=product_type,
-                        patches=patches,
-                    )
-                    request_id = response["headers"].get("x-amzn-RequestId", "")
-                    submission_repo.insert_submission(
-                        sku=amazon_sku,
-                        operation=operation,
-                        status="success",
-                        amazon_request_id=request_id,
-                        product_type=product_type,
-                        marketplace_id=marketplace_id,
-                        request_payload=request_payload,
-                        response_body=response["body"],
-                    )
-                    self.reporter.emit(
-                        f"  OK  {amazon_sku} request_id={request_id}"
-                    )
-                    results.append(
-                        {
-                            "sku": amazon_sku,
-                            "status": "success",
-                            "request_id": request_id,
-                        }
-                    )
-                except Exception as e:
-                    logger.error(
-                        "API submission failed for SKU=%s: %s", amazon_sku, e
-                    )
-                    submission_repo.insert_submission(
-                        sku=amazon_sku,
-                        operation=operation,
-                        status="failed",
-                        product_type=product_type,
-                        marketplace_id=marketplace_id,
-                        request_payload=request_payload,
-                        error_message=str(e),
-                    )
-                    self.reporter.emit(f"  FAIL {amazon_sku}: {e}")
-                    results.append(
-                        {"sku": amazon_sku, "status": "failed", "error": str(e)}
-                    )
-
-        success_count = sum(
-            1 for r in results if r["status"] in ("success", "dry_run")
+        logger.info("Starting API-native price/inventory update flow (dry_run=%s)", dry_run)
+        from src.services.amazon_price_inventory_update_service import (
+            AmazonPriceInventoryUpdateService,
         )
-        fail_count = sum(1 for r in results if r["status"] == "failed")
-        self.reporter.emit(f"\n{'=' * 70}")
-        self.reporter.emit(f"API Update Complete: {len(results)} SKUs processed")
-        self.reporter.emit(f"  Success / Dry-run: {success_count}")
-        self.reporter.emit(f"  Failed: {fail_count}")
-        self.reporter.emit(f"{'=' * 70}")
 
-        return results
+        service = AmazonPriceInventoryUpdateService(
+            db=self.db,
+            reporter=self.reporter,
+            listings_client=self._listings_client_instance,
+            submission_repo=self._submission_repo_instance,
+            listing_data_repo=self.repository,
+            sync_latest_data=self._sync_latest_data,
+        )
+        return service.submit_updates_via_api(dry_run=dry_run)

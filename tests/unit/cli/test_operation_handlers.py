@@ -244,3 +244,106 @@ def test_handle_generate_update_file_prints_errors(monkeypatch, capsys):
     operation_handlers.handle_generate_update_file(db=object())
 
     assert "生成更新文件时发生错误: boom" in capsys.readouterr().out
+
+
+def test_handle_update_price_inventory_api_runs_under_lock(monkeypatch, capsys):
+    service = MagicMock()
+    service.submit_updates_via_api.return_value = [{"sku": "SKU1"}]
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setattr(operation_handlers, "PostgresAdvisoryLock", lambda db, name: lock)
+    monkeypatch.setattr(
+        "src.services.amz_inventory_price_updater_service.InventoryPriceUpdaterService",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_update_price_inventory_api(db=object(), dry_run=False)
+
+    service.submit_updates_via_api.assert_called_once_with(dry_run=False)
+    lock.release.assert_called_once()
+    assert "Processed 1 SKUs" in capsys.readouterr().out
+
+
+def test_handle_update_price_inventory_api_skips_when_lock_is_held(
+    monkeypatch,
+    capsys,
+):
+    service = MagicMock()
+    lock = MagicMock()
+    lock.acquire.return_value = False
+    monkeypatch.setattr(operation_handlers, "PostgresAdvisoryLock", lambda db, name: lock)
+    monkeypatch.setattr(
+        "src.services.amz_inventory_price_updater_service.InventoryPriceUpdaterService",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_update_price_inventory_api(db=object(), dry_run=False)
+
+    service.submit_updates_via_api.assert_not_called()
+    lock.release.assert_not_called()
+    assert "already running" in capsys.readouterr().out
+
+
+def test_handle_update_price_inventory_api_reraises_and_releases_lock(
+    monkeypatch,
+    capsys,
+):
+    service = MagicMock()
+    service.submit_updates_via_api.side_effect = RuntimeError("boom")
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setattr(operation_handlers, "PostgresAdvisoryLock", lambda db, name: lock)
+    monkeypatch.setattr(
+        "src.services.amz_inventory_price_updater_service.InventoryPriceUpdaterService",
+        lambda db: service,
+    )
+
+    try:
+        operation_handlers.handle_update_price_inventory_api(db=object(), dry_run=False)
+        raised = False
+    except RuntimeError:
+        raised = True
+
+    assert raised is True
+    lock.release.assert_called_once()
+    assert "Price/inventory API update failed: boom" in capsys.readouterr().out
+
+
+def test_handle_confirm_price_inventory_api_runs_under_lock(monkeypatch, capsys):
+    service = MagicMock()
+    service.confirm_pending.return_value = [{"sku": "SKU1"}]
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    monkeypatch.setenv("PRICE_INVENTORY_CONFIRM_AFTER_MINUTES", "30")
+    monkeypatch.setenv("PRICE_INVENTORY_CONFIRM_LIMIT", "20")
+    monkeypatch.setattr(operation_handlers, "PostgresAdvisoryLock", lambda db, name: lock)
+    monkeypatch.setattr(
+        "src.services.amazon_price_inventory_delayed_confirmation_service.AmazonPriceInventoryDelayedConfirmationService",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_confirm_price_inventory_api(db=object())
+
+    service.confirm_pending.assert_called_once_with(older_than_minutes=30, limit=20)
+    lock.release.assert_called_once()
+    assert "Confirmed 1 prior submissions" in capsys.readouterr().out
+
+
+def test_handle_confirm_price_inventory_api_skips_when_lock_is_held(
+    monkeypatch,
+    capsys,
+):
+    service = MagicMock()
+    lock = MagicMock()
+    lock.acquire.return_value = False
+    monkeypatch.setattr(operation_handlers, "PostgresAdvisoryLock", lambda db, name: lock)
+    monkeypatch.setattr(
+        "src.services.amazon_price_inventory_delayed_confirmation_service.AmazonPriceInventoryDelayedConfirmationService",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_confirm_price_inventory_api(db=object())
+
+    service.confirm_pending.assert_not_called()
+    lock.release.assert_not_called()
+    assert "already running" in capsys.readouterr().out

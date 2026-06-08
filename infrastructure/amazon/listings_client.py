@@ -76,16 +76,15 @@ class AmazonListingsClient:
         path = f"/listings/2021-08-01/items/{self.seller_id}"
         params: Dict[str, Any] = {
             "marketplaceIds": self.marketplace_id,
+            "issueLocale": issue_locale,
+            "pageSize": page_size,
         }
+        if included_data:
+            params["includedData"] = ",".join(included_data)
+        if with_issue_severity:
+            params["withIssueSeverity"] = ",".join(with_issue_severity)
         if page_token:
             params["pageToken"] = page_token
-        else:
-            params["issueLocale"] = issue_locale
-            params["pageSize"] = page_size
-            if included_data:
-                params["includedData"] = ",".join(included_data)
-            if with_issue_severity:
-                params["withIssueSeverity"] = ",".join(with_issue_severity)
         return self.api_client.request("GET", path, params=params)
 
     # ── new listing creation ─────────────────────────────────────

@@ -39,11 +39,11 @@ def _normalized(sql):
     return " ".join(sql.split())
 
 
-def test_get_skus_for_update_sql_contract_filters_incomplete_and_missing_vendor_sku():
+def test_get_skus_for_update_sql_contract_uses_api_listing_cache():
     session = RecordingSession([
         MappingResult([
-            {"amazon_sku": "AMZ-1", "giga_sku": "GIGA-1"},
-            {"amazon_sku": "AMZ-2", "giga_sku": "GIGA-2"},
+            {"amazon_sku": "AMZ-1", "giga_sku": "GIGA-1", "product_type": "CABINET"},
+            {"amazon_sku": "AMZ-2", "giga_sku": "GIGA-2", "product_type": "PRODUCT"},
         ]),
     ])
     repo = ListingDataRepository(session)
@@ -52,14 +52,16 @@ def test_get_skus_for_update_sql_contract_filters_incomplete_and_missing_vendor_
 
     sql = _normalized(session.calls[0][0])
     assert result == [
-        {"amazon_sku": "AMZ-1", "giga_sku": "GIGA-1"},
-        {"amazon_sku": "AMZ-2", "giga_sku": "GIGA-2"},
+        {"amazon_sku": "AMZ-1", "giga_sku": "GIGA-1", "product_type": "CABINET"},
+        {"amazon_sku": "AMZ-2", "giga_sku": "GIGA-2", "product_type": "PRODUCT"},
     ]
-    assert 'SELECT alr."seller-sku" AS amazon_sku, msm.vendor_sku AS giga_sku' in sql
-    assert "FROM amz_all_listing_report alr" in sql
-    assert 'JOIN meow_sku_map msm ON alr."seller-sku" = msm.meow_sku' in sql
-    assert "alr.status = 'Active'" in sql
+    assert "amz_all_listing_report" not in sql
+    assert "SELECT cache.sku AS amazon_sku, msm.vendor_sku AS giga_sku" in sql
+    assert "cache.product_type AS product_type" in sql
+    assert "FROM amazon_listing_items_cache cache" in sql
+    assert "JOIN meow_sku_map msm ON cache.sku = msm.meow_sku" in sql
     assert "msm.vendor_sku IS NOT NULL" in sql
+    assert "ORDER BY cache.sku" in sql
     assert session.calls[0][1] == {}
 
 

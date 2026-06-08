@@ -72,3 +72,63 @@ def test_dispatch_sync_listing_issues_passes_dry_run(monkeypatch):
 
     assert result is None
     assert calls == [(db, False)]
+
+
+def test_dispatch_confirm_price_inventory_api_uses_cli_handler(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_confirm_price_inventory_api",
+        lambda db: calls.append(db),
+    )
+
+    db = object()
+    result = dispatch_task(db, "confirm-price-inventory-api")
+
+    assert result is None
+    assert calls == [db]
+
+
+def test_dispatch_sync_confirmation_listing_issues_passes_dry_run(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_sync_confirmation_listing_issues",
+        lambda db, dry_run=True: calls.append((db, dry_run)),
+    )
+
+    db = object()
+    result = dispatch_task(db, "sync-confirmation-listing-issues", dry_run=False)
+
+    assert result is None
+    assert calls == [(db, False)]
+
+
+def test_dispatch_repair_listing_issues_passes_dry_run(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_repair_listing_issues",
+        lambda db, dry_run=True: calls.append((db, dry_run)),
+    )
+
+    db = object()
+    result = dispatch_task(db, "repair-listing-issues", dry_run=False)
+
+    assert result is None
+    assert calls == [(db, False)]
+
+
+def test_dispatch_confirm_listing_issue_repairs_uses_cli_handler(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_confirm_listing_issue_repairs",
+        lambda db: calls.append(db),
+    )
+
+    db = object()
+    result = dispatch_task(db, "confirm-listing-issue-repairs")
+
+    assert result is None
+    assert calls == [db]

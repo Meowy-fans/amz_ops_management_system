@@ -12,6 +12,10 @@
 2. Reports API `GET_MERCHANTS_LISTINGS_FYP_REPORT`
    - 批量获取 Search Suppressed listing。
    - 获取 SKU、ASIN、Reason、Issue Description。
+3. 价格/库存 API 更新的 delayed confirmation
+   - 从 `amazon_api_submissions.operation='delayed_confirmation'` 读取每个 SKU 最新一次 `getListingsItem` 响应。
+   - 将 `response_body.confirmation.body.issues` 归一化为 `source='price_inventory_confirmation'` 的 open issue。
+   - 同一 SKU 最新确认中已消失的 `price_inventory_confirmation` issue 会标记为 `resolved`。
 
 ## 数据表
 
@@ -27,14 +31,22 @@
 
 - `MISSING_ATTRIBUTE` + `recommended_uses_for_product`
   - 若本地已缓存该 product type schema 且确认属性存在，生成 `patchListingsItem` payload。
+  - 第一版只在高置信度时自动计划：`CABINET` / `HOME_MIRROR` 或标题/issue 上下文明确指向 bathroom 时补 `Bathroom`。
+  - repair action 的 `request_payload` 会记录 `target_attribute`、`target_value`、`confidence`、`evidence` 和 PATCH payload，方便人工验收。
   - dry-run 记录为 `dry_run` action。
-  - live 模式提交 PATCH。
+  - live 模式只有 Amazon 返回 `ACCEPTED` 且无 issues 才记录 `submitted`。
 - `INVALID_IMAGE` / `18027` / `100581`
   - 记录 `replace_main_image`，需要人工提供合规主图 URL。
 - `QUALIFICATION_REQUIRED` / `18503`
   - 记录 `qualification_or_claim_review`，需要 Seller Central 审批或人工复核并移除 pesticide/antimicrobial 相关宣称。
 - 其他问题
   - 记录 `manual_review`。
+
+live PATCH 后不会立即判定修复完成。`confirm-listing-issue-repairs` 会在默认 30 分钟后再次调用 `getListingsItem`：
+
+- 原 issue 消失：记录 `confirm_patch_listing_attribute` / `repair_confirmed`，并将 issue 标记为 `resolved`。
+- 原 issue 仍存在：记录 `repair_failed`，保留 open issue。
+- 确认 API 异常：记录 `repair_confirmation_failed`。
 
 ## 发品前质量闸门
 
@@ -57,6 +69,18 @@ python main.py --task sync-listing-issues
 
 # 真实提交安全自动修复 PATCH
 python main.py --task sync-listing-issues --no-dry-run
+
+# 从价格/库存 delayed confirmation 审计中同步 listing issues，默认 dry-run 生成修复计划
+python main.py --task sync-confirmation-listing-issues
+
+# 只针对已入库 open issues 执行修复计划，默认 source=price_inventory_confirmation
+python main.py --task repair-listing-issues
+
+# 真实提交推荐属性补全 PATCH
+python main.py --task repair-listing-issues --no-dry-run
+
+# 30 分钟后确认已提交的修复动作是否让原 issue 消失
+python main.py --task confirm-listing-issue-repairs
 ```
 
 可选环境变量：
@@ -65,6 +89,11 @@ python main.py --task sync-listing-issues --no-dry-run
 LISTING_ISSUE_SYNC_LIMIT=50
 LISTING_ISSUE_INCLUDE_SUPPRESSED_REPORT=true
 LISTING_QUALITY_REQUIRE_IMAGE_REVIEW=false
+CONFIRMATION_LISTING_ISSUE_SYNC_LIMIT=500
+LISTING_ISSUE_REPAIR_SOURCE=price_inventory_confirmation
+LISTING_ISSUE_REPAIR_LIMIT=100
+LISTING_ISSUE_REPAIR_CONFIRM_AFTER_MINUTES=30
+LISTING_ISSUE_REPAIR_CONFIRM_LIMIT=100
 ```
 
 ## 后台定时器

@@ -54,3 +54,83 @@ class AmazonAPISubmissionRepository:
         })
         self.db.commit()
         return result.scalar_one()
+
+    def get_delayed_confirmation_candidates(
+        self,
+        older_than_minutes: int = 30,
+        limit: int = 500,
+    ) -> list[Dict[str, Any]]:
+        query = text("""
+            SELECT
+                source.id,
+                source.sku,
+                source.operation,
+                source.status,
+                source.marketplace_id,
+                source.product_type,
+                source.request_payload,
+                source.response_body,
+                source.submitted_at
+            FROM amazon_api_submissions source
+            WHERE source.status IN (
+                'confirmed_with_mismatch',
+                'confirmed_with_issues',
+                'accepted_pending_confirmation',
+                'confirmation_failed'
+            )
+            AND source.submitted_at <= NOW() - (:older_than_minutes || ' minutes')::interval
+            AND NOT EXISTS (
+                SELECT 1
+                FROM amazon_api_submissions child
+                WHERE child.operation = 'delayed_confirmation'
+                AND child.response_body->>'source_submission_id' = source.id::text
+            )
+            ORDER BY source.submitted_at ASC
+            LIMIT :limit
+        """)
+        rows = self.db.execute(
+            query,
+            {"older_than_minutes": older_than_minutes, "limit": limit},
+        ).mappings()
+        return [dict(row) for row in rows]
+
+    def get_latest_delayed_confirmation_items(
+        self,
+        limit: int = 500,
+    ) -> list[Dict[str, Any]]:
+        """Return the latest delayed confirmation row for each SKU."""
+        query = text("""
+            WITH latest AS (
+                SELECT DISTINCT ON (sku, marketplace_id)
+                    id,
+                    sku,
+                    operation,
+                    status,
+                    marketplace_id,
+                    product_type,
+                    request_payload,
+                    response_body,
+                    submitted_at,
+                    response_body->>'source_submission_id' AS source_submission_id
+                FROM amazon_api_submissions
+                WHERE operation = 'delayed_confirmation'
+                  AND response_body->>'source_submission_id' IS NOT NULL
+                ORDER BY sku, marketplace_id, submitted_at DESC
+            )
+            SELECT
+                id,
+                sku,
+                operation,
+                status,
+                marketplace_id,
+                product_type,
+                request_payload,
+                response_body,
+                submitted_at,
+                source_submission_id
+            FROM latest
+            ORDER BY submitted_at DESC
+            LIMIT :limit
+        """)
+        rows = self.db.execute(query, {"limit": limit}).mappings()
+        return [dict(row) for row in rows]

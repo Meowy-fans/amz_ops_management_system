@@ -1,5 +1,6 @@
 """Amazon listing issue polling and repair orchestration."""
 import logging
+import json
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ class AmazonListingIssueSyncService:
 
     LISTINGS_ITEM_SOURCE = "listings_items"
     SUPPRESSED_REPORT_SOURCE = "suppressed_report"
+    PRICE_INVENTORY_CONFIRMATION_SOURCE = "price_inventory_confirmation"
 
     def __init__(
         self,
@@ -27,6 +29,7 @@ class AmazonListingIssueSyncService:
         reports_client: Any = None,
         issue_repo: Any = None,
         repair_service: Any = None,
+        submission_repo: Any = None,
         marketplace_id: Optional[str] = None,
     ):
         self.db = db
@@ -35,6 +38,7 @@ class AmazonListingIssueSyncService:
         self._reports_client_instance = reports_client
         self._issue_repo_instance = issue_repo
         self._repair_service_instance = repair_service
+        self._submission_repo_instance = submission_repo
         self.marketplace_id = marketplace_id or self._default_marketplace_id()
 
     def sync_and_repair(
@@ -119,6 +123,80 @@ class AmazonListingIssueSyncService:
             logger.error("Amazon listing issue sync failed: %s", exc, exc_info=True)
             raise
 
+    def sync_confirmation_issues(
+        self,
+        limit: int = 500,
+        dry_run: bool = True,
+    ) -> Dict[str, Any]:
+        """Sync issues observed during delayed price/inventory confirmations."""
+        repo = self._issue_repo()
+        scan_run_id = repo.begin_scan(self.PRICE_INVENTORY_CONFIRMATION_SOURCE)
+        checked_count = 0
+        synced_issues: List[Dict[str, Any]] = []
+        action_results: List[Dict[str, Any]] = []
+
+        try:
+            items = self._submission_repo().get_latest_delayed_confirmation_items(limit=limit)
+            for item in items:
+                checked_count += 1
+                issues = self._issues_from_confirmation_item(item, scan_run_id)
+                seen_keys = []
+                marketplace_id = item.get("marketplace_id") or self.marketplace_id
+                for issue in issues:
+                    if repo.has_confirmed_repair_after(
+                        sku=issue["sku"],
+                        marketplace_id=issue["marketplace_id"],
+                        issue_code=issue["issue_code"],
+                        attribute_names=issue.get("attribute_names"),
+                        submitted_at=item.get("submitted_at"),
+                    ):
+                        continue
+                    issue_id = repo.upsert_issue(issue)
+                    issue["id"] = issue_id
+                    seen_keys.append(issue["issue_key"])
+                    synced_issues.append(issue)
+                repo.mark_resolved_for_sku_source(
+                    item["sku"],
+                    marketplace_id,
+                    self.PRICE_INVENTORY_CONFIRMATION_SOURCE,
+                    seen_keys,
+                )
+
+            open_issues = repo.get_open_issues(
+                source=self.PRICE_INVENTORY_CONFIRMATION_SOURCE
+            )
+            action_results = self._repair_service().plan_and_execute(
+                open_issues,
+                scan_run_id=scan_run_id,
+                dry_run=dry_run,
+            )
+            repo.finish_scan(
+                scan_run_id=scan_run_id,
+                status="success",
+                checked_count=checked_count,
+                issue_count=len(synced_issues),
+                action_count=len(action_results),
+            )
+            self._emit_summary(checked_count, synced_issues, action_results, dry_run)
+            return {
+                "scan_run_id": scan_run_id,
+                "checked_count": checked_count,
+                "issue_count": len(synced_issues),
+                "action_count": len(action_results),
+                "dry_run": dry_run,
+            }
+        except Exception as exc:
+            repo.finish_scan(
+                scan_run_id=scan_run_id,
+                status="failed",
+                checked_count=checked_count,
+                issue_count=len(synced_issues),
+                action_count=len(action_results),
+                error_message=str(exc),
+            )
+            logger.error("Confirmation listing issue sync failed: %s", exc, exc_info=True)
+            raise
+
     def _fetch_listing_item_issues(
         self,
         sku: str,
@@ -147,6 +225,37 @@ class AmazonListingIssueSyncService:
                     source=self.LISTINGS_ITEM_SOURCE,
                 )
             )
+        return issues
+
+    def _issues_from_confirmation_item(
+        self,
+        item: Dict[str, Any],
+        scan_run_id: int,
+    ) -> List[Dict[str, Any]]:
+        body = (
+            self._as_dict(item.get("response_body"))
+            .get("confirmation", {})
+            .get("body", {})
+        )
+        summary = (body.get("summaries") or [{}])[0]
+        product_type = (
+            item.get("product_type")
+            or (body.get("productTypes") or [{}])[0].get("productType")
+        )
+        marketplace_id = item.get("marketplace_id") or self.marketplace_id
+        issues = []
+        for raw_issue in body.get("issues") or []:
+            issue = normalize_issue(
+                sku=item["sku"],
+                asin=summary.get("asin"),
+                marketplace_id=marketplace_id,
+                product_type=product_type,
+                item_name=summary.get("itemName"),
+                raw_issue=raw_issue,
+                source=self.PRICE_INVENTORY_CONFIRMATION_SOURCE,
+            )
+            issue["scan_run_id"] = scan_run_id
+            issues.append(issue)
         return issues
 
     def _sync_suppressed_report(self, scan_run_id: int) -> List[Dict[str, Any]]:
@@ -240,6 +349,24 @@ class AmazonListingIssueSyncService:
             issue_repo=self._issue_repo(),
         )
         return self._repair_service_instance
+
+    def _submission_repo(self):
+        if self._submission_repo_instance is not None:
+            return self._submission_repo_instance
+        from src.repositories.amazon_api_submission_repository import (
+            AmazonAPISubmissionRepository,
+        )
+
+        self._submission_repo_instance = AmazonAPISubmissionRepository(self.db)
+        return self._submission_repo_instance
+
+    @staticmethod
+    def _as_dict(value: Any) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            return json.loads(value)
+        return {}
 
     @staticmethod
     def _default_marketplace_id() -> str:

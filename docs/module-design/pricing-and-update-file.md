@@ -3,7 +3,7 @@
 ## Status
 
 - Contract status: Draft
-- Implementation status: Existing behavior documented, no behavior change in this document
+- Implementation status: API update path is API-native; file path remains legacy
 - Owner modules:
   - `src/services/pricing_service.py`
   - `src/services/amz_inventory_price_updater_service.py`
@@ -64,10 +64,64 @@ Output columns:
 - `handling-time`
 - `fulfillment-channel`
 
+## API-Native Price/Inventory Update
+
+Entry point: `InventoryPriceUpdaterService.submit_updates_via_api()`
+
+Implementation owner: `AmazonPriceInventoryUpdateService`
+
+The API path no longer uses `amz_all_listing_report` as the candidate source.
+It uses Listings Items API as the Amazon fact source:
+
+1. Refresh `amazon_listing_items_cache` through `searchListingsItems`.
+2. Select mapped SKUs from `amazon_listing_items_cache` joined to `meow_sku_map`.
+3. Load local target price from `product_final_prices`.
+4. Load local target quantity from `giga_inventory.quantity`.
+5. Call `getListingsItem` before patching each SKU.
+6. Block listings with ERROR issues.
+7. Skip SKUs whose Amazon price and quantity already match local targets.
+8. Use `patchListingsItem` for changed `purchasable_offer` and/or `fulfillment_availability`.
+9. Parse PATCH response status and issues.
+10. Confirm accepted updates with a second `getListingsItem` and compare target values.
+
+Submission statuses:
+
+- `dry_run`
+- `skipped_no_change`
+- `skipped_not_found`
+- `blocked_listing_issue`
+- `issues_found`
+- `not_accepted`
+- `update_confirmed`
+- `confirmed_with_mismatch`
+- `confirmed_with_issues`
+- `accepted_pending_confirmation`
+- `confirmation_failed`
+- `failed`
+
+Delayed confirmation statuses:
+
+- `delayed_update_confirmed`
+- `delayed_confirmed_with_mismatch`
+- `delayed_confirmed_with_issues`
+- `delayed_confirmed_with_issues_and_mismatch`
+- `delayed_confirmation_failed`
+
+`confirm-price-inventory-api` re-checks accepted but not fully verified submissions
+after `PRICE_INVENTORY_CONFIRM_AFTER_MINUTES` minutes, default 30. It writes a
+new `amazon_api_submissions` row with operation `delayed_confirmation` and
+links to the original row through `response_body.source_submission_id`; it does
+not PATCH Amazon. Production scheduler runs this delayed confirmation before
+starting the next hourly update.
+
+The legacy file generation path still exists for manual fallback and continues to
+use its existing output format.
+
 ## Current Deviations To Mitigate
 
 - `PricingService` prints workflow progress directly.
 - `InventoryPriceUpdaterService` catches sync errors and continues with existing data. This is current business behavior, but it should be explicit in the API contract and surfaced to callers.
+- API path performs Amazon read calls even in dry-run mode because candidate data is API-native; dry-run only suppresses PATCH writes.
 - `generate_update_file()` currently returns `None`; callers must infer success from stdout/logs and generated file side effects.
 - Output path is assembled from source file location instead of a configurable output directory.
 

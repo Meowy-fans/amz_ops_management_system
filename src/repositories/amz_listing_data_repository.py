@@ -31,9 +31,9 @@ class ListingDataRepository:
         获取需要更新的SKU列表。
         
         逻辑：
-        - 从 amz_all_listing_report 获取 amazon_sku (seller-sku)
+        - 从 amazon_listing_items_cache 获取 amazon_sku
         - 通过 meow_sku_map 关联到 giga_sku (vendor_sku)
-        - 仅包含 status='Active' 的商品（Inactive/Incomplete 无法接受 API 更新）
+        - Amazon cache 由 Listings Items API searchListingsItems/getListingsItem 刷新
         
         Returns:
             SKU映射列表，每个元素包含 amazon_sku 和 giga_sku
@@ -42,15 +42,16 @@ class ListingDataRepository:
         
         query = text("""
             SELECT
-                alr."seller-sku" AS amazon_sku,
-                msm.vendor_sku AS giga_sku
+                cache.sku AS amazon_sku,
+                msm.vendor_sku AS giga_sku,
+                cache.product_type AS product_type
             FROM
-                amz_all_listing_report alr
+                amazon_listing_items_cache cache
             JOIN
-                meow_sku_map msm ON alr."seller-sku" = msm.meow_sku
+                meow_sku_map msm ON cache.sku = msm.meow_sku
             WHERE
-                alr.status = 'Active'
-                AND msm.vendor_sku IS NOT NULL;
+                msm.vendor_sku IS NOT NULL
+            ORDER BY cache.sku;
         """)
         
         try:

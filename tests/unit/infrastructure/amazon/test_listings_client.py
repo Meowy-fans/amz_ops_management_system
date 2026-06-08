@@ -113,10 +113,17 @@ def test_search_listings_items_page_token_uses_token_context():
         api_client=api, marketplace_id="ATVPDKIKX0DER", seller_id="SELLER2"
     )
 
-    client.search_listings_items(page_token="NEXT")
+    client.search_listings_items(
+        included_data=["summaries", "issues"],
+        page_size=10,
+        page_token="NEXT",
+    )
 
     assert api.calls[0]["params"] == {
         "marketplaceIds": "ATVPDKIKX0DER",
+        "issueLocale": "en_US",
+        "pageSize": 10,
+        "includedData": "summaries,issues",
         "pageToken": "NEXT",
     }
 

@@ -1,9 +1,12 @@
 services:
   amz-listing-management-system:
-    image: amz-listing-management-system:2026-05-17
+    image: amz-listing-management-system:2026-06-08
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        SKIP_REQUIREMENTS_INSTALL: "true"
     container_name: amz-listing-management-system
     restart: unless-stopped
     env_file:
@@ -46,8 +49,45 @@ services:
       - "traefik.http.routers.amz-listing.tls.certresolver=letsencrypt"
       - "traefik.http.routers.amz-listing.tls.domains[0].main=meowy.fans"
       - "traefik.http.routers.amz-listing.tls.domains[0].sans=*.meowy.fans"
-      - "traefik.http.routers.amz-listing.middlewares=security-headers@file,rate-limit@file,auth-basic@file"
+      - "traefik.http.routers.amz-listing.middlewares=security-headers@file,rate-limit@file,forward-auth@file"
       - "traefik.http.services.amz-listing.loadbalancer.server.port=8080"
+
+  amz-price-inventory-scheduler:
+    image: amz-listing-management-system:2026-06-08
+    build:
+      context: /home/liangqinhao/amz_listing_management_system
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        SKIP_REQUIREMENTS_INSTALL: "true"
+    container_name: amz-price-inventory-scheduler
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.amazon-sp-api
+        required: false
+    environment:
+      APP_ENV: production
+      APP_MODE: cli
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-amz_listing}
+      DATABASE_USER: ${DATABASE_USER:-amz_listing}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      GIGA_BASE_URL: ${GIGA_BASE_URL:-https://api.gigacloudlogistics.com}
+      PRICE_INVENTORY_UPDATE_INTERVAL_SECONDS: ${PRICE_INVENTORY_UPDATE_INTERVAL_SECONDS:-3600}
+      PRICE_INVENTORY_UPDATE_INITIAL_DELAY_SECONDS: ${PRICE_INVENTORY_UPDATE_INITIAL_DELAY_SECONDS:-120}
+    volumes:
+      - /data/volumes/amz-listing-management-system/data:/app/data
+      - /data/volumes/amz-listing-management-system/output:/app/output
+      - /data/volumes/amz-listing-management-system/logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    command: ["sh", "scripts/hourly_price_inventory_update.sh"]
+    depends_on:
+      - amz-listing-management-system
+    networks:
+      - proxy
 
 networks:
   proxy:

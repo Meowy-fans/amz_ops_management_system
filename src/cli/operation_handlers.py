@@ -14,6 +14,7 @@ from src.services.giga_sync_service import GigaSyncService
 from src.services.pricing_service import PricingService
 from src.services.product_detail_generation_service import ProductDetailGenerationService
 from src.services.sku_mapping_service import SkuMappingService
+from src.services.task_lock import PostgresAdvisoryLock
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +192,12 @@ def handle_update_price_inventory_api(db: Session, dry_run: bool = True):
     print(f"Amazon SP-API Price & Quantity Update - {mode_label}")
     print("=" * 70)
 
+    lock = PostgresAdvisoryLock(db, "amazon_price_inventory_update")
+    if not lock.acquire():
+        print("Another price/inventory update is already running; skipping this run.")
+        logger.warning("Skipped price/inventory update because advisory lock is held")
+        return
+
     try:
         service = InventoryPriceUpdaterService(db=db)
         results = service.submit_updates_via_api(dry_run=dry_run)
@@ -199,6 +206,41 @@ def handle_update_price_inventory_api(db: Session, dry_run: bool = True):
     except Exception as e:
         print(f"\nPrice/inventory API update failed: {e}")
         logging.exception("Detailed error:")
+        raise
+    finally:
+        lock.release()
+
+
+def handle_confirm_price_inventory_api(db: Session):
+    """5.2b 延迟确认 Amazon SP-API 价格和库存更新结果"""
+    from src.services.amazon_price_inventory_delayed_confirmation_service import (
+        AmazonPriceInventoryDelayedConfirmationService,
+    )
+
+    logger.info("Starting delayed Amazon SP-API price/inventory confirmation")
+    print("\n" + "=" * 70)
+    print("Amazon SP-API Price & Quantity Delayed Confirmation")
+    print("=" * 70)
+
+    lock = PostgresAdvisoryLock(db, "amazon_price_inventory_update")
+    if not lock.acquire():
+        print("Another price/inventory update is already running; skipping confirmation.")
+        logger.warning("Skipped delayed confirmation because advisory lock is held")
+        return
+
+    try:
+        minutes = int(os.getenv("PRICE_INVENTORY_CONFIRM_AFTER_MINUTES", "30"))
+        limit = int(os.getenv("PRICE_INVENTORY_CONFIRM_LIMIT", "500"))
+        service = AmazonPriceInventoryDelayedConfirmationService(db=db)
+        results = service.confirm_pending(older_than_minutes=minutes, limit=limit)
+        if results:
+            print(f"\nConfirmed {len(results)} prior submissions.")
+    except Exception as e:
+        print(f"\nPrice/inventory delayed confirmation failed: {e}")
+        logging.exception("Detailed error:")
+        raise
+    finally:
+        lock.release()
 
 
 def handle_sync_listing_issues(db: Session, dry_run: bool = True):
@@ -227,6 +269,79 @@ def handle_sync_listing_issues(db: Session, dry_run: bool = True):
     except Exception as e:
         print(f"\nListing issue sync failed: {e}")
         logging.exception("Detailed error:")
+
+
+def handle_sync_confirmation_listing_issues(db: Session, dry_run: bool = True):
+    """同步价格/库存 confirmation 中发现的 Amazon listing issues"""
+    from src.services.amazon_listing_issue_sync_service import (
+        AmazonListingIssueSyncService,
+    )
+
+    logger.info("Starting confirmation listing issue sync (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN (plan repairs)" if dry_run else "LIVE (submit safe patches)"
+    print(f"Confirmation Listing Issue Sync - {mode_label}")
+    print("=" * 70)
+
+    limit = int(os.getenv("CONFIRMATION_LISTING_ISSUE_SYNC_LIMIT", "500"))
+    try:
+        service = AmazonListingIssueSyncService(db=db)
+        service.sync_confirmation_issues(limit=limit, dry_run=dry_run)
+    except Exception as e:
+        print(f"\nConfirmation listing issue sync failed: {e}")
+        logging.exception("Detailed error:")
+        raise
+
+
+def handle_repair_listing_issues(db: Session, dry_run: bool = True):
+    """执行 open Amazon listing issues 的安全自动修复计划"""
+    from src.services.amazon_listing_issue_repair_service import (
+        AmazonListingIssueRepairService,
+    )
+
+    logger.info("Starting listing issue repair (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN" if dry_run else "LIVE"
+    print(f"Amazon Listing Issue Repair - {mode_label}")
+    print("=" * 70)
+
+    source = os.getenv(
+        "LISTING_ISSUE_REPAIR_SOURCE",
+        "price_inventory_confirmation",
+    )
+    limit_text = os.getenv("LISTING_ISSUE_REPAIR_LIMIT")
+    limit = int(limit_text) if limit_text else None
+    try:
+        service = AmazonListingIssueRepairService(db=db)
+        service.repair_open_issues(source=source, limit=limit, dry_run=dry_run)
+    except Exception as e:
+        print(f"\nListing issue repair failed: {e}")
+        logging.exception("Detailed error:")
+        raise
+
+
+def handle_confirm_listing_issue_repairs(db: Session):
+    """延迟确认已提交的 Amazon listing issue 修复动作"""
+    from src.services.amazon_listing_issue_repair_service import (
+        AmazonListingIssueRepairService,
+    )
+
+    print("\n" + "=" * 70)
+    print("Amazon Listing Issue Repair Confirmation")
+    print("=" * 70)
+
+    minutes = int(os.getenv("LISTING_ISSUE_REPAIR_CONFIRM_AFTER_MINUTES", "30"))
+    limit = int(os.getenv("LISTING_ISSUE_REPAIR_CONFIRM_LIMIT", "100"))
+    try:
+        service = AmazonListingIssueRepairService(db=db)
+        service.confirm_submitted_repairs(
+            older_than_minutes=minutes,
+            limit=limit,
+        )
+    except Exception as e:
+        print(f"\nListing issue repair confirmation failed: {e}")
+        logging.exception("Detailed error:")
+        raise
 
 
 def handle_discover_product_type(db: Session, keywords: Optional[str] = None):

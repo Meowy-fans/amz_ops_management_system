@@ -12,6 +12,7 @@ from src.cli.category_handlers import (
 from src.cli.listing_handlers import handle_generate_listing, handle_generate_listing_api
 from src.cli.operation_handlers import (
     handle_competitive_analysis,
+    handle_confirm_listing_issue_repairs,
     handle_daily_check,
     handle_discover_product_type,
     handle_generate_details,
@@ -21,9 +22,12 @@ from src.cli.operation_handlers import (
     handle_keyword_research,
     handle_lifecycle_summary,
     handle_profit_analysis,
+    handle_repair_listing_issues,
     handle_suggest_category_mappings,
     handle_sync_amazon_report_api,
+    handle_sync_confirmation_listing_issues,
     handle_sku_sync_from_csv,
+    handle_confirm_price_inventory_api,
     handle_sync_listing_issues,
     handle_sync_inventory,
     handle_sync_prices,
@@ -106,8 +110,20 @@ TASK_HANDLERS = {
     "update-price-inventory-api": lambda db, **kwargs: handle_update_price_inventory_api(
         db, dry_run=kwargs.get("dry_run", True)
     ),
+    "confirm-price-inventory-api": lambda db, **kwargs: handle_confirm_price_inventory_api(
+        db
+    ),
     "sync-listing-issues": lambda db, **kwargs: handle_sync_listing_issues(
         db, dry_run=kwargs.get("dry_run", True)
+    ),
+    "sync-confirmation-listing-issues": lambda db, **kwargs: (
+        handle_sync_confirmation_listing_issues(db, dry_run=kwargs.get("dry_run", True))
+    ),
+    "repair-listing-issues": lambda db, **kwargs: handle_repair_listing_issues(
+        db, dry_run=kwargs.get("dry_run", True)
+    ),
+    "confirm-listing-issue-repairs": lambda db, **kwargs: (
+        handle_confirm_listing_issue_repairs(db)
     ),
     "sku-sync-from-csv": lambda db, **kwargs: handle_sku_sync_from_csv(db),
     "discover-product-type": lambda db, **kwargs: handle_discover_product_type(

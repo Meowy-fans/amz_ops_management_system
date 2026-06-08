@@ -9,10 +9,36 @@ from src.services.amazon_listing_issue_repair_service import (
 class FakeIssueRepo:
     def __init__(self):
         self.actions = []
+        self.open_issues = []
+        self.marked_resolved = []
 
     def insert_action(self, **kwargs):
         self.actions.append(kwargs)
         return len(self.actions)
+
+    def get_open_issues(self, limit=None, source=None):
+        issues = list(self.open_issues)
+        if source:
+            issues = [issue for issue in issues if issue.get("source") == source]
+        return issues[:limit] if limit else issues
+
+    def get_submitted_actions_for_confirmation(self, older_than_minutes=30, limit=100):
+        return [
+            {
+                "id": index + 1,
+                "issue_code": "18448",
+                "attribute_names": ["recommended_uses_for_product"],
+                "categories": ["MISSING_ATTRIBUTE"],
+                "raw_issue": {"code": "18448"},
+                **action,
+            }
+            for index, action in enumerate(self.actions)
+            if action["status"] == "submitted"
+        ][:limit]
+
+    def mark_issue_resolved(self, issue_id):
+        self.marked_resolved.append(issue_id)
+        return 1
 
 
 class FakeSchemaService:
@@ -29,12 +55,17 @@ class FakeSchemaService:
 class FakeListingsClient:
     def __init__(self):
         self.calls = []
+        self.confirm_body = {"issues": []}
 
     def patch_listings_item(self, sku, product_type, patches, issue_locale="en_US"):
         self.calls.append(
             {"sku": sku, "product_type": product_type, "patches": patches}
         )
         return {"headers": {"x-amzn-RequestId": "REQ1"}, "body": {"status": "ACCEPTED"}}
+
+    def get_listings_item(self, sku, issue_locale="en_US", included_data=None):
+        self.calls.append({"sku": sku, "included_data": included_data})
+        return {"headers": {"x-amzn-RequestId": "REQ2"}, "body": self.confirm_body}
 
 
 def _issue(**overrides):
@@ -49,6 +80,8 @@ def _issue(**overrides):
         "message": "missing recommended_uses_for_product",
         "attribute_names": ["recommended_uses_for_product"],
         "categories": ["MISSING_ATTRIBUTE"],
+        "item_name": "Bathroom Vanity Cabinet",
+        "source": "price_inventory_confirmation",
     }
     data.update(overrides)
     return data
@@ -74,7 +107,10 @@ def test_missing_recommended_use_creates_dry_run_patch_action():
     assert results[0]["status"] == "dry_run"
     action = repo.actions[0]
     assert action["action_type"] == "patch_listing_attribute"
+    assert action["status"] == "dry_run"
     assert action["request_payload"]["productType"] == "CABINET"
+    assert action["request_payload"]["confidence"] == "high"
+    assert "Bathroom Vanity" in action["request_payload"]["evidence"][0]
     patch = action["request_payload"]["patches"][0]
     assert patch["path"] == "/attributes/recommended_uses_for_product"
     assert patch["value"][0]["value"] == "Bathroom"
@@ -128,3 +164,59 @@ def test_live_patch_calls_listings_api_and_records_submission():
     assert results[0]["status"] == "submitted"
     assert client.calls[0]["sku"] == "SKU1"
     assert repo.actions[0]["response_body"] == {"status": "ACCEPTED"}
+
+
+def test_repair_open_issues_filters_confirmation_source_and_dry_runs():
+    repo = FakeIssueRepo()
+    repo.open_issues = [
+        _issue(source="price_inventory_confirmation"),
+        _issue(sku="SKU2", source="suppressed_report"),
+    ]
+    service = _service(repo=repo)
+
+    results = service.repair_open_issues(
+        source="price_inventory_confirmation",
+        dry_run=True,
+    )
+
+    assert len(results) == 1
+    assert results[0]["sku"] == "SKU1"
+    assert repo.actions[0]["status"] == "dry_run"
+
+
+def test_confirmation_marks_submitted_repair_confirmed_when_issue_disappears():
+    repo = FakeIssueRepo()
+    client = FakeListingsClient()
+    service = _service(repo=repo, client=client)
+    service.plan_and_execute([_issue()], scan_run_id=1, dry_run=False)
+
+    results = service.confirm_submitted_repairs(older_than_minutes=30)
+
+    assert results[0]["status"] == "repair_confirmed"
+    assert repo.actions[-1]["action_type"] == "confirm_patch_listing_attribute"
+    assert repo.actions[-1]["status"] == "repair_confirmed"
+    assert repo.marked_resolved == [10]
+
+
+def test_confirmation_records_failed_when_same_issue_remains():
+    repo = FakeIssueRepo()
+    client = FakeListingsClient()
+    client.confirm_body = {
+        "issues": [
+            {
+                "code": "18448",
+                "severity": "WARNING",
+                "attributeNames": ["recommended_uses_for_product"],
+                "categories": ["MISSING_ATTRIBUTE"],
+                "message": "missing recommended_uses_for_product",
+            }
+        ]
+    }
+    service = _service(repo=repo, client=client)
+    service.plan_and_execute([_issue()], scan_run_id=1, dry_run=False)
+
+    results = service.confirm_submitted_repairs(older_than_minutes=30)
+
+    assert results[0]["status"] == "repair_failed"
+    assert repo.actions[-1]["status"] == "repair_failed"
+    assert repo.marked_resolved == []

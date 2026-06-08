@@ -1,5 +1,6 @@
 """Repair planning and execution for Amazon listing issues."""
 import logging
+import json
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -42,6 +43,34 @@ class AmazonListingIssueRepairService:
             action = self._plan_action(issue)
             result = self._record_or_execute(action, scan_run_id, dry_run)
             results.append(result)
+        return results
+
+    def repair_open_issues(
+        self,
+        source: Optional[str] = None,
+        limit: Optional[int] = None,
+        dry_run: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """Plan and optionally repair currently open listing issues."""
+        issues = self._issue_repo().get_open_issues(limit=limit, source=source)
+        results = self.plan_and_execute(issues, dry_run=dry_run)
+        self._emit_summary(results, dry_run=dry_run, label="Listing issue repair")
+        return results
+
+    def confirm_submitted_repairs(
+        self,
+        older_than_minutes: int = 30,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Re-check submitted repair actions after Amazon propagation delay."""
+        actions = self._issue_repo().get_submitted_actions_for_confirmation(
+            older_than_minutes=older_than_minutes,
+            limit=limit,
+        )
+        results = []
+        for action in actions:
+            results.append(self._confirm_action(action, older_than_minutes))
+        self._emit_summary(results, dry_run=False, label="Listing issue repair confirmation")
         return results
 
     def _plan_action(self, issue: Dict[str, Any]) -> Dict[str, Any]:
@@ -93,14 +122,20 @@ class AmazonListingIssueRepairService:
                 f"未缓存 {product_type} schema 或 schema 中未确认 {attr_name}，先补 schema 再自动修复。",
             )
 
-        value = self._recommended_use_value(issue)
+        proposal = self._recommended_use_value(issue)
+        if proposal["confidence"] != "high":
+            return self._manual_action(
+                issue,
+                "manual_review",
+                f"缺少高置信度 {attr_name} 补全依据。",
+            )
         patches = [
             {
                 "op": "replace",
                 "path": f"/attributes/{attr_name}",
                 "value": [
                     {
-                        "value": value,
+                        "value": proposal["value"],
                         "language_tag": "en_US",
                         "marketplace_id": marketplace_id,
                     }
@@ -111,10 +146,14 @@ class AmazonListingIssueRepairService:
             "issue": issue,
             "action_type": "patch_listing_attribute",
             "status": "planned",
-            "reason": f"补充缺失属性 {attr_name}={value}",
+            "reason": f"补充缺失属性 {attr_name}={proposal['value']}",
             "request_payload": {
                 "productType": product_type,
                 "patches": patches,
+                "target_attribute": attr_name,
+                "target_value": proposal["value"],
+                "confidence": proposal["confidence"],
+                "evidence": proposal["evidence"],
             },
         }
 
@@ -141,8 +180,15 @@ class AmazonListingIssueRepairService:
                         product_type=payload["productType"],
                         patches=payload["patches"],
                     )
-                    status = "submitted"
                     response_body = response.get("body")
+                    patch_issues = (response_body or {}).get("issues") or []
+                    patch_status = (response_body or {}).get("status", "ACCEPTED")
+                    if patch_issues:
+                        status = "patch_issues_found"
+                    elif patch_status != "ACCEPTED":
+                        status = "not_accepted"
+                    else:
+                        status = "submitted"
                 except Exception as exc:
                     logger.error("Listing issue repair failed for %s: %s", issue["sku"], exc)
                     status = "failed"
@@ -171,6 +217,84 @@ class AmazonListingIssueRepairService:
             "status": status,
             "reason": action["reason"],
         }
+
+    def _confirm_action(
+        self,
+        action: Dict[str, Any],
+        older_than_minutes: int,
+    ) -> Dict[str, Any]:
+        repo = self._issue_repo()
+        request_payload = self._as_dict(action.get("request_payload"))
+        target_attribute = request_payload.get("target_attribute")
+        try:
+            response = self._listings_client().get_listings_item(
+                sku=action["sku"],
+                included_data=["summaries", "issues", "attributes", "productTypes"],
+            )
+            body = response.get("body") or {}
+            remaining = self._matching_issues(body.get("issues") or [], action)
+            status = "repair_failed" if remaining else "repair_confirmed"
+            response_body = {
+                "source_action_id": action["id"],
+                "target_attribute": target_attribute,
+                "remaining_matching_issues": remaining,
+                "body": body,
+            }
+            error_message = None
+            if status == "repair_confirmed" and action.get("issue_id"):
+                repo.mark_issue_resolved(action["issue_id"])
+        except Exception as exc:
+            status = "repair_confirmation_failed"
+            response_body = {
+                "source_action_id": action["id"],
+                "target_attribute": target_attribute,
+            }
+            error_message = str(exc)
+
+        action_id = repo.insert_action(
+            issue_id=action.get("issue_id"),
+            scan_run_id=action.get("scan_run_id"),
+            sku=action["sku"],
+            marketplace_id=action["marketplace_id"],
+            product_type=action.get("product_type"),
+            action_type="confirm_patch_listing_attribute",
+            status=status,
+            reason=f"确认 {target_attribute or 'listing attribute'} 修复结果",
+            request_payload={
+                "source_action_id": action["id"],
+                "older_than_minutes": older_than_minutes,
+                "target_attribute": target_attribute,
+            },
+            response_body=response_body,
+            error_message=error_message,
+        )
+        return {
+            "action_id": action_id,
+            "source_action_id": action["id"],
+            "sku": action["sku"],
+            "issue_code": action.get("issue_code"),
+            "action_type": "confirm_patch_listing_attribute",
+            "status": status,
+        }
+
+    @staticmethod
+    def _matching_issues(
+        raw_issues: List[Dict[str, Any]],
+        action: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        issue_code = str(action.get("issue_code") or "")
+        target_attrs = set(AmazonListingIssueRepairService._as_list(action.get("attribute_names")))
+        matches = []
+        for raw_issue in raw_issues:
+            attrs = set(
+                AmazonListingIssueRepairService._as_list(raw_issue.get("attributeNames"))
+            )
+            if str(raw_issue.get("code") or "") != issue_code:
+                continue
+            if target_attrs and attrs and not target_attrs.intersection(attrs):
+                continue
+            matches.append(raw_issue)
+        return matches
 
     def _manual_action(
         self,
@@ -201,15 +325,29 @@ class AmazonListingIssueRepairService:
         return property_name in props
 
     @staticmethod
-    def _recommended_use_value(issue: Dict[str, Any]) -> str:
+    def _recommended_use_value(issue: Dict[str, Any]) -> Dict[str, Any]:
         product_type = (issue.get("product_type") or "").upper()
         text = " ".join(
             str(issue.get(key) or "")
             for key in ("sku", "asin", "message", "item_name")
         ).lower()
-        if product_type in {"CABINET", "HOME_MIRROR"} or "bathroom" in text:
-            return "Bathroom"
-        return "Home"
+        evidence = []
+        item_name = issue.get("item_name")
+        if item_name:
+            evidence.append(str(item_name))
+        if product_type:
+            evidence.append(f"product_type={product_type}")
+        if "bathroom" in text or product_type in {"CABINET", "HOME_MIRROR"}:
+            return {
+                "value": "Bathroom",
+                "confidence": "high",
+                "evidence": evidence or ["bathroom/category rule"],
+            }
+        return {
+            "value": "Home",
+            "confidence": "medium",
+            "evidence": evidence or ["default home rule"],
+        }
 
     @staticmethod
     def _as_list(value: Any) -> List[str]:
@@ -244,3 +382,25 @@ class AmazonListingIssueRepairService:
 
         self._schema_service_instance = AmazonSchemaService(self.db)
         return self._schema_service_instance
+
+    @staticmethod
+    def _as_dict(value: Any) -> Dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            return json.loads(value)
+        return {}
+
+    def _emit_summary(
+        self,
+        results: List[Dict[str, Any]],
+        dry_run: bool,
+        label: str,
+    ) -> None:
+        counts: Dict[str, int] = {}
+        for result in results:
+            counts[result["status"]] = counts.get(result["status"], 0) + 1
+        mode = "DRY RUN" if dry_run else "LIVE"
+        self.reporter.emit(f"{label} complete - {mode}: {len(results)} action(s)")
+        for status, count in sorted(counts.items()):
+            self.reporter.emit(f"  {status}: {count}")
