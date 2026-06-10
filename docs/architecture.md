@@ -9,24 +9,29 @@ The **Amazon Listing Management System** is a full-lifecycle operations platform
 The system follows a **Layered Architecture** pattern with three new layers added in Phase 1-3:
 
 1.  **Presentation Layer (CLI + Web)**: `main.py` (thin CLI entry), `src/cli/` (menu + task dispatcher + handlers), `scripts/io_server.py` (web dashboard).
-2.  **Orchestration Layer** (🆕 Phase 3): `ProductLifecycleManager` (6-stage state machine), `DailyCheckService`, `WeeklyReportService`.
+2.  **Orchestration Layer** (🆕 Phase 3): `ProductLifecycleManager` (6-stage state machine), `DailyCheckService`, `WeeklyReportService`, `AmazonOrderSyncService`, `AmazonOrderDailyReportService`.
 3.  **Service Layer**: 37 business modules covering listing generation, keyword research, competitive intelligence, PPC management, profit analysis, inventory planning, content performance.
 4.  **Repository Layer**: 16 data access modules with SQLAlchemy.
-5.  **Infrastructure Layer**: SP-API clients (6 APIs), Giga API, LLM providers, Feishu notifications.
+5.  **Infrastructure Layer**: SP-API clients (Orders/Listings/Reports/Pricing/Catalog/Ads/Brand Analytics), Giga API, LLM providers, Feishu notifications.
 6.  **Reporting Boundary**: `ProgressReporter` for testable output; `FeishuClient` for operational alerts.
 
 ### 2.1 Module Dependency Graph
 
 ```mermaid
 graph TD
-    Entry[main.py] --> CLI[src/cli task_dispatcher 31 tasks]
+    Entry[main.py] --> CLI[src/cli task_dispatcher 38 tasks]
     CLI --> S_Lifecycle[ProductLifecycleManager 🆕]
+    CLI --> S_OrderSync[AmazonOrderSyncService]
+    CLI --> S_OrderReport[AmazonOrderDailyReportService]
     
     subgraph Orchestration 🆕
         S_Lifecycle --> S_Daily[DailyCheckService]
         S_Lifecycle --> S_Weekly[WeeklyReportService]
         S_Daily --> I_Feishu[FeishuClient]
         S_Weekly --> I_Feishu
+        S_OrderSync[AmazonOrderSyncService] --> I_Feishu
+        S_OrderReport[AmazonOrderDailyReportService] --> I_Feishu
+        S_OrderSync --> I_Orders[AmazonOrdersClient]
     end
     
     subgraph Core Services

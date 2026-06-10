@@ -1,6 +1,9 @@
 """Content validation for LLM-generated Amazon listings."""
 import re
+from dataclasses import dataclass, field
 from typing import List
+
+from src.services.compliance_claim_scanner import ComplianceClaimScanner
 
 # Prohibited word patterns (Amazon style rules)
 _PROHIBITED = [
@@ -15,20 +18,15 @@ _PROHIBITED = [
 
 _UNSAFE_HTML = re.compile(r"<(?!b>|/b>|br\s*/?>)[a-zA-Z][^>]*>", re.IGNORECASE)
 
-_PESTICIDE_CLAIM_PATTERNS = [
-    r"\banti[-\s]?bacterial\b",
-    r"\banti[-\s]?microbial\b",
-    r"\bantimicrobial\b",
-    r"\bbacteria(?:l)?\b",
-    r"\bgerms?\b",
-    r"\bdisinfect\w*\b",
-    r"\bsanitiz\w*\b",
-    r"\bvirus(?:es)?\b",
-    r"\banti[-\s]?mold\b",
-    r"\bmildew\b",
-    r"\bpesticid\w*\b",
-    r"\binsect(?:s)?\b",
-]
+
+@dataclass
+class ValidationResult:
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+
+    @property
+    def all_messages(self) -> List[str]:
+        return [*self.errors, *self.warnings]
 
 
 def validate_content(
@@ -36,45 +34,52 @@ def validate_content(
     bullets: List[str] = None,
     description: str = "",
     search_terms: str = "",
-) -> List[str]:
-    """Validate generated content against Amazon style rules.
-
-    Returns a list of warning strings (empty = no issues).
-    """
-    warnings: List[str] = []
+) -> ValidationResult:
+    """Validate generated content against Amazon style and compliance rules."""
+    result = ValidationResult()
     bullets = bullets or []
+    scanner = ComplianceClaimScanner()
 
     # Length checks
     if len(title) > 200:
-        warnings.append(f"Title too long ({len(title)}/200 chars)")
+        result.warnings.append(f"Title too long ({len(title)}/200 chars)")
     for i, b in enumerate(bullets, 1):
         if len(b) > 500:
-            warnings.append(f"Bullet {i} too long ({len(b)}/500 chars)")
+            result.warnings.append(f"Bullet {i} too long ({len(b)}/500 chars)")
     if len(description) > 2000:
-        warnings.append(f"Description too long ({len(description)}/2000 chars)")
+        result.warnings.append(f"Description too long ({len(description)}/2000 chars)")
     if len(search_terms) > 250:
-        warnings.append(f"Search terms too long ({len(search_terms)}/250 chars)")
+        result.warnings.append(f"Search terms too long ({len(search_terms)}/250 chars)")
+
+    field_map = {
+        "title": title,
+        "description": description,
+        "search_terms": search_terms,
+        "generic_keyword": "",
+    }
+    for index, bullet in enumerate(bullets, 1):
+        field_map[f"bullet_{index}"] = bullet
+
+    claim_hits = scanner.scan_fields(field_map)
+    for hit in claim_hits:
+        result.errors.append(
+            "Potential pesticide/device claim "
+            f"'{hit.matched_text}' found in {hit.field}"
+        )
 
     # Prohibited words
     combined = " ".join([title, description, search_terms, *bullets])
     for pattern in _PROHIBITED:
         match = re.search(pattern, combined, re.IGNORECASE)
         if match:
-            warnings.append(f"Prohibited pattern '{match.group()}' found")
-
-    for pattern in _PESTICIDE_CLAIM_PATTERNS:
-        match = re.search(pattern, combined, re.IGNORECASE)
-        if match:
-            warnings.append(
-                f"Potential pesticide/device claim '{match.group()}' found"
-            )
+            result.warnings.append(f"Prohibited pattern '{match.group()}' found")
 
     # HTML safety
     if description and _UNSAFE_HTML.search(description):
-        warnings.append("Unsafe HTML tags in description (only <b> and <br/> allowed)")
+        result.warnings.append("Unsafe HTML tags in description (only <b> and <br/> allowed)")
 
     # ALL CAPS
     if title and title.isupper():
-        warnings.append("Title is ALL CAPS")
+        result.warnings.append("Title is ALL CAPS")
 
-    return warnings
+    return result

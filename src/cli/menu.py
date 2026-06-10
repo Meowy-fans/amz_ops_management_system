@@ -33,6 +33,8 @@ INTERACTIVE_TASK_CHOICES = {
     "5.6": "profit-analysis",
     "5.7": "inventory-health",
     "5.8": "lifecycle-summary",
+    "5.9": "sync-amazon-orders",
+    "5.10": "amazon-order-daily-report",
 }
 
 
@@ -79,6 +81,8 @@ def print_menu():
     print("  5.6 利润分析 (单品利润核算) 🆕")
     print("  5.7 库存健康检查 (补货+滞销) 🆕")
     print("  5.8 商品生命周期总览 🆕")
+    print("  5.9 同步 Amazon 订单并飞书通知 🆕")
+    print("  5.10 发送 Amazon 订单 24h 健康日报 🆕")
     print("\n【0】退出系统")
     print("-" * 70)
 

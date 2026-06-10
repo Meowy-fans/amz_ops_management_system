@@ -44,6 +44,11 @@ class FeishuMessage:
 class FeishuClient:
     """Pushes messages to a Feishu incoming webhook."""
 
+    @property
+    def is_configured(self) -> bool:
+        """Return True when a webhook URL is set."""
+        return self._configured
+
     def __init__(self, webhook_url: Optional[str] = None):
         self._url = webhook_url
         self._configured = bool(webhook_url)

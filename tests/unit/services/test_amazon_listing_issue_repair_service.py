@@ -51,6 +51,9 @@ class FakeSchemaService:
             return None
         return {"schema_json": {"properties": props}}
 
+    def get_or_fetch_schema(self, product_type):
+        return self.get_cached_schema(product_type)
+
 
 class FakeListingsClient:
     def __init__(self):
@@ -87,9 +90,9 @@ def _issue(**overrides):
     return data
 
 
-def _service(repo=None, schema=None, client=None):
+def _service(repo=None, schema=None, client=None, db=None):
     return AmazonListingIssueRepairService(
-        db=MagicMock(),
+        db=db or MagicMock(),
         issue_repo=repo or FakeIssueRepo(),
         schema_service=schema or FakeSchemaService(
             {"CABINET": {"recommended_uses_for_product": {}}}
@@ -110,7 +113,7 @@ def test_missing_recommended_use_creates_dry_run_patch_action():
     assert action["status"] == "dry_run"
     assert action["request_payload"]["productType"] == "CABINET"
     assert action["request_payload"]["confidence"] == "high"
-    assert "Bathroom Vanity" in action["request_payload"]["evidence"][0]
+    assert "Bathroom Vanity" in action["request_payload"]["evidence"][0][0]
     patch = action["request_payload"]["patches"][0]
     assert patch["path"] == "/attributes/recommended_uses_for_product"
     assert patch["value"][0]["value"] == "Bathroom"
@@ -140,9 +143,29 @@ def test_image_issue_requires_manual_image_replacement():
     assert repo.actions[0]["action_type"] == "replace_main_image"
 
 
-def test_qualification_issue_requires_manual_review():
+def _mock_db_with_regenerated_content():
+    db = MagicMock()
+    result = MagicMock()
+    result.fetchone.return_value = (
+        "W2615S00095",
+        "Modern Bathroom Vanity Cabinet with Storage",
+        "Spacious storage for bathroom essentials",
+        "Durable engineered wood construction",
+        "Easy assembly with included hardware",
+        "Sleek design complements modern decor",
+        "Adjustable shelves for flexible organization",
+        "This vanity cabinet offers practical bathroom storage with a clean contemporary look.",
+        '{"search_terms": "bathroom vanity cabinet storage", "generic_keyword": "bathroom vanity"}',
+    )
+    db.execute.return_value = result
+    return db
+
+
+def test_qualification_issue_requires_manual_review_without_regenerated_content():
     repo = FakeIssueRepo()
-    service = _service(repo=repo)
+    db = MagicMock()
+    db.execute.return_value.fetchone.return_value = None
+    service = _service(repo=repo, db=db)
 
     results = service.plan_and_execute(
         [_issue(issue_code="18503", categories=["QUALIFICATION_REQUIRED"])],
@@ -152,6 +175,27 @@ def test_qualification_issue_requires_manual_review():
 
     assert results[0]["status"] == "manual_required"
     assert repo.actions[0]["action_type"] == "qualification_or_claim_review"
+
+
+def test_qualification_issue_with_regenerated_content_creates_compliance_patch():
+    repo = FakeIssueRepo()
+    service = _service(repo=repo, db=_mock_db_with_regenerated_content())
+
+    results = service.plan_and_execute(
+        [_issue(issue_code="18503", categories=["QUALIFICATION_REQUIRED"])],
+        scan_run_id=1,
+        dry_run=True,
+    )
+
+    assert results[0]["status"] == "dry_run"
+    action = repo.actions[0]
+    assert action["action_type"] == "patch_compliance_content"
+    assert action["request_payload"]["productType"] == "CABINET"
+    assert action["request_payload"]["confidence"] == "high"
+    patch_paths = {patch["path"] for patch in action["request_payload"]["patches"]}
+    assert "/attributes/item_name" in patch_paths
+    assert "/attributes/product_description" in patch_paths
+    assert "/attributes/bullet_point" in patch_paths
 
 
 def test_live_patch_calls_listings_api_and_records_submission():
@@ -220,3 +264,95 @@ def test_confirmation_records_failed_when_same_issue_remains():
     assert results[0]["status"] == "repair_failed"
     assert repo.actions[-1]["status"] == "repair_failed"
     assert repo.marked_resolved == []
+
+
+def test_missing_installation_type_vessel_sink_creates_patch():
+    repo = FakeIssueRepo()
+    service = _service(repo=repo, schema=FakeSchemaService(
+        {"SINK": {"installation_type": {"type": "array"}}}
+    ))
+
+    results = service.plan_and_execute(
+        [_issue(
+            sku="SKU-SINK-1",
+            product_type="SINK",
+            attribute_names=["installation_type"],
+            item_name="White Ceramic Vessel Sink - Above Counter Bathroom Basin",
+        )],
+        scan_run_id=1,
+        dry_run=True,
+    )
+
+    assert results[0]["status"] == "dry_run"
+    action = repo.actions[0]
+    assert action["action_type"] == "patch_listing_attribute"
+    assert action["request_payload"]["productType"] == "SINK"
+    assert action["request_payload"]["target_values"]["installation_type"] == "Countertop"
+
+
+def test_missing_style_modern_sink_creates_patch():
+    repo = FakeIssueRepo()
+    service = _service(repo=repo, schema=FakeSchemaService(
+        {"SINK": {"style": {"type": "array"}}}
+    ))
+
+    results = service.plan_and_execute(
+        [_issue(
+            sku="SKU-SINK-2",
+            product_type="SINK",
+            attribute_names=["style"],
+            item_name="Modern White Ceramic Vessel Sink",
+        )],
+        scan_run_id=1,
+        dry_run=True,
+    )
+
+    assert results[0]["status"] == "dry_run"
+    action = repo.actions[0]
+    assert action["request_payload"]["target_values"]["style"] == "Contemporary"
+
+
+def test_missing_style_marble_sink_auto_fills_classic():
+    repo = FakeIssueRepo()
+    service = _service(repo=repo, schema=FakeSchemaService(
+        {"SINK": {"style": {"type": "array"}}}
+    ))
+
+    results = service.plan_and_execute(
+        [_issue(
+            sku="SKU-SINK-2b",
+            product_type="SINK",
+            attribute_names=["style"],
+            item_name="Green Natural Marble Bathroom Sink",
+        )],
+        scan_run_id=1,
+        dry_run=True,
+    )
+
+    assert results[0]["status"] == "dry_run"
+    assert repo.actions[0]["request_payload"]["target_values"]["style"] == "Classic"
+
+
+def test_missing_both_installation_type_and_style_creates_multi_patch():
+    repo = FakeIssueRepo()
+    service = _service(repo=repo, schema=FakeSchemaService(
+        {"SINK": {"installation_type": {"type": "array"}, "style": {"type": "array"}}}
+    ))
+
+    results = service.plan_and_execute(
+        [_issue(
+            sku="SKU-SINK-3",
+            product_type="SINK",
+            attribute_names=["installation_type", "style"],
+            item_name="Matte Black Modern Vessel Sink",
+        )],
+        scan_run_id=1,
+        dry_run=True,
+    )
+
+    assert results[0]["status"] == "dry_run"
+    action = repo.actions[0]
+    assert action["action_type"] == "patch_listing_attribute"
+    assert len(action["request_payload"]["patches"]) == 2
+    assert action["request_payload"]["target_values"]["installation_type"] == "Countertop"
+    assert action["request_payload"]["target_values"]["style"] == "Contemporary"

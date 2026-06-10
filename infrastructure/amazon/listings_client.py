@@ -140,3 +140,19 @@ class AmazonListingsClient:
         }
         logger.info("Validation preview SKU=%s productType=%s", sku, product_type)
         return self.api_client.request("PUT", path, params=params, json=body)
+
+    # ── delete ─────────────────────────────────────────────────────
+
+    def delete_listings_item(
+        self,
+        sku: str,
+        issue_locale: str = "en_US",
+    ) -> Dict[str, Any]:
+        """Delete a listing item by SKU."""
+        path = f"/listings/2021-08-01/items/{self.seller_id}/{sku}"
+        params = {
+            "marketplaceIds": self.marketplace_id,
+            "issueLocale": issue_locale,
+        }
+        logger.info("Deleting listing SKU=%s", sku)
+        return self.api_client.request("DELETE", path, params=params)

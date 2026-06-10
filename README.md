@@ -17,7 +17,7 @@ python3 main.py
 python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-dry-run]
 ```
 
-### 可用任务（31 个）
+### 可用任务（38 个）
 
 **Giga 商品管理**：`sync-products`, `import-amz-report`, `sync-amz-report-api`, `update-listing-status`, `generate-details`, `sync-prices`, `sync-inventory`, `update-prices`
 
@@ -34,6 +34,8 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 **🆕 巡检与报告**：`daily-check`, `weekly-report`
 
 **🆕 利润与库存**：`profit-analysis`, `inventory-health`, `lifecycle-summary`
+
+**🆕 Amazon 订单（Phase A）**：`sync-amazon-orders`, `amazon-order-daily-report`, `test-feishu-alert`
 
 ---
 
@@ -54,6 +56,7 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 │   │   ├── api_client.py          # SP-API HTTP 客户端（重试/代理）
 │   │   ├── listings_client.py     # Listings Items API
 │   │   ├── reports_client.py      # Reports API
+│   │   ├── orders_client.py       # 🆕 Orders API（Phase A 只读拉单）
 │   │   ├── product_type_client.py # Product Type Definitions API
 │   │   ├── pricing_client.py      # 🆕 Product Pricing API
 │   │   ├── catalog_client.py      # 🆕 Catalog Items API
@@ -64,7 +67,7 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 ├── src/
 │   ├── cli/                        # CLI 展现层
 │   │   ├── menu.py                # 交互式菜单
-│   │   ├── task_dispatcher.py     # 任务注册与分发（31 个任务）
+│   │   ├── task_dispatcher.py     # 任务注册与分发（38 个任务）
 │   │   ├── listing_handlers.py    # 发品 handler
 │   │   ├── operation_handlers.py  # 运营 + 🆕 Phase 1-3 handler
 │   │   ├── category_handlers.py   # 类目配置 handler
@@ -85,6 +88,8 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 │   │   ├── inventory_planner.py             # 🆕 库存健康+补货计划
 │   │   ├── content_performance_analyzer.py   # 🆕 A+ 内容效果分析
 │   │   ├── daily_check_service.py           # 🆕 每日巡检编排
+│   │   ├── amazon_order_sync_service.py     # 🆕 Amazon 订单轮询+飞书通知
+│   │   ├── amazon_order_daily_report_service.py # 🆕 订单 24h 健康日报
 │   │   ├── weekly_report_service.py         # 🆕 每周运营报告
 │   │   ├── product_content_generator.py     # 品类感知 LLM 内容生成
 │   │   ├── amazon_listing_quality_gate.py   # 发品前质量闸门
@@ -168,6 +173,16 @@ LLM_PROVIDER=deepseek DEEPSEEK_API_KEY=xxx
 
 # 飞书推送
 FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/xxx
+
+# Amazon 订单同步（Phase A）
+AMAZON_ORDER_SYNC_NOTIFY=true
+AMAZON_ORDER_SYNC_LOOKBACK_HOURS=48
+AMAZON_ORDER_SYNC_INTERVAL_SECONDS=1800
+AMAZON_ORDER_SYNC_FAILURE_ALERT_THRESHOLD=3
+AMAZON_ORDER_DAILY_REPORT_NOTIFY=true
+AMAZON_ORDER_DAILY_REPORT_HOURS=24
+AMAZON_ORDER_DAILY_REPORT_HOUR=9
+AMAZON_ORDER_DAILY_REPORT_TZ=Asia/Shanghai
 
 # 可选
 LISTING_ISSUE_SCHEDULER_ENABLED=true

@@ -14,6 +14,9 @@ from src.cli.operation_handlers import (
     handle_competitive_analysis,
     handle_confirm_listing_issue_repairs,
     handle_daily_check,
+    handle_sync_amazon_orders,
+    handle_amazon_order_daily_report,
+    handle_test_feishu_alert,
     handle_discover_product_type,
     handle_generate_details,
     handle_generate_update_file,
@@ -33,6 +36,8 @@ from src.cli.operation_handlers import (
     handle_sync_prices,
     handle_sync_products,
     handle_update_listing_status,
+    handle_delete_orphan_listings,
+    handle_update_package_dimensions,
     handle_update_price_inventory_api,
     handle_update_prices,
     handle_weekly_report,
@@ -125,6 +130,12 @@ TASK_HANDLERS = {
     "confirm-listing-issue-repairs": lambda db, **kwargs: (
         handle_confirm_listing_issue_repairs(db)
     ),
+    "update-package-dimensions": lambda db, **kwargs: handle_update_package_dimensions(
+        db, dry_run=kwargs.get("dry_run", True)
+    ),
+    "delete-orphan-listings": lambda db, **kwargs: handle_delete_orphan_listings(
+        db, dry_run=kwargs.get("dry_run", True)
+    ),
     "sku-sync-from-csv": lambda db, **kwargs: handle_sku_sync_from_csv(db),
     "discover-product-type": lambda db, **kwargs: handle_discover_product_type(
         db, keywords=kwargs.get("category")
@@ -136,6 +147,9 @@ TASK_HANDLERS = {
         auto_confirm=kwargs.get("auto_confirm", False),
     ),
     "daily-check": lambda db, **kwargs: handle_daily_check(db),
+    "sync-amazon-orders": lambda db, **kwargs: handle_sync_amazon_orders(db),
+    "amazon-order-daily-report": lambda db, **kwargs: handle_amazon_order_daily_report(db),
+    "test-feishu-alert": lambda db, **kwargs: handle_test_feishu_alert(db),
     "competitive-analysis": lambda db, **kwargs: handle_competitive_analysis(
         db,
         category=kwargs.get("category"),

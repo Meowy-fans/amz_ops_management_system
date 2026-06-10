@@ -41,23 +41,49 @@ cd /data/docker-compose/amz-listing-management-system
 docker compose run --rm amz-listing-management-system python main.py --task list_categories
 ```
 
-## Scheduled Price/Inventory Updates
+## Scheduled Sidecars
 
-Production starts `amz-price-inventory-scheduler` alongside the main service. It
-runs the API-native price/inventory update every hour:
+Production runs three scheduler containers alongside the main service.
+
+### Price/Inventory (hourly)
 
 ```bash
 python main.py --task update-price-inventory-api --no-dry-run
 ```
 
-The interval is controlled by `PRICE_INVENTORY_UPDATE_INTERVAL_SECONDS` and
-defaults to `3600`. The scheduler uses an application-level PostgreSQL advisory
-lock, so a manual run and a scheduled run will not overlap.
+- Container: `amz-price-inventory-scheduler`
+- Interval: `PRICE_INVENTORY_UPDATE_INTERVAL_SECONDS` (default `3600`)
+- Uses PostgreSQL advisory lock to avoid overlap with manual runs
+
+### Amazon Order Sync (every 30 minutes)
+
+```bash
+python main.py --task sync-amazon-orders
+```
+
+- Container: `amz-order-sync-scheduler`
+- Interval: `AMAZON_ORDER_SYNC_INTERVAL_SECONDS` (default `1800`)
+- Notifies Feishu only when pending unnotified orders exist
+- Sync failures alert via Feishu (P1; P0 after `AMAZON_ORDER_SYNC_FAILURE_ALERT_THRESHOLD` consecutive failures, default 3)
+
+### Amazon Order Daily Report (Beijing 09:00)
+
+```bash
+python main.py --task amazon-order-daily-report
+```
+
+- Container: `amz-order-daily-report-scheduler`
+- Schedule: `AMAZON_ORDER_DAILY_REPORT_HOUR` / `MINUTE` / `TZ` (default `9:00 Asia/Shanghai`)
+- DB-only 24h summary; does not call Orders API
 
 Useful commands:
 
 ```bash
 cd /data/docker-compose/amz-listing-management-system
 docker compose logs -f amz-price-inventory-scheduler
-docker compose run --rm amz-listing-management-system python main.py --task update-price-inventory-api --no-dry-run
+docker compose logs -f amz-order-sync-scheduler
+docker compose logs -f amz-order-daily-report-scheduler
+docker compose run --rm amz-listing-management-system python main.py --task sync-amazon-orders
+docker compose run --rm amz-listing-management-system python main.py --task amazon-order-daily-report
+docker compose run --rm amz-listing-management-system python main.py --task test-feishu-alert
 ```

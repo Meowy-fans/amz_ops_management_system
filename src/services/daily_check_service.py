@@ -125,8 +125,43 @@ class DailyCheckService:
             return ("OK", "**Listing问题**: 检查暂不可用", [])
 
     def _check_recent_orders(self) -> tuple:
-        """Check for anomalous orders (placeholder — requires Orders API)."""
-        return ("OK", "**订单状态**: 检测模块待接入 Orders API", [])
+        """Check persisted Amazon orders for open or overdue MFN shipments."""
+        try:
+            from src.repositories.amazon_order_repository import AmazonOrderRepository
+
+            summary = AmazonOrderRepository(self.db).get_recent_unshipped_summary(hours=72)
+            open_count = int(summary.get("open_count") or 0)
+            unnotified_count = int(summary.get("unnotified_count") or 0)
+            overdue_count = int(summary.get("overdue_count") or 0)
+
+            if open_count == 0:
+                return ("OK", "**订单状态**: 近 72h 无待发货 MFN 订单", [])
+
+            summary_text = (
+                f"**订单状态**: 待发货 {open_count} 单"
+                f"（未通知 {unnotified_count}，已逾期 {overdue_count}）"
+            )
+            alerts = []
+            if unnotified_count > 0 or overdue_count > 0:
+                status = "CRITICAL" if overdue_count > 0 else "WARNING"
+                detail_parts = []
+                if unnotified_count > 0:
+                    detail_parts.append(f"未通知 {unnotified_count} 单")
+                if overdue_count > 0:
+                    detail_parts.append(f"已过发货截止 {overdue_count} 单")
+                alerts.append({
+                    "title": "Amazon 订单待人工处理",
+                    "content": (
+                        f"近 72h 待发货订单 {open_count} 单；"
+                        + "，".join(detail_parts)
+                        + "。请运行 sync-amazon-orders 或到 Giga 后台处理。"
+                    ),
+                    "severity": "P1" if overdue_count > 0 else "P2",
+                })
+                return (status, summary_text, alerts)
+            return ("OK", summary_text, [])
+        except Exception:
+            return ("OK", "**订单状态**: 检测暂不可用（请先执行 migration 009）", [])
 
     def _check_inventory_alerts(self) -> tuple:
         """Check for low-inventory products (reuses existing data)."""

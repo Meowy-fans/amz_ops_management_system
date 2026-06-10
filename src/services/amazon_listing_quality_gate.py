@@ -1,30 +1,15 @@
 """Pre-submit quality gate for Amazon listing payloads."""
 import copy
 import os
-import re
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from infrastructure.amazon.config import AmazonConfig
+from src.services.compliance_claim_scanner import ComplianceClaimScanner
 
 
 class AmazonListingQualityGate:
     """Applies issue-derived checks before Listings Items API submission."""
-
-    _PESTICIDE_PATTERNS = [
-        r"\banti[-\s]?bacterial\b",
-        r"\banti[-\s]?microbial\b",
-        r"\bantimicrobial\b",
-        r"\bbacteria(?:l)?\b",
-        r"\bgerms?\b",
-        r"\bdisinfect\w*\b",
-        r"\bsanitiz\w*\b",
-        r"\bvirus(?:es)?\b",
-        r"\banti[-\s]?mold\b",
-        r"\bmildew\b",
-        r"\bpesticid\w*\b",
-        r"\binsect(?:s)?\b",
-    ]
 
     def __init__(
         self,
@@ -38,6 +23,7 @@ class AmazonListingQualityGate:
             value = os.getenv("LISTING_QUALITY_REQUIRE_IMAGE_REVIEW", "false").lower()
             require_reviewed_images = value in {"1", "true", "yes"}
         self.require_reviewed_images = require_reviewed_images
+        self._claim_scanner = ComplianceClaimScanner()
 
     def prepare_plans(self, plans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return copied plans with quality findings and blocking status."""
@@ -168,20 +154,30 @@ class AmazonListingQualityGate:
         plan: Dict[str, Any],
         findings: List[Dict[str, Any]],
     ) -> None:
-        text = " ".join(self._content_values(plan.get("attributes") or {}))
-        for pattern in self._PESTICIDE_PATTERNS:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                findings.append(
-                    self._finding(
-                        "ERROR",
-                        "PESTICIDE_CLAIM_RISK",
-                        f"Potential pesticide/device claim found: '{match.group()}'",
-                        ["item_name", "bullet_point", "product_description"],
-                        blocking=True,
-                    )
+        attrs = plan.get("attributes") or {}
+        field_map = {
+            "title": self._first_attr_value(attrs, "item_name"),
+            "description": self._first_attr_value(attrs, "product_description"),
+            "generic_keyword": self._first_attr_value(attrs, "generic_keyword"),
+        }
+        for index, bullet in enumerate(attrs.get("bullet_point") or [], 1):
+            field_map[f"bullet_{index}"] = self._bullet_value(bullet)
+        hits = self._claim_scanner.scan_fields(field_map)
+        if hits:
+            hit = hits[0]
+            findings.append(
+                self._finding(
+                    "ERROR",
+                    "PESTICIDE_CLAIM_RISK",
+                    (
+                        "Potential pesticide/device claim found: "
+                        f"'{hit.matched_text}' in {hit.field}"
+                    ),
+                    ["item_name", "bullet_point", "product_description"],
+                    blocking=True,
                 )
-                return
+            )
+            return
 
     def _validate_issue_derived_ranges(
         self,
@@ -263,6 +259,27 @@ class AmazonListingQualityGate:
         if product_type == "HOME_MIRROR" and any(word in text for word in ("bathroom", "vanity")):
             return "Bathroom"
         return None
+
+    @staticmethod
+    def _first_attr_value(attrs: Dict[str, Any], key: str) -> str:
+        raw = attrs.get(key)
+        if not raw:
+            return ""
+        items = raw if isinstance(raw, list) else [raw]
+        for item in items:
+            if isinstance(item, dict) and item.get("value"):
+                return str(item["value"])
+            if isinstance(item, str):
+                return item
+        return ""
+
+    @staticmethod
+    def _bullet_value(item: Any) -> str:
+        if isinstance(item, dict) and item.get("value"):
+            return str(item["value"])
+        if isinstance(item, str):
+            return item
+        return ""
 
     @staticmethod
     def _content_values(attrs: Dict[str, Any]) -> List[str]:

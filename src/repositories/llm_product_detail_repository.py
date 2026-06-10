@@ -88,7 +88,11 @@ class LLMProductDetailRepository:
             return 0
         
         try:
-            stmt = text("""
+            delete_stmt = text("""
+                DELETE FROM ds_api_product_details
+                WHERE sku_id = :sku_id
+            """)
+            insert_stmt = text("""
                 INSERT INTO ds_api_product_details (
                     sku_id, product_name,
                     selling_point_1, selling_point_2, selling_point_3,
@@ -121,7 +125,9 @@ class LLMProductDetailRepository:
             if not params_list:
                 return 0
             
-            self.db.execute(stmt, params_list)
+            for params in params_list:
+                self.db.execute(delete_stmt, {"sku_id": params["sku_id"]})
+                self.db.execute(insert_stmt, params)
             self.db.commit()
             
             logger.info(f"批量保存成功: {len(params_list)}条")

@@ -11,10 +11,11 @@ to guide title/keyword placement and COSMO attribute population.
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
 from src.models.product import StandardProduct
+from src.services.compliance_claim_scanner import ComplianceClaimScanner
 from src.services.content_validator import validate_content
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,12 @@ class EnrichedProductContent:
     generic_keyword: str = ""
     enriched_attributes: Dict[str, Any] = field(default_factory=dict)
     validation_warnings: List[str] = field(default_factory=list)
+    validation_errors: List[str] = field(default_factory=list)
+    compliance_hits: List[Dict[str, Any]] = field(default_factory=list)
+    compliance_fixes: List[Dict[str, Any]] = field(default_factory=list)
+    compliance_blocked: bool = False
+    auto_sanitized: bool = False
+    compliance_retried: bool = False
     raw_llm_response: str = ""
 
 # ── buyer personas ────────────────────────────────────────────────
@@ -48,20 +55,23 @@ _BUYER_PERSONAS = {
     "default": "Online shoppers looking for quality home products, value durability and clear product information",
 }
 
+_COMPLIANCE_RETRY_SYSTEM = (
+    "You are an Amazon listing compliance editor. "
+    "Rewrite the JSON content to remove pesticide/antimicrobial claims. "
+    "Return ONLY valid JSON with the same keys. No markdown."
+)
+
 
 # ── generator ─────────────────────────────────────────────────────
 
 
 class ProductContentGenerator:
-    """Generates Amazon-optimized product content using LLM.
+    """Generates Amazon-optimized product content using LLM."""
 
-    Takes a StandardProduct and product type context, produces
-    EnrichedProductContent with title, bullets, description,
-    search terms, and enriched attributes.
-    """
-
-    def __init__(self, llm_service: Any = None):
+    def __init__(self, llm_service: Any = None, max_compliance_retries: int = 1):
         self._llm = llm_service
+        self.max_compliance_retries = max_compliance_retries
+        self._scanner = ComplianceClaimScanner()
 
     def generate(
         self,
@@ -71,18 +81,7 @@ class ProductContentGenerator:
         extra_context: Optional[Dict[str, str]] = None,
         keyword_result: Any = None,
     ) -> EnrichedProductContent:
-        """Generate enriched content for a single product.
-
-        Args:
-            product: Standardized product data.
-            product_type: Amazon product type (e.g. "CABINET").
-            schema_service: Optional AmazonSchemaService for requirements.
-            extra_context: Optional dict with keys like buyer_persona,
-                           category_description, etc.
-            keyword_result: Optional KeywordResearchResult to guide
-                           keyword placement in title/bullets/search_terms.
-        """
-        # Build prompt parameters
+        """Generate enriched content for a single product."""
         category_context = self._build_category_context(
             product_type, schema_service, extra_context
         )
@@ -91,12 +90,10 @@ class ProductContentGenerator:
         persona = self._build_persona(product_type, extra_context)
         product_data = self._format_product_data(product, keyword_result)
 
-        # Inject keyword guidance into the prompt
         keyword_guidance = self._build_keyword_guidance(keyword_result)
         if keyword_guidance:
             product_data = keyword_guidance + "\n\n" + product_data
 
-        # Get prompt template
         prompt_template = self._get_prompt()
         user_prompt = prompt_template.format(
             category_context=category_context,
@@ -112,7 +109,6 @@ class ProductContentGenerator:
             "No explanations, no markdown fences, just JSON."
         )
 
-        # Call LLM
         try:
             llm = self._get_llm()
             request = self._make_llm_request(system_prompt, user_prompt)
@@ -128,8 +124,9 @@ class ProductContentGenerator:
                 validation_warnings=[f"LLM call failed: {e}"]
             )
 
-        # Parse and validate
-        return self._parse_and_validate(raw_text)
+        result = self._parse_content(raw_text)
+        self._apply_compliance_pipeline(result, product, product_type)
+        return result
 
     # ── prompt building ───────────────────────────────────────────
 
@@ -162,11 +159,11 @@ class ProductContentGenerator:
         if not schema_service:
             return "(none provided)"
         hints = []
-        for field in ["country_of_origin", "style", "color", "material"]:
+        for field_name in ["country_of_origin", "style", "color", "material"]:
             try:
-                vals = schema_service.get_valid_values(product_type, field)
+                vals = schema_service.get_valid_values(product_type, field_name)
                 if vals:
-                    hints.append(f"{field}: {', '.join(vals[:15])}")
+                    hints.append(f"{field_name}: {', '.join(vals[:15])}")
             except Exception:
                 pass
         return "\n".join(hints) if hints else "(none provided)"
@@ -177,7 +174,6 @@ class ProductContentGenerator:
         return _BUYER_PERSONAS.get(product_type.upper(), _BUYER_PERSONAS["default"])
 
     def _build_keyword_guidance(self, keyword_result: Any) -> str:
-        """Build keyword guidance section from KeywordResearchResult."""
         if keyword_result is None:
             return ""
 
@@ -191,7 +187,10 @@ class ProductContentGenerator:
         if keyword_result.title_recommendation:
             parts.append(f"Suggested Title Structure: {keyword_result.title_recommendation}")
         if keyword_result.backend_search_terms:
-            parts.append(f"Backend Search Terms (for reference, avoid repeating these): {keyword_result.backend_search_terms}")
+            parts.append(
+                "Backend Search Terms (for reference, avoid repeating these): "
+                f"{keyword_result.backend_search_terms}"
+            )
         if keyword_result.target_audience:
             parts.append(f"Target Audience: {keyword_result.target_audience}")
         if keyword_result.intended_use:
@@ -210,12 +209,12 @@ class ProductContentGenerator:
             for k, v in list(product.attributes.items())[:20]:
                 lines.append(f"  {k}: {v}")
         if product.description:
-            desc = product.description[:500]
+            desc = self._scanner.sanitize_supplier_text(product.description[:500])
             lines.append(f"Description excerpt: {desc}")
         if product.bullet_points:
             lines.append("Supplier bullet points:")
             for bp in product.bullet_points:
-                lines.append(f"  - {bp}")
+                lines.append(f"  - {self._scanner.sanitize_supplier_text(str(bp))}")
         if product.dimensions:
             d = product.dimensions
             dims = []
@@ -260,10 +259,9 @@ class ProductContentGenerator:
 
     # ── parse & validate ───────────────────────────────────────────
 
-    def _parse_and_validate(self, raw_text: str) -> EnrichedProductContent:
+    def _parse_content(self, raw_text: str) -> EnrichedProductContent:
         result = EnrichedProductContent(raw_llm_response=raw_text)
 
-        # Extract JSON
         text = raw_text.strip()
         if text.startswith("```"):
             lines = text.split("\n")
@@ -274,7 +272,6 @@ class ProductContentGenerator:
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
-            # Try to find JSON object in the text
             match = re.search(r"\{[^{}]*\{.*\}[^{}]*\}", text, re.DOTALL)
             if match:
                 try:
@@ -296,7 +293,6 @@ class ProductContentGenerator:
         result.search_terms = str(data.get("search_terms", "")).strip()
         result.generic_keyword = str(data.get("generic_keyword", "")).strip()
 
-        # Pick up any extra enriched attributes
         known_keys = {
             "title", "bullet_1", "bullet_2", "bullet_3", "bullet_4", "bullet_5",
             "description", "search_terms", "generic_keyword",
@@ -305,22 +301,115 @@ class ProductContentGenerator:
             if k not in known_keys:
                 result.enriched_attributes[k] = v
 
-        # ── validate ───────────────────────────────────────────
+        return result
+
+    def _apply_compliance_pipeline(
+        self,
+        result: EnrichedProductContent,
+        product: StandardProduct,
+        product_type: str,
+    ) -> None:
+        fields = self._scanner.content_fields_from_enriched(result)
+        hits = self._scanner.scan_fields(fields)
+        result.compliance_hits = [asdict(hit) for hit in hits]
+
+        if hits:
+            sanitized, fixes = self._scanner.sanitize_fields(fields)
+            if fixes:
+                result.auto_sanitized = True
+                result.compliance_fixes.extend(
+                    [asdict(fix) for fix in fixes]
+                )
+                self._scanner.apply_fields_to_enriched(result, sanitized)
+
+        remaining = self._scanner.scan_fields(
+            self._scanner.content_fields_from_enriched(result)
+        )
+        retries = 0
+        while remaining and retries < self.max_compliance_retries:
+            retries += 1
+            result.compliance_retried = True
+            rewritten = self._retry_compliance_rewrite(result, remaining)
+            if not rewritten:
+                break
+            remaining = self._scanner.scan_fields(
+                self._scanner.content_fields_from_enriched(result)
+            )
+            if remaining:
+                sanitized, fixes = self._scanner.sanitize_fields(
+                    self._scanner.content_fields_from_enriched(result)
+                )
+                if fixes:
+                    result.auto_sanitized = True
+                    result.compliance_fixes.extend([asdict(fix) for fix in fixes])
+                    self._scanner.apply_fields_to_enriched(result, sanitized)
+                remaining = self._scanner.scan_fields(
+                    self._scanner.content_fields_from_enriched(result)
+                )
+
+        if remaining:
+            result.compliance_blocked = True
+            result.compliance_hits = [asdict(hit) for hit in remaining]
+            for hit in remaining:
+                result.validation_errors.append(
+                    "Compliance claim could not be removed: "
+                    f"'{hit.matched_text}' in {hit.field}"
+                )
+            return
+
         self._validate(result)
 
-        return result
+    def _retry_compliance_rewrite(
+        self,
+        result: EnrichedProductContent,
+        hits: List[Any],
+    ) -> bool:
+        forbidden = sorted({hit.matched_text for hit in hits})
+        user_prompt = (
+            "Rewrite this Amazon listing JSON and remove all pesticide/antimicrobial "
+            "or mold/mildew/bacteria claims.\n"
+            f"Forbidden terms found: {', '.join(forbidden)}\n"
+            "Use safe alternatives such as moisture-resistant, stain-resistant, "
+            "easy to clean, non-porous surface, resists water spots.\n"
+            "Keep the same JSON keys and factual product details.\n\n"
+            f"{json.dumps(self._scanner.content_fields_from_enriched(result), ensure_ascii=False)}"
+        )
+        try:
+            llm = self._get_llm()
+            request = self._make_llm_request(_COMPLIANCE_RETRY_SYSTEM, user_prompt)
+            response = llm.generate(request)
+            raw = response.content if hasattr(response, "content") else response
+            raw_text = json.dumps(raw) if isinstance(raw, dict) else str(raw)
+            rewritten = self._parse_content(raw_text)
+            if not rewritten.title and not rewritten.description:
+                return False
+            self._scanner.apply_fields_to_enriched(
+                result,
+                self._scanner.content_fields_from_enriched(rewritten),
+            )
+            return True
+        except Exception as exc:
+            logger.warning("Compliance retry rewrite failed: %s", exc)
+            return False
 
     def _validate(self, content: EnrichedProductContent) -> None:
         bullets = [
             content.bullet_1, content.bullet_2, content.bullet_3,
             content.bullet_4, content.bullet_5,
         ]
-        w = validate_content(
+        validation = validate_content(
             title=content.title,
             bullets=bullets,
             description=content.description,
             search_terms=content.search_terms,
         )
-        content.validation_warnings.extend(w)
-        if w:
-            logger.warning("Content validation warnings: %s", w)
+        content.validation_errors.extend(validation.errors)
+        content.validation_warnings.extend(validation.warnings)
+        if validation.errors:
+            content.compliance_blocked = True
+        if validation.all_messages:
+            logger.warning(
+                "Content validation messages: errors=%s warnings=%s",
+                validation.errors,
+                validation.warnings,
+            )

@@ -323,6 +323,13 @@ prompts:
     6. NO first-person: "we", "our", "I", "us"
     7. Title: factual descriptors only, standard capitalization
     8. Description HTML: only <b> and <br/> — no <div>, <span>, <img>
+    9. NEVER use pesticide/antimicrobial or implied sanitization claims:
+       bacteria, bacterial, germs, antimicrobial, anti-microbial, disinfect,
+       sanitize, virus, mold, mildew, anti-mold, pesticide, insect repellent
+    10. For moisture/hygiene benefits, use SAFE wording only:
+        moisture-resistant, stain-resistant, easy to clean, non-porous surface,
+        resists water spots, suitable for humid bathrooms
+    11. Do NOT translate supplier anti-bacterial or mold-proof wording literally.
 
     ▼ REQUIRED ATTRIBUTES (must be reflected):
     {required_attributes}

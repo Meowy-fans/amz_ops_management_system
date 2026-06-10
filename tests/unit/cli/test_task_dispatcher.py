@@ -119,6 +119,36 @@ def test_dispatch_repair_listing_issues_passes_dry_run(monkeypatch):
     assert calls == [(db, False)]
 
 
+def test_dispatch_amazon_order_daily_report_uses_cli_handler(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_amazon_order_daily_report",
+        lambda db, **kwargs: calls.append(db),
+    )
+
+    db = object()
+    result = dispatch_task(db, "amazon-order-daily-report")
+
+    assert result is None
+    assert calls == [db]
+
+
+def test_dispatch_sync_amazon_orders_uses_cli_handler(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_sync_amazon_orders",
+        lambda db, **kwargs: calls.append(db),
+    )
+
+    db = object()
+    result = dispatch_task(db, "sync-amazon-orders")
+
+    assert result is None
+    assert calls == [db]
+
+
 def test_dispatch_confirm_listing_issue_repairs_uses_cli_handler(monkeypatch):
     calls = []
     monkeypatch.setattr(

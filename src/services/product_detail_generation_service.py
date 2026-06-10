@@ -76,6 +76,14 @@ class ProductDetailGenerationService:
                             product_type=product_type,
                         )
 
+                        if content.compliance_blocked:
+                            error_text = "; ".join(
+                                content.validation_errors or content.validation_warnings
+                            )
+                            raise ValueError(
+                                error_text or "compliance claim could not be auto-fixed"
+                            )
+
                         if not content.title or not content.description:
                             warning_text = "; ".join(content.validation_warnings)
                             raise ValueError(
@@ -124,6 +132,12 @@ class ProductDetailGenerationService:
             "generic_keyword": content.generic_keyword,
             "enriched_attributes": content.enriched_attributes,
             "validation_warnings": content.validation_warnings,
+            "validation_errors": content.validation_errors,
+            "compliance_hits": content.compliance_hits,
+            "compliance_fixes": content.compliance_fixes,
+            "compliance_blocked": content.compliance_blocked,
+            "auto_sanitized": content.auto_sanitized,
+            "compliance_retried": content.compliance_retried,
         }
         return (
             sku,
@@ -138,6 +152,16 @@ class ProductDetailGenerationService:
             json.dumps(raw_payload, ensure_ascii=False),
         )
     
+    def process_skus(self, sku_list: List[str]) -> int:
+        """Regenerate details for explicit vendor SKUs (upsert)."""
+        if not sku_list:
+            return 0
+        logger.info("Regenerating LLM details for %d explicit SKUs", len(sku_list))
+        self.reporter.emit(f"\nRegenerating LLM details for {len(sku_list)} SKU(s)...")
+        saved_count = self.process_batch(sku_list)
+        self.reporter.emit(f"Regeneration complete: {saved_count}/{len(sku_list)} saved")
+        return saved_count
+
     def process_batch(self, sku_list: List[str]) -> int:
         """
         批量处理SKU

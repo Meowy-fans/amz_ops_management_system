@@ -1063,3 +1063,127 @@ def handle_daily_check(db: Session, **kwargs):
         print(f"\n{len(result.alerts)} alerts pushed to Feishu.")
     else:
         print("\nNo alerts. All systems normal.")
+
+
+def handle_test_feishu_alert(db: Session, **kwargs):
+    """Send a Feishu webhook smoke-test card."""
+    from infrastructure.feishu_client import FeishuClient, FeishuMessage
+
+    feishu = FeishuClient.from_env()
+    if not feishu.is_configured:
+        print("\nFEISHU_WEBHOOK_URL is not configured.")
+        print("Add it to .env, rebuild/restart the container, then retry.")
+        return
+
+    ok = feishu.send(
+        FeishuMessage(
+            title="Amazon Listing 系统 — 飞书连通性测试",
+            content="如果你看到这条消息，说明 `FEISHU_WEBHOOK_URL` 配置正确。",
+            severity="P2",
+            tags=["连通性测试"],
+        )
+    )
+    print("\nFeishu smoke test:", "OK" if ok else "FAILED")
+
+
+def handle_amazon_order_daily_report(db: Session, **kwargs):
+    """Send the 24h Amazon order health summary to Feishu."""
+    from src.services.amazon_order_daily_report_service import (
+        AmazonOrderDailyReportService,
+    )
+
+    print("\n" + "=" * 70)
+    print("Amazon Order Daily Report")
+    print("=" * 70)
+
+    try:
+        service = AmazonOrderDailyReportService(db=db)
+        result = service.run_and_notify()
+        print(
+            f"\nWindow: {result['hours']}h | "
+            f"New orders: {result['order_stats'].get('new_orders', 0)} | "
+            f"Sync runs: {result['sync_stats'].get('total_runs', 0)} | "
+            f"Feishu sent: {result['notified']}"
+        )
+    except Exception as e:
+        print(f"\nAmazon order daily report failed: {e}")
+        logging.exception("Detailed error:")
+
+
+def handle_sync_amazon_orders(db: Session, **kwargs):
+    """Sync Amazon MFN orders and notify humans about new unshipped orders."""
+    from infrastructure.feishu_client import FeishuClient
+    from src.services.amazon_order_sync_service import AmazonOrderSyncService
+
+    notify_env = os.getenv("AMAZON_ORDER_SYNC_NOTIFY", "true").lower()
+    notify = notify_env not in {"0", "false", "no"}
+
+    logger.info("Starting Amazon order sync (notify=%s)", notify)
+    print("\n" + "=" * 70)
+    print(f"Amazon Order Sync - notify={'ON' if notify else 'OFF'}")
+    print("=" * 70)
+
+    if notify and not FeishuClient.from_env().is_configured:
+        print(
+            "\nWarning: FEISHU_WEBHOOK_URL is not set. "
+            "Orders will sync to DB but no Feishu alerts will be sent."
+        )
+
+    try:
+        service = AmazonOrderSyncService(db=db)
+        result = service.sync_and_notify(notify=notify)
+        print(
+            f"\nFetched: {result['fetched_count']} | "
+            f"New: {result['new_count']} | "
+            f"Notified: {result['notified_count']} | "
+            f"Errors: {result['error_count']}"
+        )
+    except Exception as e:
+        print(f"\nAmazon order sync failed: {e}")
+        logging.exception("Detailed error:")
+
+
+def handle_update_package_dimensions(db: Session, dry_run: bool = True):
+    """PATCH item_package_dimensions / weight / quantity for combo products."""
+    from src.services.amazon_package_dimensions_service import (
+        AmazonPackageDimensionsService,
+    )
+
+    logger.info("Starting package dimensions update (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN" if dry_run else "LIVE"
+    print(f"Package Dimensions Update - {mode_label}")
+    print("=" * 70)
+
+    limit_text = os.getenv("PACKAGE_DIMS_LIMIT")
+    limit = int(limit_text) if limit_text else None
+    try:
+        service = AmazonPackageDimensionsService(db=db)
+        service.submit_package_dimensions(dry_run=dry_run, limit=limit)
+    except Exception as e:
+        print(f"\nPackage dimensions update failed: {e}")
+        logging.exception("Detailed error:")
+        raise
+
+
+def handle_delete_orphan_listings(db: Session, dry_run: bool = True):
+    """Delete live legacy Amazon listings that have no Giga mapping in meow_sku_map."""
+    from src.services.amazon_listing_cleanup_service import (
+        AmazonListingCleanupService,
+    )
+
+    logger.info("Starting orphan listing cleanup (dry_run=%s)", dry_run)
+    print("\n" + "=" * 70)
+    mode_label = "DRY RUN" if dry_run else "LIVE DELETE"
+    print(f"Orphan Listing Cleanup - {mode_label}")
+    print("=" * 70)
+
+    limit_text = os.getenv("CLEANUP_LIMIT")
+    limit = int(limit_text) if limit_text else None
+    try:
+        service = AmazonListingCleanupService(db=db)
+        service.delete_orphan_listings(dry_run=dry_run, limit=limit)
+    except Exception as e:
+        print(f"\nOrphan listing cleanup failed: {e}")
+        logging.exception("Detailed error:")
+        raise

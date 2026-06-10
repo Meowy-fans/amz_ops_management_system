@@ -1,6 +1,6 @@
 services:
   amz-listing-management-system:
-    image: amz-listing-management-system:2026-06-08
+    image: amz-listing-management-system:2026-06-09
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
@@ -52,8 +52,87 @@ services:
       - "traefik.http.routers.amz-listing.middlewares=security-headers@file,rate-limit@file,forward-auth@file"
       - "traefik.http.services.amz-listing.loadbalancer.server.port=8080"
 
+  amz-order-sync-scheduler:
+    image: amz-listing-management-system:2026-06-09
+    build:
+      context: /home/liangqinhao/amz_listing_management_system
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        SKIP_REQUIREMENTS_INSTALL: "true"
+    container_name: amz-order-sync-scheduler
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.amazon-sp-api
+        required: false
+    environment:
+      APP_ENV: production
+      APP_MODE: cli
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-amz_listing}
+      DATABASE_USER: ${DATABASE_USER:-amz_listing}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      GIGA_BASE_URL: ${GIGA_BASE_URL:-https://api.gigacloudlogistics.com}
+      AMAZON_ORDER_SYNC_INTERVAL_SECONDS: ${AMAZON_ORDER_SYNC_INTERVAL_SECONDS:-1800}
+      AMAZON_ORDER_SYNC_INITIAL_DELAY_SECONDS: ${AMAZON_ORDER_SYNC_INITIAL_DELAY_SECONDS:-120}
+      AMAZON_ORDER_SYNC_LOOKBACK_HOURS: ${AMAZON_ORDER_SYNC_LOOKBACK_HOURS:-48}
+      AMAZON_ORDER_SYNC_NOTIFY: ${AMAZON_ORDER_SYNC_NOTIFY:-true}
+    volumes:
+      - /data/volumes/amz-listing-management-system/data:/app/data
+      - /data/volumes/amz-listing-management-system/output:/app/output
+      - /data/volumes/amz-listing-management-system/logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    command: ["sh", "scripts/sync_amazon_orders_loop.sh"]
+    depends_on:
+      - amz-listing-management-system
+    networks:
+      - proxy
+
+  amz-order-daily-report-scheduler:
+    image: amz-listing-management-system:2026-06-09
+    build:
+      context: /home/liangqinhao/amz_listing_management_system
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        SKIP_REQUIREMENTS_INSTALL: "true"
+    container_name: amz-order-daily-report-scheduler
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+      - path: .env.amazon-sp-api
+        required: false
+    environment:
+      APP_ENV: production
+      APP_MODE: cli
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-amz_listing}
+      DATABASE_USER: ${DATABASE_USER:-amz_listing}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      GIGA_BASE_URL: ${GIGA_BASE_URL:-https://api.gigacloudlogistics.com}
+      AMAZON_ORDER_DAILY_REPORT_HOUR: ${AMAZON_ORDER_DAILY_REPORT_HOUR:-9}
+      AMAZON_ORDER_DAILY_REPORT_MINUTE: ${AMAZON_ORDER_DAILY_REPORT_MINUTE:-0}
+      AMAZON_ORDER_DAILY_REPORT_TZ: ${AMAZON_ORDER_DAILY_REPORT_TZ:-Asia/Shanghai}
+      AMAZON_ORDER_DAILY_REPORT_HOURS: ${AMAZON_ORDER_DAILY_REPORT_HOURS:-24}
+      AMAZON_ORDER_DAILY_REPORT_NOTIFY: ${AMAZON_ORDER_DAILY_REPORT_NOTIFY:-true}
+    volumes:
+      - /data/volumes/amz-listing-management-system/data:/app/data
+      - /data/volumes/amz-listing-management-system/output:/app/output
+      - /data/volumes/amz-listing-management-system/logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    command: ["sh", "scripts/amazon_order_daily_report_loop.sh"]
+    depends_on:
+      - amz-listing-management-system
+    networks:
+      - proxy
+
   amz-price-inventory-scheduler:
-    image: amz-listing-management-system:2026-06-08
+    image: amz-listing-management-system:2026-06-09
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
