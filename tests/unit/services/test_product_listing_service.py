@@ -13,11 +13,12 @@ class FakeCommercialFinding:
 
 
 class FakeCommercialResult:
-    def __init__(self, blocked=False, codes=None):
+    def __init__(self, blocked=False, codes=None, warning_codes=None, input_snapshot=None):
         self.blocked = blocked
         self.blocking_codes = codes or []
-        self.warning_codes = []
+        self.warning_codes = warning_codes or []
         self.audit_run_id = 123
+        self.input_snapshot = input_snapshot or {}
         self.findings = [FakeCommercialFinding(code) for code in self.blocking_codes]
 
 
@@ -78,6 +79,22 @@ class FakeVariationResolver:
                 for item in family_data
             },
         )
+
+
+class FakeSchemaService:
+    def __init__(self, required_by_type=None):
+        self.required_by_type = {
+            key.upper(): value for key, value in (required_by_type or {}).items()
+        }
+
+    def get_required_properties(self, product_type):
+        return self.required_by_type.get(str(product_type or "").upper(), [])
+
+    def get_cached_valid_values(self, product_type, field_name):
+        return None
+
+    def get_valid_values(self, product_type, field_name):
+        return None
 
 
 @pytest.fixture
@@ -284,6 +301,173 @@ class TestProductListingService:
         assert plans[0]['attributes']['item_name'] == [{'value': 'API Native Cabinet'}]
         mock_repo_context['templ_repo'].find_template_by_category.assert_not_called()
 
+    def test_api_native_plan_uses_commercial_gate_publish_quantity(
+        self,
+        service,
+        mock_repo_context,
+    ):
+        class ClampingGate:
+            def evaluate(self, product_data, product_type):
+                return FakeCommercialResult(
+                    blocked=False,
+                    warning_codes=["PUBLISH_QUANTITY_CLAMPED"],
+                    input_snapshot={
+                        "source_publish_quantity": 50,
+                        "publish_quantity": 10,
+                    },
+                )
+
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [('SKU1', 'CABINET')]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU1'], [])
+        mock_repo_context['data_repo'].get_full_product_data.return_value = _api_product_data(
+            total_quantity=50,
+            inventory_quantity=50,
+            raw_data={
+                'mainImageUrl': 'https://img.example/main.jpg',
+                'assembledLength': 30,
+                'assembledWidth': 20,
+                'assembledHeight': 34,
+            },
+        )
+        service._schema_service_instance = None
+        service._commercial_gate_instance = ClampingGate()
+
+        plans, _logs, _single_skus, _families, pre_results = (
+            service._build_api_native_plans_for_category('CABINET')
+        )
+
+        assert pre_results == []
+        availability = plans[0]['attributes']['fulfillment_availability']
+        assert availability[0]['quantity'] == 10
+
+    def test_api_native_plan_generation_filters_explicit_sku_scope(
+        self,
+        service,
+        mock_repo_context,
+    ):
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1', 'SKU2']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [
+            ('SKU1', 'CABINET'),
+        ]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU1'], [])
+        mock_repo_context['data_repo'].get_full_product_data.return_value = _api_product_data(
+            meow_sku='SKU1',
+            vendor_sku='GIGA1',
+        )
+        service._schema_service_instance = None
+        service._commercial_gate_instance = FakeCommercialGate()
+
+        plans, _logs, single_skus, _families, pre_results = (
+            service._build_api_native_plans_for_category(
+                'CABINET',
+                sku_list=['SKU1', 'SKU404'],
+            )
+        )
+
+        assert [plan['sku'] for plan in plans] == ['SKU1']
+        assert single_skus == ['SKU1']
+        assert pre_results == [{
+            'sku': 'SKU404',
+            'status': 'blocked_scope_filter',
+            'issues': 1,
+            'blocking_codes': ['NOT_PENDING_OR_NOT_ELIGIBLE'],
+            'message': 'SKU is not locally eligible for listing creation',
+        }]
+        mock_repo_context['list_repo'].get_variation_data.assert_called_once_with(['SKU1'])
+
+    def test_generate_listings_via_api_filters_sku_file_and_reports_audit(
+        self,
+        service,
+        mock_repo_context,
+        tmp_path,
+    ):
+        sku_file = tmp_path / "cabinet-skus.txt"
+        sku_file.write_text("SKU2\nSKU1\n", encoding="utf-8")
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1', 'SKU2']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [
+            ('SKU2', 'CABINET'),
+            ('SKU1', 'CABINET'),
+        ]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU2', 'SKU1'], [])
+        mock_repo_context['data_repo'].get_full_product_data.side_effect = [
+            _api_product_data(meow_sku='SKU2', vendor_sku='GIGA2'),
+            _api_product_data(meow_sku='SKU1', vendor_sku='GIGA1'),
+        ]
+        service._schema_service_instance = None
+        service._commercial_gate_instance = FakeCommercialGate()
+
+        with patch('src.services.amazon_listing_submitter.AmazonListingSubmitter') as submitter_cls:
+            submitter_cls.return_value.submit.return_value = [
+                {'sku': 'SKU2', 'status': 'dry_run'},
+                {'sku': 'SKU1', 'status': 'dry_run'},
+            ]
+
+            result = service.generate_listings_via_api(
+                'CABINET',
+                dry_run=True,
+                sku_file=str(sku_file),
+            )
+
+        assert result['success'] is True
+        assert result['audit']['scope']['requested_skus'] == ['SKU2', 'SKU1']
+        assert result['audit']['result_status_counts'] == {'dry_run': 2}
+        submitted_plans = submitter_cls.return_value.submit.call_args.args[0]
+        assert [plan['sku'] for plan in submitted_plans] == ['SKU2', 'SKU1']
+
+    def test_api_native_scope_only_not_on_amazon_skips_existing_sku(
+        self,
+        service,
+        mock_repo_context,
+    ):
+        class ListingsClient:
+            def __init__(self):
+                self.calls = []
+
+            def get_listings_item(self, sku, issue_locale="en_US", included_data=None):
+                from infrastructure.amazon.api_client import AmazonAPIException
+
+                self.calls.append((sku, included_data))
+                if sku == 'SKU1':
+                    return {'body': {'sku': sku, 'status': 'DISCOVERABLE'}}
+                raise AmazonAPIException("not found", status_code=404)
+
+        client = ListingsClient()
+        service._listings_client_instance = client
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1', 'SKU2']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [
+            ('SKU1', 'CABINET'),
+            ('SKU2', 'CABINET'),
+        ]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU2'], [])
+        mock_repo_context['data_repo'].get_full_product_data.return_value = _api_product_data(
+            meow_sku='SKU2',
+            vendor_sku='GIGA2',
+        )
+        service._schema_service_instance = None
+        service._commercial_gate_instance = FakeCommercialGate()
+
+        plans, _logs, single_skus, _families, pre_results = (
+            service._build_api_native_plans_for_category(
+                'CABINET',
+                sku_list=['SKU1', 'SKU2'],
+                only_not_on_amazon=True,
+            )
+        )
+
+        assert [plan['sku'] for plan in plans] == ['SKU2']
+        assert single_skus == ['SKU2']
+        assert pre_results[0]['status'] == 'skipped_existing_scope'
+        assert pre_results[0]['sku'] == 'SKU1'
+        assert client.calls == [
+            ('SKU1', ['summaries', 'issues', 'attributes', 'productTypes']),
+            ('SKU2', ['summaries', 'issues', 'attributes', 'productTypes']),
+        ]
+
     def test_generate_listings_via_api_uses_api_native_plans(self, service, mock_repo_context):
         mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1']
         mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [('SKU1', 'CABINET')]
@@ -352,6 +536,74 @@ class TestProductListingService:
         assert pre_results[0]['status'] == 'blocked_commercial_gate'
         assert pre_results[0]['blocking_codes'] == ['PRICE_STALE']
 
+    def test_api_native_plan_blocks_missing_required_attribute_coverage(
+        self,
+        service,
+        mock_repo_context,
+    ):
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [
+            ('SKU1', 'TEST_MIRROR')
+        ]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU1'], [])
+        mock_repo_context['data_repo'].get_full_product_data.return_value = _api_product_data(
+            category_name='TEST_MIRROR',
+            raw_data={
+                'mainImageUrl': 'https://img.example/main.jpg',
+                'assembledLength': 30,
+                'assembledWidth': 20,
+                'assembledHeight': 34,
+                'attributes': {'Main Color': 'Silver'},
+            },
+        )
+        service._schema_service_instance = FakeSchemaService(
+            {"TEST_MIRROR": ["item_name", "fabric_type"]}
+        )
+        service._commercial_gate_instance = FakeCommercialGate()
+
+        plans, _logs, _single, _families, pre_results = (
+            service._build_api_native_plans_for_category('TEST_MIRROR')
+        )
+
+        assert plans == []
+        assert pre_results[0]['status'] == 'blocked_attribute_coverage'
+        assert pre_results[0]['blocking_codes'] == ['MISSING_REQUIRED_ATTRIBUTE_RULE']
+        assert pre_results[0]['missing_required'] == ['fabric_type']
+
+    def test_api_native_plan_allows_home_mirror_fabric_type_fallback(
+        self,
+        service,
+        mock_repo_context,
+    ):
+        mock_repo_context['list_repo'].get_pending_listing_skus.return_value = ['SKU1']
+        mock_repo_context['list_repo'].get_sku_to_category_mapping.return_value = [
+            ('SKU1', 'HOME_MIRROR')
+        ]
+        mock_repo_context['list_repo'].get_variation_data.return_value = []
+        mock_repo_context['var_helper'].find_variation_families.return_value = (['SKU1'], [])
+        mock_repo_context['data_repo'].get_full_product_data.return_value = _api_product_data(
+            category_name='HOME_MIRROR',
+            raw_data={
+                'mainImageUrl': 'https://img.example/main.jpg',
+                'assembledLength': 30,
+                'assembledWidth': 20,
+                'assembledHeight': 34,
+                'attributes': {'Main Color': 'Silver'},
+            },
+        )
+        service._schema_service_instance = FakeSchemaService(
+            {"HOME_MIRROR": ["item_name", "fabric_type"]}
+        )
+        service._commercial_gate_instance = FakeCommercialGate()
+
+        plans, _logs, _single, _families, pre_results = (
+            service._build_api_native_plans_for_category('HOME_MIRROR')
+        )
+
+        assert pre_results == []
+        assert plans[0]['attributes']['fabric_type'] == [{"value": "Glass, Metal"}]
+
     def test_api_native_single_sku_appends_to_existing_parent_family(self, service, mock_repo_context):
         service._variation_resolver_instance = FakeVariationResolver(
             append_result=FakeVariationResult(
@@ -401,7 +653,7 @@ class TestProductListingService:
             "variation_theme": "Color",
         }]
         assert attrs['parentage_level'] == [{'value': 'child'}]
-        assert attrs['variation_theme'] == [{'name': 'Color'}]
+        assert attrs['variation_theme'] == [{'name': 'COLOR'}]
         assert attrs['child_parent_sku_relationship'][0]['parent_sku'] == 'PARENT-1'
         assert attrs['color'] == [{'value': 'Blue'}]
 
@@ -476,7 +728,8 @@ class TestProductListingService:
         assert pre_results == []
         assert len(plans) == 3
         assert plans[0]['sku'].startswith('PARENT-')
-        assert plans[0]['attributes']['variation_theme'] == [{'name': 'Color/Size'}]
+        assert plans[0]['attributes']['variation_theme'] == [{'name': 'COLOR/ITEM_WIDTH'}]
+        assert plans[0]['attributes']['fulfillment_availability'][0]['quantity'] == 0
         assert plans[1]['attributes']['color'] == [{'value': 'White'}]
-        assert plans[1]['attributes']['size_name'] == [{'value': '24'}]
+        assert plans[1]['attributes']['item_width'] == [{'value': 24.0, 'unit': 'inches'}]
         assert logs[0]['variation_theme'] == 'Color/Size'

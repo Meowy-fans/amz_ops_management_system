@@ -479,6 +479,103 @@ def handle_suggest_category_mappings(db: Session):
     print("\nUse 'discover-product-type' to explore and set specific mappings.")
 
 
+def handle_auto_discover_category(
+    db: Session,
+    category_code: Optional[str] = None,
+    all_unmapped: bool = False,
+    dry_run: bool = True,
+):
+    """Automatically infer Amazon product type mappings from Catalog Items."""
+    from src.services.auto_category_mapper import AutoCategoryMapper
+
+    print("\n" + "=" * 70)
+    print("Auto Category Mapping")
+    print("=" * 70)
+    print(f"Mode: {'DRY RUN' if dry_run else 'WRITE'}")
+
+    if not all_unmapped and not category_code:
+        print("Please provide --category-code or --all-unmapped.")
+        return
+
+    mapper = AutoCategoryMapper(db)
+    if all_unmapped:
+        results = mapper.discover_unmapped(dry_run=dry_run)
+    else:
+        results = [mapper.discover_category(str(category_code), dry_run=dry_run)]
+
+    if not results:
+        print("No categories to process.")
+        return
+
+    for result in results:
+        _print_auto_category_mapping_result(result)
+
+    counts: Dict[str, int] = {}
+    for result in results:
+        counts[result.status] = counts.get(result.status, 0) + 1
+    print("\nSummary:")
+    for status, count in sorted(counts.items()):
+        print(f"  {status}: {count}")
+
+
+def _print_auto_category_mapping_result(result: Any) -> None:
+    print("\n" + "-" * 70)
+    print(f"Category: {result.category_code} ({result.category_name})")
+    print(f"Status: {result.status}")
+    if result.selected_product_type:
+        print(
+            "Selected product type: "
+            f"{result.selected_product_type} (confidence={result.confidence:.2f})"
+        )
+    if result.vote_counts:
+        votes = ", ".join(
+            f"{name}={count}" for name, count in result.vote_counts.items()
+        )
+        print(f"Catalog votes: {votes}")
+    if result.fallback_candidates:
+        print(f"Fallback candidates: {', '.join(result.fallback_candidates[:5])}")
+    if result.asins:
+        print(f"ASINs: {', '.join(result.asins[:10])}")
+    if result.warnings:
+        for warning in result.warnings:
+            print(f"Warning: {warning}")
+    print(f"Written: {result.written}")
+    print(f"Schema cached: {result.schema_cached}")
+
+
+def handle_generate_attribute_rules(
+    db: Session,
+    product_type: Optional[str] = None,
+):
+    """Generate draft API attribute rules from cached Product Type schema."""
+    from src.services.amazon_schema_service import AmazonSchemaService
+    from src.services.attribute_rule_generator import AttributeRuleGenerator
+
+    print("\n" + "=" * 70)
+    print("Generate API Attribute Rules Draft")
+    print("=" * 70)
+    if not product_type:
+        product_type = input("\nEnter Amazon product type (e.g. SOFA): ").strip()
+    if not product_type:
+        print("No product type provided.")
+        return None
+
+    generator = AttributeRuleGenerator(schema_service=AmazonSchemaService(db))
+    result = generator.generate(product_type=product_type, write=True, overwrite=False)
+
+    print(f"\nProduct type: {result.product_type}")
+    print(f"Rule file: {result.path}")
+    print(f"Written: {result.written}")
+    print(f"Already existed: {result.existed}")
+    print(f"Required attributes: {result.required_count}")
+    print(f"Generated attributes: {result.generated_attribute_count}")
+    print(f"Manual review items: {result.manual_review_count}")
+    print(f"Mode: {result.rules.get('mode')}")
+    for warning in result.warnings:
+        print(f"Warning: {warning}")
+    return result.as_dict()
+
+
 def handle_keyword_research(
     db: Session, category: Optional[str] = None, auto_confirm: bool = False
 ):

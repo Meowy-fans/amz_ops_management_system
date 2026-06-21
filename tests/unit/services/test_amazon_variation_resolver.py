@@ -26,6 +26,13 @@ def _config():
             "minimum_auto_pass_score": 70,
         },
         "categories": {
+            "OTTOMAN": {
+                "allowed_themes": ["Color"],
+                "buyer_theme_priority": {"Color": 100},
+                "attribute_sources": {
+                    "color_name": ["raw.attributes.Main Color"],
+                },
+            },
             "CABINET": {
                 "allowed_themes": ["Color", "Size", "Color/Size"],
                 "buyer_theme_priority": {
@@ -35,7 +42,7 @@ def _config():
                 },
                 "attribute_sources": {
                     "color_name": ["raw.attributes.Main Color"],
-                    "size_name": ["raw.assembledLength"],
+                    "size_name": ["raw.assembledLength", "raw.name"],
                 },
             }
         },
@@ -71,6 +78,23 @@ def test_new_family_selects_simplest_buyer_relevant_unique_theme():
     assert result.audit_run_id == 1
     assert audit.runs[0]["selected_theme"] == "Color"
     assert audit.runs[0]["score_snapshot"]["Color"]["unique"] is True
+
+
+def test_ottoman_new_family_selects_color_theme():
+    audit = FakeAuditRepo()
+    resolver = AmazonVariationResolver(audit_repo=audit, config=_config())
+
+    result = resolver.resolve_new_family(
+        [_product("A", "Beige", 43.5), _product("B", "Grey", 43.5)],
+        product_type="OTTOMAN",
+    )
+
+    assert result.decision == "passed"
+    assert result.variation_theme == "Color"
+    assert result.child_attributes == {
+        "A": {"color_name": "Beige"},
+        "B": {"color_name": "Grey"},
+    }
 
 
 def test_new_family_uses_combo_theme_when_single_dimensions_are_not_unique():
@@ -109,6 +133,44 @@ def test_append_child_inherits_existing_theme_and_checks_uniqueness():
     assert result.parent_sku == "PARENT-1"
     assert result.variation_theme == "Color"
     assert result.child_attributes == {"E": {"color_name": "Blue"}}
+
+
+def test_append_child_extracts_size_from_name_when_dimension_is_placeholder():
+    resolver = AmazonVariationResolver(audit_repo=FakeAuditRepo(), config=_config())
+
+    product = _product("E", "White", "Not Applicable")
+    product["raw_data"]["name"] = "24inch Wall Mounted Floating Cabinet"
+
+    result = resolver.resolve_append_child(
+        new_child_data=product,
+        product_type="CABINET",
+        parent_sku="PARENT-1",
+        existing_theme="Color/Size",
+        existing_children=[],
+    )
+
+    assert result.decision == "passed"
+    assert result.child_attributes == {
+        "E": {"color_name": "White", "size_name": "24"}
+    }
+
+
+def test_append_child_extracts_quoted_inches_size_from_name():
+    resolver = AmazonVariationResolver(audit_repo=FakeAuditRepo(), config=_config())
+
+    product = _product("E", "Green", "Not Applicable")
+    product["raw_data"]["name"] = '48" Green Bathroom Vanity with Ceramic Sink'
+
+    result = resolver.resolve_append_child(
+        new_child_data=product,
+        product_type="CABINET",
+        parent_sku="PARENT-1",
+        existing_theme="Color/Size",
+        existing_children=[],
+    )
+
+    assert result.decision == "passed"
+    assert result.child_attributes["E"]["size_name"] == "48"
 
 
 def test_append_child_blocks_duplicate_existing_attribute_combination():

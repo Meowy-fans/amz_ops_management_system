@@ -7,6 +7,21 @@ from src.services.product_detail_generation_service import ProductDetailGenerati
 from src.services.progress_reporter import NullProgressReporter
 
 
+def _review_pass_response():
+    return MagicMock(
+        provider='fake',
+        content=json.dumps({
+            'verdict': 'pass',
+            'accuracy_score': 0.95,
+            'compliance_score': 1.0,
+            'amazon_readiness_score': 0.9,
+            'issues': [],
+            'revision_instructions': '',
+            'manual_review_fields': [],
+        }),
+    )
+
+
 @patch('src.services.product_detail_generation_service.get_llm_service')
 @patch('src.services.product_detail_generation_service.LLMProductDetailRepository')
 class TestProductDetailGenerationService:
@@ -45,7 +60,10 @@ class TestProductDetailGenerationService:
                 'generic_keyword': 'bathroom vanity cabinet',
             }),
         )
-        mock_get_llm_service.return_value.generate.return_value = llm_response
+        mock_get_llm_service.return_value.generate.side_effect = [
+            llm_response,
+            _review_pass_response(),
+        ]
 
         service = ProductDetailGenerationService(mock_db)
 
@@ -68,9 +86,11 @@ class TestProductDetailGenerationService:
         assert raw_json["search_terms"] == "bathroom cabinet,vanity storage"
         assert raw_json["generic_keyword"] == "bathroom vanity cabinet"
         assert raw_json["validation_warnings"] == []
+        assert raw_json["review_status"] == "pass"
+        assert raw_json["review_attempts"] == 1
         thread_repo.get_product_raw_data.assert_called_once_with('SKU1')
         thread_repo.get_product_type_for_sku.assert_called_once_with('SKU1')
-        mock_get_llm_service.return_value.generate.assert_called_once()
+        assert mock_get_llm_service.return_value.generate.call_count == 2
 
     @patch('src.services.product_detail_generation_service.SessionLocal')
     def test_process_single_sku_returns_none_when_raw_data_missing(
@@ -138,6 +158,7 @@ class TestProductDetailGenerationService:
                     'description': 'Generated after retry',
                 }),
             ),
+            _review_pass_response(),
         ]
 
         service = ProductDetailGenerationService(mock_db, max_retries=2)
@@ -147,7 +168,7 @@ class TestProductDetailGenerationService:
         assert result[1] == 'Retry Cabinet'
         assert result[7] == 'Generated after retry'
         mock_sleep.assert_called_once_with(1)
-        assert mock_get_llm_service.return_value.generate.call_count == 2
+        assert mock_get_llm_service.return_value.generate.call_count == 3
 
     @patch('src.services.product_detail_generation_service.time.sleep')
     @patch('src.services.product_detail_generation_service.SessionLocal')
@@ -192,6 +213,15 @@ class TestProductDetailGenerationService:
             generic_keyword='cabinet',
             enriched_attributes={'room_type': 'Bathroom'},
             validation_warnings=['warning'],
+            validation_errors=[],
+            compliance_hits=[],
+            compliance_fixes=[],
+            compliance_blocked=False,
+            auto_sanitized=False,
+            compliance_retried=False,
+            review_status='pass',
+            review_attempts=1,
+            review_result={'verdict': 'pass'},
         )
 
         result = service._build_detail_tuple('GIGA-1', 'CABINET', content)
@@ -209,6 +239,9 @@ class TestProductDetailGenerationService:
         raw_json = json.loads(result[9])
         assert raw_json['enriched_attributes'] == {'room_type': 'Bathroom'}
         assert raw_json['validation_warnings'] == ['warning']
+        assert raw_json['review_status'] == 'pass'
+        assert raw_json['review_attempts'] == 1
+        assert raw_json['review_result'] == {'verdict': 'pass'}
 
     def test_process_batch_saves_successful_results_and_updates_statistics(
         self,

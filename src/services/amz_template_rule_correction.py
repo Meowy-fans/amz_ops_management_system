@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="AmazonListingSubmitter strict validation feedback", scheduled_removal="2026-07-31", scope="file")
 """Helpers for correcting Amazon template required-field rules."""
 import logging
 import os

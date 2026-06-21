@@ -4,7 +4,10 @@ import logging
 import uuid
 from typing import Any, Dict, List, Tuple
 
-from src.services.product_listing_flow_helpers import get_pending_skus_for_category
+from src.services.product_listing_scope import (
+    ListingScope,
+    ProductListingScopeFilter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,14 +18,25 @@ class ProductListingAPIPlanBuilder:
     def __init__(self, service):
         self.service = service
 
-    def build_for_category(self, category_name: str):
+    def build_for_category(
+        self,
+        category_name: str,
+        scope: ListingScope | None = None,
+    ):
         """Build SP-API listing plans without Excel template rows."""
-        pending_skus, failure_message = get_pending_skus_for_category(
+        scope_selection = ProductListingScopeFilter(
             self.service.product_listing_repo,
+            listings_client=self._get_listings_client_or_none(scope),
+        ).apply(
             category_name,
+            scope or ListingScope(),
         )
-        if failure_message:
-            raise ValueError(failure_message)
+        pending_skus = scope_selection.selected_skus
+        pre_submit_results: List[Dict[str, Any]] = list(
+            scope_selection.pre_submit_results
+        )
+        if not pending_skus and not pre_submit_results:
+            raise ValueError(f"品类 '{category_name}' 没有待发品SKU")
 
         variation_data = self.service.product_listing_repo.get_variation_data(
             pending_skus
@@ -46,7 +60,6 @@ class ProductListingAPIPlanBuilder:
 
         plans: List[Dict[str, Any]] = []
         variation_logs: List[Dict[str, Any]] = []
-        pre_submit_results: List[Dict[str, Any]] = []
         for sku in single_skus:
             product_data = self.service.product_data_repo.get_full_product_data(sku)
             if not product_data:
@@ -65,6 +78,10 @@ class ProductListingAPIPlanBuilder:
                     self._commercial_block_result(sku, commercial_result)
                 )
                 continue
+            product_data = self._with_commercial_publish_quantity(
+                product_data,
+                commercial_result,
+            )
             draft = draft_builder.build(product_data, product_type=category_name)
             self._apply_approved_images(draft)
             if append_result is not None:
@@ -82,6 +99,13 @@ class ProductListingAPIPlanBuilder:
                     child_relationship_type="Variation",
                     theme_attributes=append_result.child_attributes.get(sku, {}),
                 )
+                plan = payload_builder.build_plan(draft)
+                coverage_result = self._evaluate_attribute_coverage(plan)
+                if coverage_result.blocked:
+                    pre_submit_results.append(
+                        self._attribute_coverage_block_result(sku, coverage_result)
+                    )
+                    continue
                 variation_logs.append({
                     "meow_sku": sku,
                     "parent_sku": append_result.parent_sku,
@@ -90,7 +114,16 @@ class ProductListingAPIPlanBuilder:
                     "status": "GENERATED",
                     "variation_theme": append_result.variation_theme,
                 })
-            plans.append(payload_builder.build_plan(draft))
+                plans.append(plan)
+                continue
+            plan = payload_builder.build_plan(draft)
+            coverage_result = self._evaluate_attribute_coverage(plan)
+            if coverage_result.blocked:
+                pre_submit_results.append(
+                    self._attribute_coverage_block_result(sku, coverage_result)
+                )
+                continue
+            plans.append(plan)
 
         family_plans, family_logs, family_pre_submit_results = (
             self._build_variation_plans(
@@ -109,6 +142,16 @@ class ProductListingAPIPlanBuilder:
 
         logger.info("API-native 总共生成 %d 个发品计划", len(plans))
         return plans, variation_logs, single_skus, variation_families, pre_submit_results
+
+    def _get_listings_client_or_none(self, scope: ListingScope | None):
+        if not scope or not scope.only_not_on_amazon:
+            return None
+        if hasattr(self.service, "_listings_client_instance"):
+            return self.service._listings_client_instance
+        from infrastructure.amazon.listings_client import AmazonListingsClient
+
+        self.service._listings_client_instance = AmazonListingsClient()
+        return self.service._listings_client_instance
 
     def _build_variation_plans(
         self,
@@ -152,6 +195,7 @@ class ProductListingAPIPlanBuilder:
 
             parent_draft = draft_builder.build(family_data[0], product_type=category_name)
             parent_draft.sku = parent_sku
+            parent_draft.offer.quantity = 0
             self._apply_approved_images(parent_draft)
             parent_draft.variation = ListingVariation(
                 parentage_level="parent",
@@ -163,10 +207,42 @@ class ProductListingAPIPlanBuilder:
                         parent_draft.content.title
                     )
                 )
-            plans.append(payload_builder.build_plan(parent_draft))
+            parent_plan = payload_builder.build_plan(parent_draft)
+            parent_coverage = self._evaluate_attribute_coverage(parent_plan)
+            parent_blocked = parent_coverage.blocked
+            if parent_blocked:
+                pre_submit_results.append(
+                    self._attribute_coverage_block_result(parent_sku, parent_coverage)
+                )
+            else:
+                plans.append(parent_plan)
 
             for product_data in family_data:
                 child_sku = product_data["meow_sku"]
+                if parent_blocked:
+                    pre_submit_results.append({
+                        "sku": child_sku,
+                        "status": "blocked_attribute_coverage",
+                        "issues": 1,
+                        "blocking_codes": ["PARENT_ATTRIBUTE_COVERAGE_BLOCKED"],
+                        "warning_codes": [],
+                        "missing_required": [],
+                        "low_confidence_required": [],
+                        "defaulted_required": [],
+                        "covered_required": [],
+                        "attribute_coverage_findings": [{
+                            "code": "PARENT_ATTRIBUTE_COVERAGE_BLOCKED",
+                            "attribute": "",
+                            "attribute_names": [],
+                            "severity": "ERROR",
+                            "blocking": True,
+                            "message": (
+                                "Variation child skipped because parent listing "
+                                "failed required attribute coverage"
+                            ),
+                        }],
+                    })
+                    continue
                 commercial_result = self._evaluate_commercial_gate(
                     product_data=product_data,
                     product_type=category_name,
@@ -176,6 +252,10 @@ class ProductListingAPIPlanBuilder:
                         self._commercial_block_result(child_sku, commercial_result)
                     )
                     continue
+                product_data = self._with_commercial_publish_quantity(
+                    product_data,
+                    commercial_result,
+                )
                 child_draft = draft_builder.build(product_data, product_type=category_name)
                 self._apply_approved_images(child_draft)
                 child_draft.variation = ListingVariation(
@@ -185,7 +265,14 @@ class ProductListingAPIPlanBuilder:
                     child_relationship_type="Variation",
                     theme_attributes=child_attributes.get(child_sku, {}),
                 )
-                plans.append(payload_builder.build_plan(child_draft))
+                child_plan = payload_builder.build_plan(child_draft)
+                child_coverage = self._evaluate_attribute_coverage(child_plan)
+                if child_coverage.blocked:
+                    pre_submit_results.append(
+                        self._attribute_coverage_block_result(child_sku, child_coverage)
+                    )
+                    continue
+                plans.append(child_plan)
                 logs.append({
                     "meow_sku": child_sku,
                     "parent_sku": parent_sku,
@@ -244,6 +331,20 @@ class ProductListingAPIPlanBuilder:
             self.service._schema_service_instance = None
             return None
 
+    def _evaluate_attribute_coverage(self, plan: Dict[str, Any]):
+        if hasattr(self.service, "_attribute_coverage_gate_instance"):
+            gate = self.service._attribute_coverage_gate_instance
+        else:
+            from src.services.amazon_listing_attribute_coverage_gate import (
+                AmazonListingAttributeCoverageGate,
+            )
+
+            gate = AmazonListingAttributeCoverageGate(
+                schema_service=self._get_schema_service_or_none()
+            )
+            self.service._attribute_coverage_gate_instance = gate
+        return gate.evaluate(plan)
+
     def _evaluate_commercial_gate(
         self,
         product_data: Dict[str, Any],
@@ -293,6 +394,17 @@ class ProductListingAPIPlanBuilder:
         }
 
     @staticmethod
+    def _with_commercial_publish_quantity(
+        product_data: Dict[str, Any],
+        result,
+    ) -> Dict[str, Any]:
+        snapshot = getattr(result, "input_snapshot", None) or {}
+        updated = dict(product_data)
+        updated["source_publish_quantity"] = snapshot.get("source_publish_quantity")
+        updated["publish_quantity"] = snapshot.get("publish_quantity")
+        return updated
+
+    @staticmethod
     def _variation_block_result(sku: str, result) -> Dict[str, Any]:
         return {
             "sku": sku,
@@ -302,6 +414,21 @@ class ProductListingAPIPlanBuilder:
             "warning_codes": result.warning_codes,
             "audit_run_id": result.audit_run_id,
             "variation_findings": [item.as_dict() for item in result.findings],
+        }
+
+    @staticmethod
+    def _attribute_coverage_block_result(sku: str, result) -> Dict[str, Any]:
+        return {
+            "sku": sku,
+            "status": "blocked_attribute_coverage",
+            "issues": len(result.findings),
+            "blocking_codes": result.blocking_codes,
+            "warning_codes": result.warning_codes,
+            "missing_required": result.missing_required,
+            "low_confidence_required": result.low_confidence_required,
+            "defaulted_required": result.defaulted_required,
+            "covered_required": result.covered_required,
+            "attribute_coverage_findings": result.findings,
         }
 
     def _apply_approved_images(self, draft) -> None:

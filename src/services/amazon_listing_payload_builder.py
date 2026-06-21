@@ -6,6 +6,10 @@ from typing import Any, Dict, List, Optional
 from infrastructure.amazon.config import AmazonConfig
 from src.models.amazon_listing import AmazonListingDraft
 from src.models.product import DimensionSpec, StandardProduct
+from src.services.amazon_listing_variation_payload import (
+    render_variation_attribute,
+    variation_theme_name,
+)
 
 
 class AmazonListingPayloadBuilder:
@@ -19,6 +23,8 @@ class AmazonListingPayloadBuilder:
         "us": "US",
         "vietnam": "VN",
         "viet nam": "VN",
+        "malaysia": "MY",
+        "my": "MY",
         "india": "IN",
         "mexico": "MX",
         "canada": "CA",
@@ -71,7 +77,15 @@ class AmazonListingPayloadBuilder:
         if draft.variation.parentage_level:
             self._set_text(attrs, "parentage_level", draft.variation.parentage_level.lower())
         if draft.variation.variation_theme:
-            attrs["variation_theme"] = [{"name": draft.variation.variation_theme}]
+            attrs["variation_theme"] = [
+                {
+                    "name": variation_theme_name(
+                        draft.product_type,
+                        draft.variation.variation_theme,
+                        self._valid_value,
+                    )
+                }
+            ]
         if draft.variation.parent_sku:
             attrs["child_parent_sku_relationship"] = [
                 {
@@ -82,19 +96,25 @@ class AmazonListingPayloadBuilder:
                 }
             ]
         for key, value in draft.variation.theme_attributes.items():
-            attr_name = self._variation_attribute_name(key)
-            self._set_list(
+            render_variation_attribute(
                 attrs,
-                attr_name,
-                [self._valid_value(draft.product_type, attr_name, value)],
+                draft.product_type,
+                key,
+                value,
+                self._valid_value,
             )
 
+        attribute_resolutions = self._apply_attribute_rules(attrs, draft)
+        self._normalize_product_type_attributes(attrs, draft)
+        self._remove_configured_attributes(attrs, draft.product_type)
         self._add_required_defaults(attrs)
+        attrs = self._filter_schema_allowed_attributes(attrs, draft.product_type)
 
         return {
             "sku": draft.sku,
             "product_type": draft.product_type,
             "attributes": attrs,
+            "attribute_resolutions": attribute_resolutions,
         }
 
     def _set_text(self, attrs: Dict[str, Any], name: str, value: Any) -> None:
@@ -154,7 +174,8 @@ class AmazonListingPayloadBuilder:
         width = dimensions.assembled_length or dimensions.length
         depth = dimensions.assembled_width or dimensions.width
         height = dimensions.assembled_height or dimensions.height
-        if product_type.upper() == "CABINET" and width and depth and height:
+        strategy = self._dimension_strategy(product_type)
+        if strategy == "item_depth_width_height" and width and depth and height:
             attrs["item_depth_width_height"] = [
                 {
                     "depth": {"value": float(depth), "unit": "inches"},
@@ -162,13 +183,62 @@ class AmazonListingPayloadBuilder:
                     "height": {"value": float(height), "unit": "inches"},
                 }
             ]
+        elif strategy == "item_length_width" and width:
+            length = height or dimensions.length
+            if length:
+                attrs["item_length_width"] = [
+                    {
+                        "length": {"value": float(length), "unit": "inches"},
+                        "width": {"value": float(width), "unit": "inches"},
+                    }
+                ]
         else:
             self._set_measure(attrs, "item_width", width, "inches")
             self._set_measure(attrs, "item_depth", depth, "inches")
             self._set_measure(attrs, "item_height", height, "inches")
+        self._set_additional_dimension_measures(
+            attrs,
+            product_type,
+            width=width,
+            depth=depth,
+            height=height,
+        )
 
         weight = dimensions.assembled_weight or dimensions.weight
         self._set_measure(attrs, "item_weight", weight, "pounds")
+
+    @staticmethod
+    def _dimension_strategy(product_type: str) -> str:
+        try:
+            from src.services.attribute_rule_loader import AttributeRuleLoader
+
+            rules = AttributeRuleLoader().load(product_type)
+        except Exception:
+            return "separate_measures"
+        return str(rules.get("dimension_strategy") or "separate_measures")
+
+    def _set_additional_dimension_measures(
+        self,
+        attrs: Dict[str, Any],
+        product_type: str,
+        width: Any,
+        depth: Any,
+        height: Any,
+    ) -> None:
+        try:
+            from src.services.attribute_rule_loader import AttributeRuleLoader
+
+            rules = AttributeRuleLoader().load(product_type)
+        except Exception:
+            return
+        values = {
+            "item_width": width,
+            "item_depth": depth,
+            "item_height": height,
+        }
+        for name in rules.get("additional_dimension_measures") or []:
+            if str(name) in values:
+                self._set_measure(attrs, str(name), values[str(name)], "inches")
 
     @staticmethod
     def _set_measure(
@@ -218,15 +288,89 @@ class AmazonListingPayloadBuilder:
                 return str(value)
         return ""
 
+    def _apply_attribute_rules(
+        self,
+        attrs: Dict[str, Any],
+        draft: AmazonListingDraft,
+    ) -> Dict[str, Any]:
+        """Merge config-driven resolved attributes into the payload."""
+        try:
+            from src.services.attribute_payload_renderer import AttributePayloadRenderer
+            from src.services.attribute_resolver import AttributeResolver
+            from src.services.attribute_rule_loader import AttributeRuleLoader
+
+            resolver = AttributeResolver(
+                rule_loader=AttributeRuleLoader(),
+                schema_service=self.schema_service,
+            )
+            resolved = resolver.resolve(draft)
+            rendered = AttributePayloadRenderer().render(resolved)
+        except Exception:
+            return {}
+        for key, value in rendered.items():
+            attrs.setdefault(key, value)
+        return {key: value.as_dict() for key, value in resolved.items()}
+
+    def _filter_schema_allowed_attributes(
+        self,
+        attrs: Dict[str, Any],
+        product_type: str,
+    ) -> Dict[str, Any]:
+        """Drop attributes that are not accepted by the product type schema."""
+        if self.schema_service is None:
+            return attrs
+        if not hasattr(self.schema_service, "get_property_names"):
+            return attrs
+        try:
+            allowed = self.schema_service.get_property_names(product_type)
+        except Exception:
+            return attrs
+        if not allowed:
+            return attrs
+        try:
+            from src.services.attribute_payload_renderer import AttributePayloadRenderer
+
+            return AttributePayloadRenderer.filter_allowed_attributes(attrs, allowed)
+        except Exception:
+            return attrs
+
+    def _normalize_product_type_attributes(
+        self,
+        attrs: Dict[str, Any],
+        draft: AmazonListingDraft,
+    ) -> None:
+        try:
+            from src.services.attribute_rule_loader import AttributeRuleLoader
+
+            rules = AttributeRuleLoader().load(draft.product_type)
+        except Exception:
+            return
+        try:
+            from src.services.attribute_post_processors import (
+                apply_attribute_post_processors,
+            )
+
+            apply_attribute_post_processors(
+                rules.get("post_processors") or [],
+                attrs,
+                self.marketplace_id,
+            )
+        except Exception:
+            return
+
     @staticmethod
-    def _variation_attribute_name(name: str) -> str:
-        mapping = {
-            "color_name": "color",
-            "colour_name": "color",
-            "size_name": "size_name",
-            "material_name": "material",
-        }
-        return mapping.get(name, name)
+    def _remove_configured_attributes(
+        attrs: Dict[str, Any],
+        product_type: str,
+    ) -> None:
+        try:
+            from src.services.attribute_rule_loader import AttributeRuleLoader
+
+            rules = AttributeRuleLoader().load(product_type)
+        except Exception:
+            return
+        for name in rules.get("remove_attributes") or []:
+            attrs.pop(str(name), None)
 
     @staticmethod
     def _add_required_defaults(attrs: Dict[str, Any]) -> None:

@@ -85,40 +85,23 @@ def handle_view_statistics(db: Session):
 
 def handle_pending_statistics(db: Session):
     """2.2 查看待发品统计"""
+    from src.services.category_readiness_service import CategoryReadinessService
+
     print("\n" + "=" * 70)
     print("📊 待发品统计")
     print("=" * 70)
 
     try:
-        query = text("""
-            SELECT
-                COUNT(DISTINCT m.meow_sku) as total_pending,
-                COUNT(DISTINCT CASE WHEN LOWER(scm.standard_category_name) = 'cabinet' THEN m.meow_sku END) as cabinet_count,
-                COUNT(DISTINCT CASE WHEN LOWER(scm.standard_category_name) = 'home_mirror' THEN m.meow_sku END) as mirror_count
-            FROM meow_sku_map m
-                LEFT JOIN amz_all_listing_report r
-                    ON m.meow_sku = r."seller-sku"
-                JOIN giga_product_sync_records psr
-                    ON m.vendor_sku = psr.giga_sku
-                    AND m.vendor_source = 'giga'
-                JOIN giga_product_base_prices pbp
-                    ON m.vendor_sku = pbp.giga_sku
-                LEFT JOIN supplier_categories_map scm
-                    ON LOWER(psr.category_code) = LOWER(scm.supplier_category_code)
-                    AND scm.supplier_platform = 'giga'
-            WHERE r."seller-sku" IS NULL
-              AND psr.is_oversize IS NOT TRUE
-              AND psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'
-              AND pbp.sku_available IS TRUE;
-        """)
-
-        result = db.execute(query).fetchone()
+        rows = CategoryReadinessService(db).pending_counts()
+        total = sum(row["pending_count"] for row in rows)
 
         print()
-        print(f"   总待发品数: {result[0]}")
-        print(f"   - CABINET: {result[1]}")
-        print(f"   - HOME_MIRROR: {result[2]}")
-        print(f"   - 其他品类: {result[0] - result[1] - result[2]}")
+        print(f"   总待发品数: {total}")
+        for row in rows:
+            print(
+                f"   - {row['product_type']}: {row['pending_count']} "
+                f"({row['status']})"
+            )
         print("=" * 70)
 
     except Exception as e:
@@ -165,34 +148,31 @@ def handle_recent_listings(db: Session):
 
 def handle_list_categories(db: Session):
     """3.1 列出所有可用品类"""
+    from src.services.category_readiness_service import CategoryReadinessService
+
     print("\n" + "=" * 70)
-    print("📋 可用品类列表")
+    print("📋 类目发品准备度")
     print("=" * 70)
 
     try:
-        query = text("""
-            WITH mapped AS (
-                SELECT lower(NULLIF(standard_category_name, '')) AS category
-                FROM supplier_categories_map
-                WHERE supplier_platform = 'giga'
-                  AND NULLIF(standard_category_name, '') IS NOT NULL
-            ),
-            templated AS (
-                SELECT lower(category) AS category
-                FROM amazon_cat_templates
-            )
-            SELECT DISTINCT upper(mapped.category) AS category
-            FROM mapped
-                JOIN templated USING (category)
-            ORDER BY upper(mapped.category);
-        """)
-
-        result = db.execute(query).scalars().all()
+        result = CategoryReadinessService(db).list_readiness()
 
         if result:
             print()
-            for i, category in enumerate(result, 1):
-                print(f"   {i}. {category}")
+            for i, item in enumerate(result, 1):
+                print(
+                    f"   {i}. {item.product_type} | {item.status} | "
+                    f"pending={item.pending_count} | mode={item.rule_mode} | "
+                    f"schema={'yes' if item.schema_cached else 'no'}"
+                )
+                if item.missing_required_rules:
+                    preview = ", ".join(item.missing_required_rules[:5])
+                    more = (
+                        f" (+{len(item.missing_required_rules) - 5})"
+                        if len(item.missing_required_rules) > 5
+                        else ""
+                    )
+                    print(f"      missing required rules: {preview}{more}")
             print(f"\n总计: {len(result)} 个品类")
         else:
             print("   暂无品类数据")

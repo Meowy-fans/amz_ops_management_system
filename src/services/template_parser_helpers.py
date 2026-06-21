@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="AmazonSchemaService/AttributeRuleLoader", scheduled_removal="2026-07-31", scope="file")
 """Pure helpers for Amazon template workbook parsing."""
 from typing import Any, Dict, List, Optional, Tuple
 

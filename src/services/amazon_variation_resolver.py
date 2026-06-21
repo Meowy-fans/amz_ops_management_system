@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -293,8 +294,12 @@ class AmazonVariationResolver:
             child_attrs[sku] = {}
             snapshot[sku] = {}
             for attr_name in required_attrs:
-                value, source = self._first_value(product, sources.get(attr_name, []))
-                normalized = self._normalize_value(value)
+                value, source = self._first_value(
+                    product,
+                    sources.get(attr_name, []),
+                    attr_name,
+                )
+                normalized = self._normalize_value(value, attr_name)
                 if normalized:
                     child_attrs[sku][attr_name] = normalized
                 snapshot[sku][attr_name] = {
@@ -316,12 +321,40 @@ class AmazonVariationResolver:
         return tuple(str(attrs.get(key) or "").strip().lower() for key in required_attrs)
 
     @staticmethod
-    def _first_value(product: Dict[str, Any], paths: List[str]) -> tuple[Any, Optional[str]]:
+    def _first_value(
+        product: Dict[str, Any],
+        paths: List[str],
+        attr_name: str,
+    ) -> tuple[Any, Optional[str]]:
         for path in paths:
             value = AmazonVariationResolver._value_at_path(product, path)
-            if value not in (None, ""):
-                return value, path
+            if not AmazonVariationResolver._is_missing_value(value):
+                if attr_name == "size_name":
+                    value = AmazonVariationResolver._size_value(value)
+                if not AmazonVariationResolver._is_missing_value(value):
+                    return value, path
         return None, None
+
+    @staticmethod
+    def _is_missing_value(value: Any) -> bool:
+        if value is None or value == "":
+            return True
+        text = str(value).strip().lower()
+        return text in {"n/a", "na", "not applicable", "none", "null", "-"}
+
+    @staticmethod
+    def _size_value(value: Any) -> Any:
+        if AmazonVariationResolver._is_missing_value(value):
+            return None
+        if isinstance(value, (int, float)):
+            return value
+        text = str(value).strip()
+        try:
+            return float(text)
+        except ValueError:
+            pass
+        match = re.search(r"(\d+(?:\.\d+)?)\s*(?:inches|inch|in|\"|”)", text, re.I)
+        return match.group(1) if match else None
 
     @staticmethod
     def _value_at_path(product: Dict[str, Any], path: str) -> Any:
@@ -339,7 +372,7 @@ class AmazonVariationResolver:
         return current
 
     @staticmethod
-    def _normalize_value(value: Any) -> str:
+    def _normalize_value(value: Any, attr_name: str = "") -> str:
         if value is None:
             return ""
         if isinstance(value, float) and value.is_integer():
@@ -347,6 +380,10 @@ class AmazonVariationResolver:
         if isinstance(value, int):
             return str(value)
         text = str(value).strip()
+        if AmazonVariationResolver._is_missing_value(text):
+            return ""
+        if attr_name == "size_name":
+            text = str(AmazonVariationResolver._size_value(text) or "").strip()
         if text.endswith(".0"):
             return text[:-2]
         return text

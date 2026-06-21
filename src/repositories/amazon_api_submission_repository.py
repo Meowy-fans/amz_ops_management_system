@@ -134,3 +134,28 @@ class AmazonAPISubmissionRepository:
         """)
         rows = self.db.execute(query, {"limit": limit}).mappings()
         return [dict(row) for row in rows]
+
+    def get_learned_required_attributes(self, product_type: str) -> list[str]:
+        """Return attributes learned from Amazon missing-required feedback."""
+        query = text("""
+            WITH learned AS (
+                SELECT DISTINCT
+                    attr.attribute_name
+                FROM amazon_api_submissions,
+                     jsonb_array_elements(response_body->'issues') AS issue,
+                     jsonb_array_elements_text(
+                         COALESCE(issue->'attributeNames', '[]'::jsonb)
+                     ) AS attr(attribute_name)
+                WHERE product_type = :product_type
+                  AND operation = 'create'
+                  AND response_body IS NOT NULL
+                  AND response_body ? 'issues'
+                  AND issue->>'code' = '90220'
+                  AND attr.attribute_name <> ''
+            )
+            SELECT attribute_name
+            FROM learned
+            ORDER BY attribute_name
+        """)
+        rows = self.db.execute(query, {"product_type": product_type}).mappings()
+        return [str(row["attribute_name"]) for row in rows]

@@ -45,6 +45,7 @@ def _load_direct_config() -> Dict:
         'task_routing': {
             'product_generation': settings.LLM_PROVIDER,
             'sku_mapping': 'qwen',
-            'product_attribute_enrichment': settings.LLM_PROVIDER
+            'product_attribute_enrichment': settings.LLM_PROVIDER,
+            'product_attribute_extraction': settings.LLM_PROVIDER
         }
     }

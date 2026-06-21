@@ -147,3 +147,26 @@ def test_get_latest_delayed_confirmation_items_sql_contract():
     assert "response_body->>'source_submission_id'" in sql
     assert "ORDER BY sku, marketplace_id, submitted_at DESC" in sql
     assert params == {"limit": 10}
+
+
+def test_get_learned_required_attributes_sql_contract():
+    session = RecordingSession([
+        MappingResult([
+            {"attribute_name": "mounting_type"},
+            {"attribute_name": "model_name"},
+        ])
+    ])
+    repo = AmazonAPISubmissionRepository(session)
+
+    attrs = repo.get_learned_required_attributes("HOME_MIRROR")
+
+    assert attrs == ["mounting_type", "model_name"]
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "jsonb_array_elements(response_body->'issues')" in sql
+    assert "issue->>'code' = '90220'" in sql
+    assert "jsonb_array_elements_text(" in sql
+    assert "COALESCE(issue->'attributeNames', '[]'::jsonb)" in sql
+    assert "product_type = :product_type" in sql
+    assert "ORDER BY attribute_name" in sql
+    assert params == {"product_type": "HOME_MIRROR"}

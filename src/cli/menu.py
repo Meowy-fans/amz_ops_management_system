@@ -15,15 +15,17 @@ INTERACTIVE_TASK_CHOICES = {
     "1.5": "sync-prices",
     "1.6": "sync-inventory",
     "1.7": "update-prices",
-    "1.8": "generate-listing",
+    "1.8": "generate-listing-api",
     "2.1": "view-statistics",
     "2.2": "pending-statistics",
     "2.3": "recent-listings",
     "3.1": "list-categories",
-    "3.2": "template-update",
-    "3.3": "template-correction",
+    "3.2": "discover-product-type",
+    "3.3": "suggest-category-mappings",
     "3.4": "sync-giga-categories",
     "3.5": "update-mappings-from-csv",
+    "3.6": "auto-discover-category",
+    "3.7": "generate-attribute-rules",
     "4.1": "sku-sync-from-csv",
     "5.1": "generate-update-file",
     "5.2": "keyword-research",
@@ -59,17 +61,19 @@ def print_menu():
     print("  1.5 同步Giga商品价格")
     print("  1.6 同步Giga商品库存")
     print("  1.7 更新售价")
-    print("  1.8 生成亚马逊发品文件 ⭐")
+    print("  1.8 API-native 新品发品 ⭐")
     print("\n【2】数据查询")
     print("  2.1 查看数据统计")
     print("  2.2 查看待发品统计")
     print("  2.3 查看最近发品记录")
     print("\n【3】类目配置")
     print("  3.1 列出所有可用品类")
-    print("  3.2 解析新的亚马逊类目模板到数据库")
-    print("  3.3 从亚马逊报错文件自动矫正模板规则")
+    print("  3.2 Amazon Product Type Discovery")
+    print("  3.3 建议供应商品类到 Amazon Product Type 映射")
     print("  3.4 更新需要维护的品类(来自Giga) ⭐")
     print("  3.5 从CSV批量更新品类映射 ⭐")
+    print("  3.6 自动判定并映射 Amazon Product Type")
+    print("  3.7 生成 API 属性规则草稿")
     print("\n【4】系统维护")
     print("  4.1 从CSV批量同步SKU映射 🚧 (待实现)")
     print("\n【5】亚马逊运营每日常规 ⭐")

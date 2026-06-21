@@ -6,6 +6,10 @@ from urllib.parse import urlparse
 
 from infrastructure.amazon.config import AmazonConfig
 from src.services.compliance_claim_scanner import ComplianceClaimScanner
+from src.services.amazon_listing_quality_gate_rules import (
+    QualityGateRuleLoader,
+    dimension_range_rule,
+)
 
 
 class AmazonListingQualityGate:
@@ -24,6 +28,7 @@ class AmazonListingQualityGate:
             require_reviewed_images = value in {"1", "true", "yes"}
         self.require_reviewed_images = require_reviewed_images
         self._claim_scanner = ComplianceClaimScanner()
+        self.quality_rules = QualityGateRuleLoader.load()
 
     def prepare_plans(self, plans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return copied plans with quality findings and blocking status."""
@@ -37,6 +42,7 @@ class AmazonListingQualityGate:
         self._auto_fill_recommended_use(prepared, findings)
         self._validate_cached_required_fields(prepared, findings)
         self._validate_cosmo_attributes(prepared, findings)
+        self._validate_variation_payload(prepared, findings)
         self._scan_compliance_claims(prepared, findings)
         self._validate_issue_derived_ranges(prepared, findings)
         self._validate_images(prepared, findings)
@@ -179,6 +185,33 @@ class AmazonListingQualityGate:
             )
             return
 
+    def _validate_variation_payload(
+        self,
+        plan: Dict[str, Any],
+        findings: List[Dict[str, Any]],
+    ) -> None:
+        attrs = plan.get("attributes") or {}
+        themes = attrs.get("variation_theme") or []
+        names = [
+            str(item.get("name") or "").upper()
+            for item in themes
+            if isinstance(item, dict)
+        ]
+        if not any("ITEM_WIDTH" in name for name in names):
+            return
+        item_width = attrs.get("item_width") or []
+        first = item_width[0] if isinstance(item_width, list) and item_width else {}
+        if not isinstance(first, dict) or first.get("value") is None or not first.get("unit"):
+            findings.append(
+                self._finding(
+                    "ERROR",
+                    "MISSING_VARIATION_ITEM_WIDTH",
+                    "ITEM_WIDTH variation theme requires item_width value and unit",
+                    ["variation_theme", "item_width"],
+                    blocking=True,
+                )
+            )
+
     def _validate_issue_derived_ranges(
         self,
         plan: Dict[str, Any],
@@ -194,18 +227,36 @@ class AmazonListingQualityGate:
             width_value = float(width)
         except (TypeError, ValueError):
             return
-        if width_value > 42:
+        rule = dimension_range_rule(
+            self.quality_rules,
+            product_type,
+            "item_depth_width_height",
+            "width",
+        )
+        max_width = rule.get("max")
+        if max_width is None:
+            return
+        try:
+            max_width_value = float(max_width)
+        except (TypeError, ValueError):
+            return
+        if width_value > max_width_value:
+            severity = str(rule.get("severity") or "ERROR").upper()
+            blocking = bool(rule.get("blocking", True))
+            message = rule.get("message") or (
+                "CABINET item_depth_width_height.width exceeds configured max"
+            )
             findings.append(
-                self._finding(
-                    "ERROR",
-                    "ISSUE_DERIVED_DIMENSION_RANGE",
-                    (
-                        "CABINET item_depth_width_height.width exceeds observed "
-                        f"Amazon max 42 inches: {width_value}"
+                {
+                    **self._finding(
+                        severity,
+                        rule.get("code") or "ISSUE_DERIVED_DIMENSION_RANGE",
+                        f"{message}: {width_value} > {max_width_value}",
+                        ["item_depth_width_height"],
+                        blocking=blocking,
                     ),
-                    ["item_depth_width_height"],
-                    blocking=True,
-                )
+                    "live_blocking": bool(rule.get("live_blocking", False)),
+                }
             )
 
     def _validate_images(

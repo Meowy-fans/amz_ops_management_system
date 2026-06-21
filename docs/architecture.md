@@ -19,7 +19,7 @@ The system follows a **Layered Architecture** pattern with three new layers adde
 
 ```mermaid
 graph TD
-    Entry[main.py] --> CLI[src/cli task_dispatcher 38 tasks]
+    Entry[main.py] --> CLI[src/cli task_dispatcher 40 tasks]
     CLI --> S_Lifecycle[ProductLifecycleManager 🆕]
     CLI --> S_OrderSync[AmazonOrderSyncService]
     CLI --> S_OrderReport[AmazonOrderDailyReportService]
@@ -44,8 +44,12 @@ graph TD
         S_AmazonSubmit --> S_QualityGate[AmazonListingQualityGate]
         S_AmazonIssue --> S_IssueRepair[AmazonListingIssueRepairService]
         
-        S_List --> S_KW[KeywordResearchService 🆕]
-        S_List --> S_Content[ProductContentGenerator]
+        S_List --> S_APIPlan[ProductListingAPIPlanBuilder]
+        S_APIPlan --> S_Draft[AmazonListingDraftBuilder]
+        S_Draft --> S_Content[ProductContentGenerator]
+        S_Content --> S_ContentReview[ProductContentReviewer]
+        S_APIPlan --> S_Resolver[AttributeResolver]
+        S_APIPlan --> S_Variation[AmazonVariationResolver]
     end
     
     subgraph Growth Services 🆕
@@ -88,12 +92,15 @@ graph TD
 
 | Service | Responsibility |
 | :--- | :--- |
-| **ProductListingService** | Core engine for generating Amazon upload files. Coordinates data fetching, mapping, and Excel generation. |
-| **ProductListingVariationBuilder** | Builds Amazon parent/child variation rows and listing-log payloads for variation families. |
-| **product_listing_config / flow_helpers / log_builder** | Product-listing helper modules for category config loading, pending SKU filtering, result contracts, and listing-log payloads. |
-| **template_parser_helpers** | Pure Excel parsing helpers for Amazon template header detection, field definition extraction, and valid-value parsing. |
-| **template_variation_config** | Builds template variation mappings and resolves priority variation themes from input, history, or defaults. |
-| **amz_template_rule_correction** | Parses Amazon processing reports and applies required-field rule corrections. |
+| **ProductListingService** | API-native listing orchestration boundary. Coordinates scope filtering, commercial gate, API plan building, submission, and audit logging. |
+| **ProductListingAPIPlanBuilder** | Builds API-native listing plans from product data, variation decisions, draft payloads, and pre-submit audit results. |
+| **AmazonListingDraftBuilder** | Converts normalized product data into category-aware listing drafts without Excel-like intermediate rows. |
+| **ProductContentGenerator / ProductContentReviewer** | Generates product copy and requires deterministic scanner + reviewer LLM approval before content can feed listing. |
+| **AttributeRuleLoader / AttributeResolver / AttributePayloadRenderer** | Resolves Amazon attributes through Product Type schema plus YAML rules with evidence/confidence metadata. |
+| **AmazonVariationResolver** | Selects variation theme and child attributes using config, historical family data, and fail-closed duplicate checks. |
+| **ProductListingScopeFilter** | Applies explicit SKU scope, SKU file scope, local eligibility, category filtering, and optional Amazon existing-listing checks. |
+| **ProductListingVariationBuilder** | Deprecated Excel-row variation builder retained for historical reference until the Excel retirement window ends. |
+| **template_parser_helpers / template_variation_config / amz_template_rule_correction** | Deprecated Excel-template helpers retained for migration/debugging only. |
 | **CategoryMappingCsvUpdater** | Reads, validates, and applies supplier category mapping updates from CSV files. |
 | **GigaSyncService** | Synchronizes product details from GigaCloud API to local DB. |
 | **PricingService** | Calculates selling prices based on costs and margin rules. |
@@ -123,7 +130,7 @@ graph TD
 | :--- | :--- |
 | **ProductDataRepository** | Read-only access to aggregated product data (Base + LLM + Specs). |
 | **ProductListingRepository** | Manages listing status and pending queues. |
-| **AmzTemplateRepository** | Manages Amazon specific category templates and rules. |
+| **AmzTemplateRepository** | Deprecated Excel-template repository; API-native listing does not depend on `amazon_cat_templates`. |
 | **AmazonListingIssueRepository** | Persists listing issue scan runs, open/resolved issue state, and repair action history. |
 | **giga_price_transform** | Pure transforms for Giga price filtering, SKU deduplication, and base/tier row construction before repository persistence. |
 
@@ -131,22 +138,26 @@ graph TD
 
 | Utility | Responsibility |
 | :--- | :--- |
-| **DataMappingHelper** | Maps local data fields to Amazon template fields. |
+| **DataMappingHelper** | Legacy mapper for Excel-era template fields; API-native listing uses draft builders and attribute resolver rules. |
 | **DataFieldMapper** | Handles single-field source type mapping, JSONB traversal, unit conversion, and weight calculation. |
 | **data_mapping_valid_values / data_mapping_tasks** | Aligns mapped values to Amazon valid values and extracts LLM mapping tasks. |
 | **data_mapping_llm** | Builds LLM enrichment requests for Amazon field mapping. |
-| **ExcelGenerator** | Writes mapped data into `.xlsm` files using `openpyxl`. |
+| **ExcelGenerator** | Deprecated writer for `.xlsm` files; not used by the production new-listing entry. |
 | **VariationHelper** | Logic for identifying and grouping variation families. |
 
-## 4. Data Flow: Listing Generation
+## 4. Data Flow: API-native Listing Generation
 
-1.  **Trigger**: User selects a category (e.g., "CABINET").
-2.  **Fetch**: `ProductListingService` retrieves pending SKUs for that category from `ProductListingRepository`.
-3.  **Group**: SKUs are grouped into Variation Families by `VariationHelper`.
-4.  **Map**: Each SKU's data is mapped to Amazon fields via `DataMappingHelper`. LLM may be used for specific fields.
-5.  **Quality Gate**: API submissions pass through `AmazonListingQualityGate` to block known risky claims, missing main images, cached-schema required-field gaps, and issue-derived dimension risks.
-6.  **Generate / Submit**: Mapped data is written to an Excel template via `ExcelGenerator`, or converted to SP-API attributes and submitted by `AmazonListingSubmitter`.
-7.  **Log**: Results are saved to `amz_listing_log` and `amazon_api_submissions`.
+1.  **Trigger**: Operator runs `generate-listing-api` with a category and optional `--sku`, `--sku-file`, `--only-not-on-amazon`, and `--strict-validation` controls.
+2.  **Scope**: `ProductListingScopeFilter` filters pending SKUs by local eligibility, category mapping, explicit SKU scope, and optional read-only Amazon existing-listing checks.
+3.  **Commercial Gate**: `AmazonListingCommercialGate` validates price, inventory freshness, margin, currency, zero/negative inventory, and publish quantity cap; over-cap publish quantity is clamped with audit evidence.
+4.  **Variation Resolution**: `AmazonVariationResolver` selects parent/child theme and attributes from configuration plus historical family evidence. Duplicate or missing variation signatures fail closed.
+5.  **Draft + Content**: `AmazonListingDraftBuilder` builds listing drafts. LLM-generated content must pass deterministic compliance scanning and `ProductContentReviewer` before it can feed API submission.
+6.  **Attribute Resolution**: `AttributeResolver` and `AttributePayloadRenderer` add required/recommended structured attributes from Product Type schema and YAML rules with confidence/evidence.
+7.  **Quality Gate**: `AmazonListingQualityGate` blocks compliance risks, missing main images, cached-schema gaps, variation payload gaps, and configured issue-derived LIVE risks such as CABINET width over 42in.
+8.  **Submit / Preview**: `AmazonListingSubmitter` keeps offline dry-run as default; `--strict-validation` calls Amazon `VALIDATION_PREVIEW` without PUT; `--no-dry-run` is required for LIVE writes.
+9.  **Audit**: Results are saved to `amz_listing_log`, `amazon_api_submissions`, commercial gate audit tables, and variation resolution audit tables.
+
+Excel generation is no longer a production new-listing path. Legacy Excel/template modules are marked with `@retire` and governed by `docs/retirement/excel-listing-retirement-2026-06-15.md`.
 
 ## 4.1 Data Flow: Listing Issue Monitoring
 
@@ -162,7 +173,7 @@ graph TD
 -   **Database**: PostgreSQL
 -   **ORM**: SQLAlchemy 2.0
 -   **Data Processing**: Pandas
--   **Excel**: OpenPyXL
+-   **Excel**: OpenPyXL retained only for legacy migration/debug tooling
 -   **AI**: OpenAI API compatible (DeepSeek)
 
 ## 6. Deployment Topology
@@ -174,5 +185,8 @@ Production deployment follows the server operations contract in `/data/README.md
 - Runtime data location: `/data/volumes/amz-listing-management-system/`.
 - Database: shared PostgreSQL container `postgres:5432` on the external Docker `proxy` network, with a dedicated `amz_listing` database/user.
 - Secrets: `/data/docker-compose/amz-listing-management-system/.env`; real secrets are not committed.
-- Host ports: none by default. The container joins `proxy`, and Traefik exposure is disabled unless a route is explicitly registered in `/data/README.md`.
-- Runtime mode: `APP_MODE=server` keeps `scripts/io_server.py` running for internal task execution; one-off CLI tasks can still run through `docker compose run --rm`.
+- Host ports: none. The service joins `proxy`; Traefik exposes `https://amz-listing.meowy.fans` with SSO ForwardAuth as registered in `/data/README.md`.
+- Runtime mode: `APP_MODE=server` keeps `scripts/io_server.py` running; one-off CLI tasks run through `docker exec` or `docker compose run --rm`.
+- Current production image: `amz-listing-management-system:2026-06-15`.
+- Scheduled sidecars in the same compose: `amz-price-inventory-scheduler`, `amz-order-sync-scheduler`, and `amz-order-daily-report-scheduler`.
+- Amazon SP-API production traffic must use the configured `AMAZON_HTTPS_PROXY` fixed egress path.

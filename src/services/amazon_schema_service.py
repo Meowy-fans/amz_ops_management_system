@@ -56,6 +56,41 @@ class AmazonSchemaService:
         data = self.get_or_fetch_schema(product_type)
         return data.get("required_properties", [])
 
+    def get_expanded_required_properties(self, product_type: str) -> List[str]:
+        """Return top-level and schema-discovered required attributes."""
+        data = self.get_or_fetch_schema(product_type)
+        schema = data.get("schema_json", {}) or {}
+        properties = self._merged_properties(schema)
+
+        required: List[str] = []
+        self._extend_unique(required, data.get("required_properties", []) or [])
+        self._collect_direct_required_property_names(schema, set(properties), required)
+        return required
+
+    def get_learned_required_properties(self, product_type: str) -> List[str]:
+        """Return required attributes learned from Amazon validation feedback."""
+        try:
+            from src.repositories.amazon_api_submission_repository import (
+                AmazonAPISubmissionRepository,
+            )
+
+            repo = AmazonAPISubmissionRepository(self.db)
+            return repo.get_learned_required_attributes(product_type)
+        except Exception as exc:
+            logger.warning(
+                "Failed to load learned required attributes for %s: %s",
+                product_type,
+                exc,
+            )
+            return []
+
+    def get_coverage_required_properties(self, product_type: str) -> List[str]:
+        """Return required attributes used by local listing coverage gates."""
+        required: List[str] = []
+        self._extend_unique(required, self.get_expanded_required_properties(product_type))
+        self._extend_unique(required, self.get_learned_required_properties(product_type))
+        return required
+
     def validate_attributes(
         self, product_type: str, attributes: Dict[str, Any]
     ) -> List[Dict[str, str]]:
@@ -86,6 +121,12 @@ class AmazonSchemaService:
             return None
         return self._extract_valid_values(data, field_name)
 
+    def get_property_names(self, product_type: str) -> List[str]:
+        """Return top-level attribute names accepted by a product type schema."""
+        data = self.get_or_fetch_schema(product_type)
+        schema = data.get("schema_json", {}) or {}
+        return list(self._merged_properties(schema).keys())
+
     def _extract_valid_values(
         self,
         data: Dict[str, Any],
@@ -95,9 +136,7 @@ class AmazonSchemaService:
         if not schema:
             return None
 
-        props = dict(schema.get("properties", {}))
-        for part in schema.get("allOf", []):
-            props.update(part.get("properties", {}))
+        props = self._merged_properties(schema)
 
         field_schema = props.get(field_name)
         if not field_schema:
@@ -120,3 +159,54 @@ class AmazonSchemaService:
             if desc:
                 descs[name] = desc
         return descs
+
+    @classmethod
+    def _merged_properties(cls, schema: Dict[str, Any]) -> Dict[str, Any]:
+        props = dict(schema.get("properties", {}) or {})
+        for part in schema.get("allOf", []) or []:
+            props.update(part.get("properties", {}) or {})
+            for key in ("then", "else"):
+                props.update((part.get(key) or {}).get("properties", {}) or {})
+        return props
+
+    @classmethod
+    def _collect_direct_required_property_names(
+        cls,
+        schema: Dict[str, Any],
+        property_names: set[str],
+        required: List[str],
+    ) -> None:
+        for name in schema.get("required", []) or []:
+            if name in property_names:
+                cls._append_unique(required, name)
+        for part in schema.get("allOf", []) or []:
+            for name in part.get("required", []) or []:
+                if name in property_names:
+                    cls._append_unique(required, name)
+
+    @classmethod
+    def _contains_nested_required(cls, node: Any) -> bool:
+        generic_required = {"value", "unit", "currency", "language_tag", "marketplace_id"}
+        if isinstance(node, dict):
+            required = {
+                str(name)
+                for name in (node.get("required", []) or [])
+                if str(name) not in generic_required
+            }
+            if required:
+                return True
+            return any(cls._contains_nested_required(value) for value in node.values())
+        if isinstance(node, list):
+            return any(cls._contains_nested_required(item) for item in node)
+        return False
+
+    @staticmethod
+    def _append_unique(items: List[str], value: Any) -> None:
+        text = str(value or "").strip()
+        if text and text not in items:
+            items.append(text)
+
+    @classmethod
+    def _extend_unique(cls, items: List[str], values: List[Any]) -> None:
+        for value in values:
+            cls._append_unique(items, value)

@@ -114,3 +114,70 @@ def test_get_property_descriptions(monkeypatch, svc):
     assert "item_name" in descs
     assert "brand" in descs
     assert descs["item_name"] == "The product title"
+
+
+def test_get_property_names_merges_root_allof_and_conditional_properties(monkeypatch, svc):
+    monkeypatch.setattr(svc, "get_or_fetch_schema", lambda pt: {
+        "schema_json": {
+            "properties": {"item_name": {"title": "Item Name"}},
+            "allOf": [
+                {
+                    "properties": {"brand": {"title": "Brand"}},
+                    "then": {"properties": {"model_name": {"title": "Model Name"}}},
+                }
+            ],
+        },
+        "required_properties": [],
+    })
+
+    assert svc.get_property_names("HOME_MIRROR") == [
+        "item_name",
+        "brand",
+        "model_name",
+    ]
+
+
+def test_get_expanded_required_properties_merges_top_allof_and_nested_attribute(monkeypatch, svc):
+    monkeypatch.setattr(svc, "get_or_fetch_schema", lambda pt: {
+        "schema_json": {
+            "required": ["item_name"],
+            "properties": {
+                "item_name": {"title": "Item Name"},
+                "frame": {
+                    "items": {
+                        "type": "object",
+                        "properties": {"material": {"type": "string"}},
+                        "required": ["material"],
+                    }
+                },
+            },
+            "allOf": [
+                {
+                    "required": ["model_name"],
+                    "properties": {"model_name": {"title": "Model Name"}},
+                }
+            ],
+        },
+        "required_properties": ["brand"],
+    })
+
+    required = svc.get_expanded_required_properties("HOME_MIRROR")
+
+    assert required == ["brand", "item_name", "model_name"]
+
+
+def test_get_coverage_required_properties_merges_schema_and_preview_learned(monkeypatch, svc):
+    monkeypatch.setattr(
+        svc,
+        "get_expanded_required_properties",
+        lambda pt: ["item_name", "brand"],
+    )
+    monkeypatch.setattr(
+        svc,
+        "get_learned_required_properties",
+        lambda pt: ["brand", "mounting_type"],
+    )
+
+    required = svc.get_coverage_required_properties("HOME_MIRROR")
+
+    assert required == ["item_name", "brand", "mounting_type"]

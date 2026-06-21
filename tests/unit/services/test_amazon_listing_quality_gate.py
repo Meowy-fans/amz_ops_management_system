@@ -50,7 +50,7 @@ def test_blocks_pesticide_claim_risk():
     assert any(f["code"] == "PESTICIDE_CLAIM_RISK" for f in result["findings"])
 
 
-def test_blocks_cabinet_width_over_observed_amazon_limit():
+def test_warns_for_cabinet_width_over_preferred_observed_range():
     gate = AmazonListingQualityGate(schema_service=None)
 
     result = gate.prepare_plan(
@@ -58,15 +58,20 @@ def test_blocks_cabinet_width_over_observed_amazon_limit():
             item_depth_width_height=[
                 {
                     "depth": {"value": 22, "unit": "inches"},
-                    "width": {"value": 60, "unit": "inches"},
+                    "width": {"value": 52.76, "unit": "inches"},
                     "height": {"value": 33, "unit": "inches"},
                 }
             ]
         )
     )
 
-    assert result["blocked"] is True
-    assert any(f["code"] == "ISSUE_DERIVED_DIMENSION_RANGE" for f in result["findings"])
+    assert result["blocked"] is False
+    assert any(
+        f["code"] == "ISSUE_DERIVED_DIMENSION_RANGE"
+        and f["severity"] == "WARNING"
+        and f["live_blocking"] is True
+        for f in result["findings"]
+    )
 
 
 def test_blocks_missing_main_image():
@@ -76,6 +81,23 @@ def test_blocks_missing_main_image():
 
     assert result["blocked"] is True
     assert any(f["code"] == "MISSING_MAIN_IMAGE" for f in result["findings"])
+
+
+def test_blocks_item_width_variation_without_item_width_payload():
+    gate = AmazonListingQualityGate(schema_service=None)
+
+    result = gate.prepare_plan(
+        _plan(
+            variation_theme=[{"name": "ITEM_WIDTH"}],
+            item_width=[],
+        )
+    )
+
+    assert result["blocked"] is True
+    assert any(
+        f["code"] == "MISSING_VARIATION_ITEM_WIDTH"
+        for f in result["findings"]
+    )
 
 
 def test_blocks_missing_required_attribute_from_cached_schema():

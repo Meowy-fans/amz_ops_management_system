@@ -6,6 +6,7 @@ from src.cli.query_handlers import (
     handle_pending_statistics,
     handle_recent_listings,
 )
+from src.services.category_readiness_service import CategoryReadiness
 
 
 class Result:
@@ -131,16 +132,24 @@ def test_handle_view_statistics_prints_query_failures(monkeypatch, capsys):
     assert capsys.readouterr().out.count("查询失败: stats down") == 6
 
 
-def test_handle_pending_statistics_prints_counts(capsys):
-    db = Db(Result(row=(10, 3, 2)))
+def test_handle_pending_statistics_prints_empty_counts(monkeypatch, capsys):
+    class Service:
+        def __init__(self, db):
+            self.db = db
+
+        def pending_counts(self):
+            return []
+
+    monkeypatch.setattr(
+        "src.services.category_readiness_service.CategoryReadinessService",
+        Service,
+    )
+    db = object()
 
     handle_pending_statistics(db)
 
     output = capsys.readouterr().out
-    assert "总待发品数: 10" in output
-    assert "CABINET: 3" in output
-    assert "HOME_MIRROR: 2" in output
-    assert "其他品类: 5" in output
+    assert "总待发品数: 0" in output
 
 
 def test_handle_pending_statistics_prints_errors(capsys):
@@ -184,24 +193,85 @@ def test_handle_recent_listings_prints_errors(capsys):
     assert "查询记录失败: db down" in capsys.readouterr().out
 
 
-def test_handle_list_categories_prints_categories(capsys):
-    db = Db(Result(scalars=["CABINET", "HOME_MIRROR"]))
+def test_handle_list_categories_prints_empty_state(monkeypatch, capsys):
+    class Service:
+        def __init__(self, db):
+            self.db = db
+
+        def list_readiness(self):
+            return []
+
+    monkeypatch.setattr(
+        "src.services.category_readiness_service.CategoryReadinessService",
+        Service,
+    )
+    db = object()
 
     handle_list_categories(db)
 
     output = capsys.readouterr().out
-    assert "1. CABINET" in output
-    assert "2. HOME_MIRROR" in output
-    assert "总计: 2 个品类" in output
+    assert "暂无品类数据" in output
 
 
-def test_handle_list_categories_prints_empty_state(capsys):
-    db = Db(Result(scalars=[]))
+def test_handle_pending_statistics_prints_readiness_counts(monkeypatch, capsys):
+    class Service:
+        def __init__(self, db):
+            self.db = db
 
-    handle_list_categories(db)
+        def pending_counts(self):
+            return [
+                {"product_type": "SOFA", "pending_count": 19, "status": "ready_dry_run"},
+                {"product_type": "UNMAPPED", "pending_count": 66, "status": "unmapped"},
+            ]
 
-    assert "暂无品类数据" in capsys.readouterr().out
+    monkeypatch.setattr(
+        "src.services.category_readiness_service.CategoryReadinessService",
+        Service,
+    )
 
+    handle_pending_statistics(object())
+
+    output = capsys.readouterr().out
+    assert "总待发品数: 85" in output
+    assert "SOFA: 19 (ready_dry_run)" in output
+    assert "UNMAPPED: 66 (unmapped)" in output
+
+
+def test_handle_list_categories_prints_readiness(monkeypatch, capsys):
+    class Service:
+        def __init__(self, db):
+            self.db = db
+
+        def list_readiness(self):
+            return [
+                CategoryReadiness(
+                    product_type="SOFA",
+                    status="ready_dry_run",
+                    pending_count=19,
+                    schema_cached=True,
+                    rule_mode="dry_run",
+                    missing_required_rules=["arm_style"],
+                ),
+                CategoryReadiness(
+                    product_type="CABINET",
+                    status="ready_live",
+                    pending_count=7,
+                    schema_cached=True,
+                    rule_mode="live_eligible",
+                ),
+            ]
+
+    monkeypatch.setattr(
+        "src.services.category_readiness_service.CategoryReadinessService",
+        Service,
+    )
+
+    handle_list_categories(object())
+
+    output = capsys.readouterr().out
+    assert "SOFA | ready_dry_run | pending=19" in output
+    assert "CABINET | ready_live | pending=7" in output
+    assert "missing required rules: arm_style" in output
 
 def test_handle_list_categories_prints_errors(capsys):
     handle_list_categories(ErrorDb())

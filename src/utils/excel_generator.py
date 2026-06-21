@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="AmazonListingPayloadBuilder", scheduled_removal="2026-07-31", scope="file")
 """
 Excel Generator
 生成Amazon发品Excel文件

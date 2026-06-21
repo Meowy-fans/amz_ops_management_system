@@ -1,0 +1,12 @@
+version: quality_gate_v1
+
+dimension_ranges:
+  CABINET:
+    item_depth_width_height:
+      width:
+        max: 42
+        severity: WARNING
+        blocking: false
+        live_blocking: true
+        code: ISSUE_DERIVED_DIMENSION_RANGE
+        message: CABINET item_depth_width_height.width exceeds Amazon observed max for this product type

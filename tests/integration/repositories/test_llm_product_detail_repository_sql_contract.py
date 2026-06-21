@@ -159,42 +159,40 @@ def test_batch_save_details_empty_input_short_circuits():
     assert session.commits == 0
 
 
-def test_batch_save_details_filters_empty_rows_and_commits_executemany_insert():
+def test_batch_save_details_filters_empty_rows_and_commits_delete_then_insert():
     session = RecordingSession()
     repo = LLMProductDetailRepository(session)
 
     assert repo.batch_save_details([_detail_tuple("GIGA-1"), None, _detail_tuple("GIGA-2")]) == 2
 
-    sql, params = session.calls[0]
+    delete_sql, delete_params = session.calls[0]
+    normalized_delete = _normalized(delete_sql)
+    assert "DELETE FROM ds_api_product_details" in normalized_delete
+    assert "WHERE sku_id = :sku_id" in normalized_delete
+    assert delete_params == {"sku_id": "GIGA-1"}
+
+    sql, params = session.calls[1]
     normalized = _normalized(sql)
     assert "INSERT INTO ds_api_product_details" in normalized
     assert "CAST(:raw_json AS jsonb)" in normalized
-    assert params == [
-        {
-            "sku_id": "GIGA-1",
-            "product_name": "Product name",
-            "sp1": "Point 1",
-            "sp2": "Point 2",
-            "sp3": "Point 3",
-            "sp4": "Point 4",
-            "sp5": "Point 5",
-            "product_desc": "Description",
-            "calling_agent": "qwen",
-            "raw_json": '{"sku":"GIGA-1"}',
-        },
-        {
-            "sku_id": "GIGA-2",
-            "product_name": "Product name",
-            "sp1": "Point 1",
-            "sp2": "Point 2",
-            "sp3": "Point 3",
-            "sp4": "Point 4",
-            "sp5": "Point 5",
-            "product_desc": "Description",
-            "calling_agent": "qwen",
-            "raw_json": '{"sku":"GIGA-1"}',
-        },
-    ]
+    assert params == {
+        "sku_id": "GIGA-1",
+        "product_name": "Product name",
+        "sp1": "Point 1",
+        "sp2": "Point 2",
+        "sp3": "Point 3",
+        "sp4": "Point 4",
+        "sp5": "Point 5",
+        "product_desc": "Description",
+        "calling_agent": "qwen",
+        "raw_json": '{"sku":"GIGA-1"}',
+    }
+    second_delete_sql, second_delete_params = session.calls[2]
+    assert "DELETE FROM ds_api_product_details" in _normalized(second_delete_sql)
+    assert second_delete_params == {"sku_id": "GIGA-2"}
+    second_insert_sql, second_insert_params = session.calls[3]
+    assert "INSERT INTO ds_api_product_details" in _normalized(second_insert_sql)
+    assert second_insert_params["sku_id"] == "GIGA-2"
     assert session.commits == 1
     assert session.rollbacks == 0
 

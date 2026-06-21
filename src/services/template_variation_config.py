@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="AmazonVariationResolver", scheduled_removal="2026-07-31", scope="file")
 """Variation mapping and priority-theme helpers for Amazon templates."""
 import logging
 from typing import Dict, List, Protocol

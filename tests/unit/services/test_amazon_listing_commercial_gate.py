@@ -121,10 +121,14 @@ def test_gate_allows_zero_inventory_only_when_configured():
     assert "ZERO_INVENTORY_NOT_ALLOWED" in result.blocking_codes
 
 
-def test_gate_blocks_quantity_above_publish_cap():
-    gate = AmazonListingCommercialGate(audit_repo=FakeRepo(), config=_rules())
+def test_gate_clamps_quantity_above_publish_cap_and_audits_warning():
+    repo = FakeRepo()
+    gate = AmazonListingCommercialGate(audit_repo=repo, config=_rules())
 
     result = gate.evaluate(_product_data(inventory_quantity=50), product_type="CABINET")
 
-    assert result.blocked is True
-    assert "QUANTITY_EXCEEDS_MAX" in result.blocking_codes
+    assert result.blocked is False
+    assert "PUBLISH_QUANTITY_CLAMPED" in result.warning_codes
+    assert result.input_snapshot["source_publish_quantity"] == 50
+    assert result.input_snapshot["publish_quantity"] == 10
+    assert repo.runs[0]["input_snapshot"]["publish_quantity"] == 10

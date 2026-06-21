@@ -14,8 +14,24 @@ def test_dispatch_generate_listing_returns_service_result(monkeypatch):
         def __init__(self, db):
             self.db = db
 
-        def generate_listings_by_category(self, category):
-            return {"success": True, "category": category}
+        def generate_listings_via_api(
+            self,
+            category_name,
+            dry_run=True,
+            validation_only=False,
+            sku_list=None,
+            sku_file=None,
+            only_not_on_amazon=False,
+        ):
+            return {
+                "success": True,
+                "category": category_name,
+                "dry_run": dry_run,
+                "validation_only": validation_only,
+                "sku_list": sku_list,
+                "sku_file": sku_file,
+                "only_not_on_amazon": only_not_on_amazon,
+            }
 
     monkeypatch.setitem(task_dispatcher.TASK_HANDLERS, "noop", lambda db, **kwargs: "ok")
     monkeypatch.setattr("src.services.product_listing_service.ProductListingService", Service)
@@ -26,7 +42,52 @@ def test_dispatch_generate_listing_returns_service_result(monkeypatch):
         "generate-listing",
         category="CABINET",
         return_listing_result=True,
-    ) == {"success": True, "category": "CABINET"}
+    ) == {
+        "success": True,
+        "category": "CABINET",
+        "dry_run": True,
+        "validation_only": False,
+        "sku_list": None,
+        "sku_file": None,
+        "only_not_on_amazon": False,
+    }
+
+
+def test_dispatch_generate_listing_return_result_passes_strict_validation(monkeypatch):
+    class Service:
+        def __init__(self, db):
+            self.db = db
+
+        def generate_listings_via_api(
+            self,
+            category_name,
+            dry_run=True,
+            validation_only=False,
+            sku_list=None,
+            sku_file=None,
+            only_not_on_amazon=False,
+        ):
+            return {
+                "success": True,
+                "category": category_name,
+                "dry_run": dry_run,
+                "validation_only": validation_only,
+            }
+
+    monkeypatch.setattr("src.services.product_listing_service.ProductListingService", Service)
+
+    assert dispatch_task(
+        object(),
+        "generate-listing",
+        category="CABINET",
+        return_listing_result=True,
+        strict_validation=True,
+    ) == {
+        "success": True,
+        "category": "CABINET",
+        "dry_run": True,
+        "validation_only": True,
+    }
 
 
 def test_dispatch_generate_listing_uses_cli_handler_without_return(monkeypatch):
@@ -57,6 +118,83 @@ def test_dispatch_sync_amz_report_api_uses_cli_handler(monkeypatch):
 
     assert result is None
     assert calls == [db]
+
+
+def test_dispatch_auto_discover_category_passes_scope_and_dry_run(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_auto_discover_category",
+        lambda db, category_code=None, all_unmapped=False, dry_run=True: calls.append(
+            (db, category_code, all_unmapped, dry_run)
+        ),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "auto-discover-category",
+        category_code="10027",
+        all_unmapped=True,
+        dry_run=False,
+    )
+
+    assert result is None
+    assert calls == [(db, "10027", True, False)]
+
+
+def test_dispatch_generate_attribute_rules_passes_product_type(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_generate_attribute_rules",
+        lambda db, product_type=None: calls.append((db, product_type)),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "generate-attribute-rules",
+        product_type="SOFA",
+    )
+
+    assert result is None
+    assert calls == [(db, "SOFA")]
+
+
+def test_dispatch_generate_listing_api_passes_strict_validation(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_generate_listing_api",
+        lambda db, category=None, dry_run=True, strict_validation=False,
+        sku_list=None, sku_file=None, only_not_on_amazon=False: calls.append(
+            (
+                db,
+                category,
+                dry_run,
+                strict_validation,
+                sku_list,
+                sku_file,
+                only_not_on_amazon,
+            )
+        ),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "generate-listing-api",
+        category="CABINET",
+        dry_run=True,
+        strict_validation=True,
+        sku_list=["SKU1"],
+        sku_file="/tmp/skus.txt",
+        only_not_on_amazon=True,
+    )
+
+    assert result is None
+    assert calls == [(db, "CABINET", True, True, ["SKU1"], "/tmp/skus.txt", True)]
 
 
 def test_dispatch_sync_listing_issues_passes_dry_run(monkeypatch):

@@ -25,12 +25,23 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
     monkeypatch.setattr(app_main.sys, "argv", [
         "main.py",
         "--task",
-        "generate-listing",
+        "generate-listing-api",
         "--category",
         "CABINET",
         "--file",
         "/tmp/input.csv",
         "--auto-confirm",
+        "--strict-validation",
+        "--sku",
+        "SKU1,SKU2",
+        "--sku-file",
+        "/tmp/skus.txt",
+        "--only-not-on-amazon",
+        "--category-code",
+        "10027",
+        "--product-type",
+        "SOFA",
+        "--all-unmapped",
     ])
     monkeypatch.setattr(app_main, "SessionLocal", lambda: FakeSession(events))
 
@@ -47,12 +58,19 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
     assert len(dispatch_calls) == 1
     db, task, kwargs = dispatch_calls[0]
     assert isinstance(db, FakeSession)
-    assert task == "generate-listing"
+    assert task == "generate-listing-api"
     assert kwargs == {
         "category": "CABINET",
         "file_path": "/tmp/input.csv",
         "auto_confirm": True,
         "dry_run": True,
+        "strict_validation": True,
+        "sku_list": ["SKU1", "SKU2"],
+        "sku_file": "/tmp/skus.txt",
+        "only_not_on_amazon": True,
+        "category_code": "10027",
+        "product_type": "SOFA",
+        "all_unmapped": True,
     }
 
 

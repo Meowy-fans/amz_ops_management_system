@@ -44,3 +44,56 @@ jobs:
         run: |
           . .venv/bin/activate
           pytest --cov=src --cov=infrastructure --cov-report=term-missing --cov-fail-under=35
+
+  docs-check:
+    runs-on:
+      - self-hosted
+      - ci
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: 检查文件体积红线
+        run: |
+          violations=$(find src/ -name '*.py' -exec wc -l {} + | awk '$1>500{print $2":"$1" 行"}')
+          if [ -n "$violations" ]; then
+            echo "❌ 以下文件超过500行红线:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "✅ 文件体积检查通过"
+
+      - name: 检查新增 service 是否有对应文档
+        run: |
+          new_services=$(git diff --name-only origin/main...HEAD -- 'src/services/*.py' 2>/dev/null || echo "")
+          if [ -z "$new_services" ]; then
+            echo "✅ 无新增 service 模块"
+            exit 0
+          fi
+          missing=""
+          for f in $new_services; do
+            module=$(basename "$f" .py)
+            if [ ! -f "docs/module-design/${module}.md" ]; then
+              missing="$missing  $f → 缺少 docs/module-design/${module}.md\n"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "❌ 新增 service 模块缺少设计文档:"
+            printf "%b" "$missing"
+            exit 1
+          fi
+          echo "✅ 新增模块文档检查通过"
+
+      - name: 死代码检测
+        run: |
+          pip install vulture -q 2>/dev/null
+          python -m vulture src/ --min-confidence 80 || true
+          echo "⚠️  死代码检测仅供参考，不阻塞 CI"
+
+      - name: @retire 标记检查
+        run: |
+          python3 ~/scripts/check_retirement.py . --block --max-deprecated-pct 10

@@ -94,6 +94,7 @@ class ProductListingService:
     
     # ── shared row generation ─────────────────────────────────────
 
+    # @retire(since="2026-06-15", replaced_by="ProductListingAPIPlanBuilder.build_for_category", scheduled_removal="2026-07-31")
     def _build_rows_for_category(self, category_name: str):
         """Shared pipeline: SKU selection, variation detection, field mapping.
 
@@ -131,6 +132,7 @@ class ProductListingService:
 
     # ── Excel output path (preserved) ─────────────────────────────
 
+    # @retire(since="2026-06-15", replaced_by="generate_listings_via_api", scheduled_removal="2026-07-31")
     def generate_listings_by_category(self, category_name: str) -> Dict[str, Any]:
         """按品类生成发品 Excel 文件（现有路径，不变）。"""
         try:
@@ -172,6 +174,9 @@ class ProductListingService:
         category_name: str,
         dry_run: bool = True,
         validation_only: bool = False,
+        sku_list: Optional[List[str]] = None,
+        sku_file: Optional[str] = None,
+        only_not_on_amazon: bool = False,
     ) -> Dict[str, Any]:
         """按品类生成发品并提交到 Amazon SP-API。
 
@@ -179,6 +184,9 @@ class ProductListingService:
             category_name: 品类名称 (CABINET, HOME_MIRROR).
             dry_run: True 时仅构建 JSON payload 不提交.
             validation_only: True 时使用 VALIDATION_PREVIEW 模式.
+            sku_list: Optional explicit meow_sku allowlist.
+            sku_file: Optional newline/comma separated meow_sku file.
+            only_not_on_amazon: If True, exclude SKUs found by read-only Amazon GET.
 
         Returns:
             {"success": bool, "results": [...], "excel_file": None|str}
@@ -188,8 +196,18 @@ class ProductListingService:
                 "开始 SP-API 发品 category=%s dry_run=%s", category_name, dry_run
             )
 
+            from src.services.product_listing_scope import ListingScope
+
+            scope = ListingScope.from_inputs(
+                sku_list=sku_list,
+                sku_file=sku_file,
+                only_not_on_amazon=only_not_on_amazon,
+            )
             plans, variation_logs, single_skus, _vf, pre_submit_results = (
-                self._build_api_native_plans_for_category(category_name)
+                self._build_api_native_plans_for_category(
+                    category_name,
+                    scope=scope,
+                )
             )
 
             # Submit via Listings Items API
@@ -215,6 +233,10 @@ class ProductListingService:
                 "success": True,
                 "results": results,
                 "excel_file": None,
+                "audit": {
+                    "scope": scope.as_dict(),
+                    "result_status_counts": self._count_result_statuses(results),
+                },
                 "message": (
                     f"DRY RUN: {len(results)} payloads generated"
                     if dry_run
@@ -229,13 +251,39 @@ class ProductListingService:
             logger.error("SP-API 发品失败: %s", e, exc_info=True)
             return {"success": False, "results": [], "message": str(e)}
 
-    def _build_api_native_plans_for_category(self, category_name: str):
+    def _build_api_native_plans_for_category(
+        self,
+        category_name: str,
+        sku_list: Optional[List[str]] = None,
+        sku_file: Optional[str] = None,
+        only_not_on_amazon: bool = False,
+        scope=None,
+    ):
         from src.services.product_listing_api_plan_builder import (
             ProductListingAPIPlanBuilder,
         )
+        from src.services.product_listing_scope import ListingScope
 
-        return ProductListingAPIPlanBuilder(self).build_for_category(category_name)
-    
+        scope = scope or ListingScope.from_inputs(
+            sku_list=sku_list,
+            sku_file=sku_file,
+            only_not_on_amazon=only_not_on_amazon,
+        )
+        result = ProductListingAPIPlanBuilder(self).build_for_category(
+            category_name,
+            scope=scope,
+        )
+        return result
+
+    @staticmethod
+    def _count_result_statuses(results: List[Dict[str, Any]]) -> Dict[str, int]:
+        counts: Dict[str, int] = {}
+        for item in results:
+            status = item.get("status", "unknown")
+            counts[status] = counts.get(status, 0) + 1
+        return counts
+
+    # @retire(since="2026-06-15", replaced_by="AmazonListingDraftBuilder/AmazonListingPayloadBuilder", scheduled_removal="2026-07-31")
     def _process_single_products(
         self,
         meow_skus: List[str],
@@ -281,7 +329,8 @@ class ProductListingService:
         
         logger.info(f"  成功处理 {len(rows)}/{len(meow_skus)} 个单品")
         return rows
-    
+
+    # @retire(since="2026-06-15", replaced_by="ProductListingAPIPlanBuilder/AmazonVariationResolver", scheduled_removal="2026-07-31")
     def _process_variations(
         self,
         families: List[List[str]],
@@ -298,7 +347,8 @@ class ProductListingService:
             (数据行列表, 日志数据列表)
         """
         return self._variation_builder().process_variations(families, template_rules)
-    
+
+    # @retire(since="2026-06-15", replaced_by="ProductListingAPIPlanBuilder/AmazonVariationResolver", scheduled_removal="2026-07-31")
     def _process_single_family(
         self,
         family_skus: List[str],
@@ -306,7 +356,8 @@ class ProductListingService:
     ) -> Tuple[List[Dict[str, Any]], List[Dict]]:
         """处理单个变体家族"""
         return self._variation_builder().process_single_family(family_skus, template_rules)
-    
+
+    # @retire(since="2026-06-15", replaced_by="AmazonVariationResolver", scheduled_removal="2026-07-31")
     def _extract_valid_themes(self, template_rules: Dict) -> List[str]:
         """
         从模板规则中提取有效的变体主题列表

@@ -144,6 +144,7 @@ class AmazonListingCommercialGate:
             "inventory_last_updated": self._to_iso(
                 product_data.get("inventory_last_updated")
             ),
+            "source_publish_quantity": self._to_int(product_data.get(quantity_source)),
             "publish_quantity": self._to_int(product_data.get(quantity_source)),
             "quantity_source": quantity_source,
         }
@@ -249,10 +250,19 @@ class AmazonListingCommercialGate:
 
         max_qty = self._to_int(rules.get("max_publish_quantity"))
         if max_qty is not None and quantity > max_qty:
+            data["publish_quantity"] = max_qty
             findings.append(
-                self._finding(
-                    "QUANTITY_EXCEEDS_MAX",
-                    f"Publish quantity {quantity} exceeds max {max_qty}",
+                self._warning(
+                    "PUBLISH_QUANTITY_CLAMPED",
+                    (
+                        f"Publish quantity {quantity} exceeds max {max_qty}; "
+                        f"listing quantity will be published as {max_qty}"
+                    ),
+                    {
+                        "source_publish_quantity": quantity,
+                        "publish_quantity": max_qty,
+                        "max_publish_quantity": max_qty,
+                    },
                 )
             )
 
@@ -300,6 +310,20 @@ class AmazonListingCommercialGate:
             code=code,
             message=message,
             blocking=True,
+            details=details or {},
+        )
+
+    @staticmethod
+    def _warning(
+        code: str,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> CommercialGateFinding:
+        return CommercialGateFinding(
+            severity="WARNING",
+            code=code,
+            message=message,
+            blocking=False,
             details=details or {},
         )
 

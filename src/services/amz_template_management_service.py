@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="ProductTypeDiscoveryService/AttributeRuleLoader", scheduled_removal="2026-07-31", scope="file")
 """
 Amazon Template Management Service
 亚马逊类目模板管理服务

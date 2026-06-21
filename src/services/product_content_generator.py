@@ -45,6 +45,9 @@ class EnrichedProductContent:
     compliance_blocked: bool = False
     auto_sanitized: bool = False
     compliance_retried: bool = False
+    review_status: str = "not_reviewed"
+    review_attempts: int = 0
+    review_result: Dict[str, Any] = field(default_factory=dict)
     raw_llm_response: str = ""
 
 # ── buyer personas ────────────────────────────────────────────────
@@ -68,10 +71,18 @@ _COMPLIANCE_RETRY_SYSTEM = (
 class ProductContentGenerator:
     """Generates Amazon-optimized product content using LLM."""
 
-    def __init__(self, llm_service: Any = None, max_compliance_retries: int = 1):
+    def __init__(
+        self,
+        llm_service: Any = None,
+        max_compliance_retries: int = 1,
+        reviewer: Any = None,
+        max_review_revisions: int = 1,
+    ):
         self._llm = llm_service
         self.max_compliance_retries = max_compliance_retries
         self._scanner = ComplianceClaimScanner()
+        self._reviewer = reviewer
+        self.max_review_revisions = max_review_revisions
 
     def generate(
         self,
@@ -109,24 +120,68 @@ class ProductContentGenerator:
             "No explanations, no markdown fences, just JSON."
         )
 
+        revision_feedback = ""
+        attempts = self.max_review_revisions + 1
+        last_result = EnrichedProductContent()
+        for attempt in range(attempts):
+            prompt = user_prompt
+            if revision_feedback:
+                prompt = (
+                    f"{user_prompt}\n\n"
+                    "▼ REVIEWER REVISION FEEDBACK\n"
+                    f"{revision_feedback}\n"
+                    "Regenerate the same JSON fields and fix the review issues. "
+                    "Do not add unsupported product facts."
+                )
+            result = self._generate_once(system_prompt, prompt)
+            last_result = result
+            if not result.title and not result.description:
+                return result
+
+            self._apply_compliance_pipeline(result, product, product_type)
+            if result.compliance_blocked:
+                return result
+
+            review = self._get_reviewer().review(product, product_type, result)
+            result.review_attempts = attempt + 1
+            result.review_result = review.as_dict()
+            result.review_status = review.verdict
+            if review.verdict == "pass":
+                return result
+            if review.verdict == "revise" and attempt < self.max_review_revisions:
+                revision_feedback = review.revision_instructions or "; ".join(
+                    issue.get("message", "") for issue in review.issues
+                )
+                continue
+            result.compliance_blocked = True
+            result.validation_errors.append(
+                f"Content review failed with verdict={review.verdict}"
+            )
+            for issue in review.issues:
+                message = issue.get("message")
+                if message:
+                    result.validation_errors.append(str(message))
+            return result
+
+        return last_result
+
+    def _generate_once(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> EnrichedProductContent:
         try:
             llm = self._get_llm()
             request = self._make_llm_request(system_prompt, user_prompt)
             response = llm.generate(request)
             raw = response.content if hasattr(response, "content") else response
-            if isinstance(raw, dict):
-                raw_text = json.dumps(raw)
-            else:
-                raw_text = str(raw)
+            raw_text = json.dumps(raw) if isinstance(raw, dict) else str(raw)
         except Exception as e:
             logger.error("LLM generation failed: %s", e)
             return EnrichedProductContent(
                 validation_warnings=[f"LLM call failed: {e}"]
             )
-
-        result = self._parse_content(raw_text)
-        self._apply_compliance_pipeline(result, product, product_type)
-        return result
+        return self._parse_content(raw_text)
 
     # ── prompt building ───────────────────────────────────────────
 
@@ -250,6 +305,14 @@ class ProductContentGenerator:
 
         self._llm = get_llm_service()
         return self._llm
+
+    def _get_reviewer(self):
+        if self._reviewer is not None:
+            return self._reviewer
+        from src.services.product_content_reviewer import ProductContentReviewer
+
+        self._reviewer = ProductContentReviewer(llm_service=self._get_llm())
+        return self._reviewer
 
     def _get_prompt(self) -> str:
         from src.utils.prompt_manager import PromptManager

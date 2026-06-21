@@ -8,8 +8,17 @@ from sqlalchemy.orm import Session
 from src.services.product_listing_service import ProductListingService
 
 
+# @retire(since="2026-06-15", replaced_by="handle_generate_listing_api", scheduled_removal="2026-07-31")
 def handle_generate_listing(db: Session, category: Optional[str] = None):
-    """1.8 生成亚马逊发品文件"""
+    """Deprecated alias: route legacy listing generation to API-native listing."""
+    print("\n[DEPRECATED] generate-listing / Excel 发品已停止作为主流程。")
+    print("请使用 API-native 发品入口 generate-listing-api；当前命令将转发到 dry-run 预览。")
+    return handle_generate_listing_api(db=db, category=category, dry_run=True)
+
+
+# @retire(since="2026-06-15", replaced_by="handle_generate_listing_api", scheduled_removal="2026-07-31")
+def handle_generate_listing_excel_deprecated(db: Session, category: Optional[str] = None):
+    """Legacy Excel generation implementation kept for historical reference."""
     print("\n" + "=" * 70)
     print("📦 生成亚马逊发品文件")
     print("=" * 70)
@@ -76,10 +85,28 @@ def handle_generate_listing_api(
     db: Session,
     category: Optional[str] = None,
     dry_run: bool = True,
+    strict_validation: bool = False,
+    sku_list: Optional[list[str]] = None,
+    sku_file: Optional[str] = None,
+    only_not_on_amazon: bool = False,
 ):
     """1.9 通过Amazon SP-API提交新品发品"""
     print("\n" + "=" * 70)
-    mode_label = "DRY RUN (预览)" if dry_run else "LIVE (真实提交)"
+    if strict_validation and not dry_run:
+        print("Amazon SP-API 新品发品 - 配置错误")
+        print("=" * 70)
+        print("strict validation 只能用于 dry-run；请移除 --no-dry-run 后重试。")
+        return {
+            "success": False,
+            "message": "strict_validation_requires_dry_run",
+            "results": [],
+        }
+
+    mode_label = (
+        "STRICT DRY RUN (Amazon VALIDATION_PREVIEW)"
+        if strict_validation
+        else "DRY RUN (预览)" if dry_run else "LIVE (真实提交)"
+    )
     print(f"Amazon SP-API 新品发品 - {mode_label}")
     print("=" * 70)
 
@@ -98,6 +125,12 @@ def handle_generate_listing_api(
             return
 
     print(f"\n品类: {category}")
+    if sku_list:
+        print(f"SKU scope: {len(sku_list)} explicit SKUs")
+    if sku_file:
+        print(f"SKU file: {sku_file}")
+    if only_not_on_amazon:
+        print("Scope filter: only SKUs not found on Amazon")
     print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70 + "\n")
 
@@ -106,11 +139,21 @@ def handle_generate_listing_api(
         result = service.generate_listings_via_api(
             category_name=category,
             dry_run=dry_run,
+            validation_only=strict_validation,
+            sku_list=sku_list,
+            sku_file=sku_file,
+            only_not_on_amazon=only_not_on_amazon,
         )
 
         print("\n" + "=" * 70)
         if result["success"]:
             print(f"发品API完成: {len(result.get('results', []))} SKUs")
+            audit = result.get("audit") or {}
+            status_counts = audit.get("result_status_counts") or {}
+            if status_counts:
+                print("Audit status counts:")
+                for status, count in sorted(status_counts.items()):
+                    print(f"  {status}: {count}")
             for r in result.get("results", [])[:5]:
                 print(f"  {r['sku']}: {r['status']}")
             if len(result.get("results", [])) > 5:

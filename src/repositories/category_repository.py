@@ -208,6 +208,57 @@ class CategoryRepository:
         except Exception as e:
             logger.exception(f"Failed to fetch unmapped categories with product count: {e}")
             return []
+
+    def get_category_sample_products(
+        self,
+        category_code: str,
+        limit: int = 5,
+    ) -> List[Dict]:
+        """Return representative listing-eligible Giga products for one category."""
+        query = text("""
+            SELECT
+                psr.giga_sku,
+                psr.raw_data->>'name' AS product_name,
+                COALESCE(
+                    NULLIF(psr.raw_data->>'category', ''),
+                    scm.supplier_category_name,
+                    psr.category_code
+                ) AS category_name
+            FROM giga_product_sync_records psr
+            JOIN giga_product_base_prices pbp
+                ON psr.giga_sku = pbp.giga_sku
+            LEFT JOIN supplier_categories_map scm
+                ON LOWER(psr.category_code) = LOWER(scm.supplier_category_code)
+                AND scm.supplier_platform = 'giga'
+            WHERE LOWER(psr.category_code) = LOWER(:category_code)
+              AND psr.raw_data IS NOT NULL
+              AND NULLIF(psr.raw_data->>'name', '') IS NOT NULL
+              AND psr.is_oversize IS NOT TRUE
+              AND psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'
+              AND pbp.sku_available IS TRUE
+            ORDER BY LENGTH(psr.raw_data->>'name') DESC, psr.giga_sku
+            LIMIT :limit;
+        """)
+        try:
+            result = self.db.execute(
+                query,
+                {"category_code": category_code, "limit": int(limit)},
+            ).fetchall()
+            return [
+                {
+                    "giga_sku": row[0],
+                    "name": row[1],
+                    "category_name": row[2] if row[2] else category_code,
+                }
+                for row in result
+            ]
+        except Exception as e:
+            logger.exception(
+                "Failed to fetch category sample products for %s: %s",
+                category_code,
+                e,
+            )
+            return []
     
     def get_valid_amazon_categories(self) -> Set[str]:
         """
@@ -270,4 +321,38 @@ class CategoryRepository:
         except Exception as e:
             self.db.rollback()
             logger.error(f"Failed to batch update category mappings: {e}", exc_info=True)
+            raise
+
+    def update_category_mapping_if_unmapped(
+        self,
+        supplier_platform: str,
+        supplier_category_code: str,
+        standard_category_name: str,
+    ) -> int:
+        """Update one category mapping only when it is still unmapped."""
+        query = text("""
+            UPDATE supplier_categories_map
+            SET standard_category_name = :standard_category_name
+            WHERE supplier_platform = :supplier_platform
+              AND supplier_category_code = :supplier_category_code
+              AND (standard_category_name = '' OR standard_category_name IS NULL);
+        """)
+        params = {
+            "supplier_platform": supplier_platform,
+            "supplier_category_code": supplier_category_code,
+            "standard_category_name": standard_category_name,
+        }
+        try:
+            result = self.db.execute(query, params)
+            self.db.commit()
+            return result.rowcount
+        except Exception as e:
+            self.db.rollback()
+            logger.error(
+                "Failed to update unmapped category %s/%s: %s",
+                supplier_platform,
+                supplier_category_code,
+                e,
+                exc_info=True,
+            )
             raise

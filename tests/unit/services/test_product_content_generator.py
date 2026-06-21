@@ -30,6 +30,43 @@ class FakeLLMService:
         return FakeLLMResponse(self.response_text)
 
 
+class FakeReviewResult:
+    def __init__(self, verdict="pass", instructions="", issues=None):
+        self.verdict = verdict
+        self.revision_instructions = instructions
+        self.issues = issues or []
+
+    def as_dict(self):
+        return {
+            "verdict": self.verdict,
+            "revision_instructions": self.revision_instructions,
+            "issues": self.issues,
+        }
+
+
+class FakeReviewer:
+    def __init__(self, verdicts=None):
+        self.verdicts = list(verdicts or ["pass"])
+        self.calls = []
+
+    def review(self, product, product_type, content):
+        self.calls.append((product, product_type, content))
+        verdict = self.verdicts.pop(0) if self.verdicts else "pass"
+        if verdict == "revise":
+            return FakeReviewResult(
+                "revise",
+                "Remove unsupported claim.",
+                [{"message": "Unsupported claim"}],
+            )
+        if verdict == "reject":
+            return FakeReviewResult(
+                "reject",
+                "",
+                [{"message": "Invented product fact"}],
+            )
+        return FakeReviewResult("pass")
+
+
 def _valid_response():
     return {
         "title": "30 inch Wall-Mounted Bathroom Vanity with Ceramic Sink - White",
@@ -72,7 +109,7 @@ def _make_product():
 
 def test_generate_returns_enriched_content():
     llm = FakeLLMService()
-    gen = ProductContentGenerator(llm_service=llm)
+    gen = ProductContentGenerator(llm_service=llm, reviewer=FakeReviewer())
     product = _make_product()
 
     result = gen.generate(product, product_type="CABINET")
@@ -87,7 +124,7 @@ def test_generate_returns_enriched_content():
 
 def test_generate_injects_category_in_prompt():
     llm = FakeLLMService()
-    gen = ProductContentGenerator(llm_service=llm)
+    gen = ProductContentGenerator(llm_service=llm, reviewer=FakeReviewer())
     product = _make_product()
 
     gen.generate(product, product_type="CABINET")
@@ -100,7 +137,7 @@ def test_generate_injects_category_in_prompt():
 # ── validation ────────────────────────────────────────────────────
 
 def test_validate_title_too_long():
-    gen = ProductContentGenerator(llm_service=FakeLLMService())
+    gen = ProductContentGenerator(llm_service=FakeLLMService(), reviewer=FakeReviewer())
     resp = _valid_response()
     resp["title"] = "X" * 250
     llm = FakeLLMService(json.dumps(resp))
@@ -111,7 +148,7 @@ def test_validate_title_too_long():
 
 
 def test_validate_prohibited_words():
-    gen = ProductContentGenerator(llm_service=FakeLLMService())
+    gen = ProductContentGenerator(llm_service=FakeLLMService(), reviewer=FakeReviewer())
     resp = _valid_response()
     resp["title"] = "The Best Amazing Cabinet #1 Top-Rated"
     llm = FakeLLMService(json.dumps(resp))
@@ -122,7 +159,7 @@ def test_validate_prohibited_words():
 
 
 def test_validate_all_caps_title():
-    gen = ProductContentGenerator(llm_service=FakeLLMService())
+    gen = ProductContentGenerator(llm_service=FakeLLMService(), reviewer=FakeReviewer())
     resp = _valid_response()
     resp["title"] = "PREMIUM BATHROOM VANITY CABINET"
     llm = FakeLLMService(json.dumps(resp))
@@ -133,7 +170,7 @@ def test_validate_all_caps_title():
 
 
 def test_validate_unsafe_html():
-    gen = ProductContentGenerator(llm_service=FakeLLMService())
+    gen = ProductContentGenerator(llm_service=FakeLLMService(), reviewer=FakeReviewer())
     resp = _valid_response()
     resp["description"] = "<div>Bad tag</div> <b>Good</b>"
     llm = FakeLLMService(json.dumps(resp))
@@ -144,7 +181,7 @@ def test_validate_unsafe_html():
 
 
 def test_validate_no_warnings_for_clean_content():
-    gen = ProductContentGenerator(llm_service=FakeLLMService())
+    gen = ProductContentGenerator(llm_service=FakeLLMService(), reviewer=FakeReviewer())
     # Default fake response is clean
     result = gen.generate(_make_product(), "CABINET")
     assert result.validation_warnings == []
@@ -164,6 +201,48 @@ def test_llm_failure_returns_empty_content():
 
 
 def test_malformed_json_returns_empty():
-    gen = ProductContentGenerator(llm_service=FakeLLMService("not valid json {{{"))
+    gen = ProductContentGenerator(
+        llm_service=FakeLLMService("not valid json {{{"),
+        reviewer=FakeReviewer(),
+    )
     result = gen.generate(_make_product(), "CABINET")
     assert any("parse" in w.lower() for w in result.validation_warnings)
+
+
+def test_review_reject_blocks_content():
+    gen = ProductContentGenerator(
+        llm_service=FakeLLMService(),
+        reviewer=FakeReviewer(["reject"]),
+    )
+
+    result = gen.generate(_make_product(), "CABINET")
+
+    assert result.compliance_blocked is True
+    assert result.review_status == "reject"
+    assert any("Content review failed" in e for e in result.validation_errors)
+
+
+def test_review_revise_regenerates_once_then_passes():
+    first = _valid_response()
+    first["bullet_2"] = "Unsupported Claim: Prevents mildew growth"
+    second = _valid_response()
+    second["bullet_2"] = "Easy Cleaning: Smooth surface helps with routine care"
+    llm = FakeLLMService()
+    llm.responses = [json.dumps(first), json.dumps(second)]
+
+    def generate(request):
+        llm.calls.append(request)
+        return FakeLLMResponse(llm.responses.pop(0))
+
+    llm.generate = generate
+    gen = ProductContentGenerator(
+        llm_service=llm,
+        reviewer=FakeReviewer(["revise", "pass"]),
+    )
+
+    result = gen.generate(_make_product(), "CABINET")
+
+    assert result.review_status == "pass"
+    assert result.review_attempts == 2
+    assert "Easy Cleaning" in result.bullet_2
+    assert len(llm.calls) == 2

@@ -1,0 +1,112 @@
+product_type: HOME_MIRROR
+version: home_mirror_attribute_rules_v1
+mode: live_eligible
+
+dimension_strategy: item_length_width
+
+attributes:
+  fabric_type:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Fabric Type
+      - path: product.attributes.Main Material
+      - path: product.attributes.material
+      - default: Glass, Metal
+        confidence: medium
+        evidence: HOME_MIRROR listings commonly combine glass mirror surface with metal frame; Giga source data often lacks material fields.
+
+  model_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Model Name
+      - path: product.attributes.mpn
+      - path: product.vendor_sku
+
+  frame:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+      - default:
+          color:
+            - value: Silver
+              language_tag: en_US
+          material:
+            - value: Metal
+              language_tag: en_US
+        confidence: medium
+        evidence: HOME_MIRROR fallback based on supplier assortment; review when supplier provides exact frame color/material.
+
+  mounting_type:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Mounting Type
+      - default: Wall Mount
+        confidence: medium
+        evidence: HOME_MIRROR items in this assortment are wall mirrors unless source indicates floor/tabletop mounting.
+
+  is_assembly_required:
+    level: required
+    shape: list_value
+    transform: boolean
+    sources:
+      - path: product.attributes.Assembly Required
+      - default: false
+        confidence: medium
+        evidence: Wall mirrors generally do not require customer assembly beyond mounting hardware installation.
+
+  item_shape:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Item Shape
+      - default: Rectangular
+        confidence: medium
+        evidence: Conservative HOME_MIRROR shape fallback; review if title or images indicate round/arched/oval.
+
+  included_components:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Included Components
+      - default: Mirror
+        confidence: high
+        evidence: Listing unit includes the mirror itself.
+
+  special_feature:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Special Feature
+      - default: Wall Mounted
+        confidence: medium
+        evidence: Conservative HOME_MIRROR feature fallback aligned with wall mirror listings.
+
+  room_type:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Room Type
+      - default: Bathroom
+        confidence: medium
+        evidence: HOME_MIRROR assortment is commonly used as bathroom or vanity mirrors.
+
+  number_of_items:
+    level: required
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Number of Items
+      - default: 1
+        confidence: high
+        evidence: One purchasable mirror listing unit.

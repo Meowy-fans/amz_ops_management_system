@@ -28,6 +28,19 @@ class SequenceLLMService:
         return FakeLLMResponse(self.responses.pop(0))
 
 
+class PassReviewer:
+    def review(self, product, product_type, content):
+        class Result:
+            verdict = "pass"
+            revision_instructions = ""
+            issues = []
+
+            def as_dict(self):
+                return {"verdict": "pass", "issues": []}
+
+        return Result()
+
+
 def _product():
     return StandardProduct(
         sku="MEOW-001",
@@ -54,7 +67,11 @@ def test_auto_sanitizes_pesticide_claims_from_llm_output():
             "generic_keyword": "bathroom vanity",
         }),
     ])
-    gen = ProductContentGenerator(llm_service=llm, max_compliance_retries=0)
+    gen = ProductContentGenerator(
+        llm_service=llm,
+        max_compliance_retries=0,
+        reviewer=PassReviewer(),
+    )
     result = gen.generate(_product(), product_type="CABINET")
 
     combined = " ".join([
@@ -91,7 +108,12 @@ def test_blocks_when_claims_remain_after_sanitize_and_retry():
             "generic_keyword": "bathroom vanity",
         }),
     ])
-    gen = ProductContentGenerator(llm_service=llm, max_compliance_retries=1)
+    gen = ProductContentGenerator(
+        llm_service=llm,
+        max_compliance_retries=1,
+        reviewer=PassReviewer(),
+    )
+    gen._scanner.sanitize_fields = lambda fields: (fields, [])
     result = gen.generate(_product(), product_type="CABINET")
 
     assert result.compliance_blocked

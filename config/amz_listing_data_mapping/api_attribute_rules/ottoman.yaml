@@ -1,0 +1,43 @@
+product_type: OTTOMAN
+version: ottoman_attribute_rules_v1
+mode: live_eligible
+
+remove_attributes:
+  - item_type_name
+  - item_depth
+  - item_height
+  - room_type
+  - target_audience_base
+
+attributes:
+  fabric_type:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Fabric Type
+      - path: product.attributes.Main Material
+      - path: product.attributes.material
+      - default: Polyester
+        confidence: medium
+        evidence: Safe fallback only when supplier fabric field is unavailable.
+
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Room Type
+      - default: Living Room
+        confidence: medium
+        evidence: Common ottoman placement; safe recommendation only.
+
+  included_components:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Included Components
+      - default: Ottoman
+        confidence: high
+        evidence: Listing unit includes the ottoman itself.

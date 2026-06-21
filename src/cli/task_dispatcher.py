@@ -19,6 +19,7 @@ from src.cli.operation_handlers import (
     handle_test_feishu_alert,
     handle_discover_product_type,
     handle_generate_details,
+    handle_generate_attribute_rules,
     handle_generate_update_file,
     handle_import_amazon_report,
     handle_inventory_health,
@@ -40,6 +41,7 @@ from src.cli.operation_handlers import (
     handle_update_package_dimensions,
     handle_update_price_inventory_api,
     handle_update_prices,
+    handle_auto_discover_category,
     handle_weekly_report,
 )
 from src.cli.query_handlers import (
@@ -58,12 +60,23 @@ def _generate_listing_task(
     db: Session,
     category: Optional[str] = None,
     return_listing_result: bool = False,
+    strict_validation: bool = False,
+    sku_list: Optional[list[str]] = None,
+    sku_file: Optional[str] = None,
+    only_not_on_amazon: bool = False,
 ):
     if return_listing_result and category:
         from src.services.product_listing_service import ProductListingService
 
         service = ProductListingService(db=db)
-        return service.generate_listings_by_category(category)
+        return service.generate_listings_via_api(
+            category_name=category,
+            dry_run=True,
+            validation_only=strict_validation,
+            sku_list=sku_list,
+            sku_file=sku_file,
+            only_not_on_amazon=only_not_on_amazon,
+        )
     handle_generate_listing(db, category=category)
     return None
 
@@ -85,11 +98,19 @@ TASK_HANDLERS = {
         db,
         category=kwargs.get("category"),
         return_listing_result=kwargs.get("return_listing_result", False),
+        strict_validation=kwargs.get("strict_validation", False),
+        sku_list=kwargs.get("sku_list"),
+        sku_file=kwargs.get("sku_file"),
+        only_not_on_amazon=kwargs.get("only_not_on_amazon", False),
     ),
     "generate-listing-api": lambda db, **kwargs: handle_generate_listing_api(
         db,
         category=kwargs.get("category"),
         dry_run=kwargs.get("dry_run", True),
+        strict_validation=kwargs.get("strict_validation", False),
+        sku_list=kwargs.get("sku_list"),
+        sku_file=kwargs.get("sku_file"),
+        only_not_on_amazon=kwargs.get("only_not_on_amazon", False),
     ),
     "view-statistics": lambda db, **kwargs: handle_view_statistics(db),
     "pending-statistics": lambda db, **kwargs: handle_pending_statistics(db),
@@ -141,6 +162,16 @@ TASK_HANDLERS = {
         db, keywords=kwargs.get("category")
     ),
     "suggest-category-mappings": lambda db, **kwargs: handle_suggest_category_mappings(db),
+    "auto-discover-category": lambda db, **kwargs: handle_auto_discover_category(
+        db,
+        category_code=kwargs.get("category_code"),
+        all_unmapped=kwargs.get("all_unmapped", False),
+        dry_run=kwargs.get("dry_run", True),
+    ),
+    "generate-attribute-rules": lambda db, **kwargs: handle_generate_attribute_rules(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+    ),
     "keyword-research": lambda db, **kwargs: handle_keyword_research(
         db,
         category=kwargs.get("category"),
@@ -170,6 +201,13 @@ def dispatch_task(
     auto_confirm: bool = False,
     return_listing_result: bool = False,
     dry_run: bool = True,
+    strict_validation: bool = False,
+    sku_list: Optional[list[str]] = None,
+    sku_file: Optional[str] = None,
+    only_not_on_amazon: bool = False,
+    category_code: Optional[str] = None,
+    all_unmapped: bool = False,
+    product_type: Optional[str] = None,
 ):
     """Dispatch a task while preserving existing task behavior."""
     t = task.strip().lower()
@@ -183,4 +221,11 @@ def dispatch_task(
         auto_confirm=auto_confirm,
         return_listing_result=return_listing_result,
         dry_run=dry_run,
+        strict_validation=strict_validation,
+        sku_list=sku_list,
+        sku_file=sku_file,
+        only_not_on_amazon=only_not_on_amazon,
+        category_code=category_code,
+        all_unmapped=all_unmapped,
+        product_type=product_type,
     )

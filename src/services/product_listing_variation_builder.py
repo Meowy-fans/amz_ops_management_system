@@ -1,3 +1,4 @@
+# @retire(since="2026-06-15", replaced_by="ProductListingAPIPlanBuilder/AmazonVariationResolver", scheduled_removal="2026-07-31", scope="file")
 """Variation row builder for Amazon listing generation."""
 import logging
 import uuid

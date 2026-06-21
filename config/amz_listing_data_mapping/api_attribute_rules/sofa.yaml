@@ -1,0 +1,158 @@
+product_type: SOFA
+version: sofa_attribute_rules_draft_v1
+mode: dry_run
+generated_from: amazon_product_type_schema
+
+dimension_strategy: item_depth_width_height
+
+attributes:
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+      - default: not_applicable
+        confidence: medium
+        evidence: Draft SOFA furniture default for non-hazardous upholstered furniture; review before LIVE if listing mentions batteries, chemicals, flammables, aerosols, or regulated materials.
+
+  model_name:
+    level: required
+    shape: value
+    transform: text
+    sources:
+      - path: product.attributes.Model Name
+      - path: product.attributes.mpn
+      - path: product.vendor_sku
+
+  number_of_items:
+    level: required
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Number of Items
+      - default: 1
+        confidence: high
+        evidence: One purchasable sofa listing unit.
+
+  is_fragile:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+      - path: product.attributes.Is Fragile?
+      - default: No
+        confidence: medium
+        evidence: Draft SOFA furniture default; review if listing includes glass, stone, ceramic, or fragile decorative components.
+
+  seat:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+      - default:
+          height:
+            - value: 18
+              unit: inches
+        confidence: medium
+        evidence: Draft ergonomic sofa seat height fallback; review against supplier dimensions before LIVE.
+
+  fabric_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Fabric Type
+      - path: product.attributes.Main Material
+      - path: product.attributes.material
+      - default: Polyester
+        confidence: medium
+        evidence: Conservative sofa upholstery fallback when supplier material is missing; review if source specifies leather, linen, velvet, or blended fabric.
+
+  sofa_type:
+    level: recommended
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Sofa Type
+      - path: product.attributes.Product Type
+      - llm:
+          hint: Extract the sofa type only when the title or description clearly states sectional, loveseat, sleeper, futon, sofa bed, sofa chaise, settee, convertible, or standard sofa. Return null if unclear.
+          enum_locked: true
+      - default: standard
+        confidence: medium
+        evidence: Conservative sofa type fallback for ordinary sofas when no specialized form is stated.
+
+  seating_capacity:
+    level: recommended
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Seating Capacity
+      - path: product.attributes.Number of Seats
+      - llm:
+          hint: Extract seating capacity only when the product text explicitly states a number of seats or people. Return null if absent.
+      - default: 3
+        confidence: medium
+        evidence: Conservative draft fallback for standard sofas; review for loveseat, sectional, or oversized seating.
+
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Room Type
+      - llm:
+          hint: Extract intended room only when product text explicitly mentions a room. Return null if absent.
+          enum_locked: true
+      - default: Living Room
+        confidence: medium
+        evidence: Common sofa placement fallback; review if product is marketed for bedroom, nursery, office, or home theater.
+
+  included_components:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Included Components
+      - default: Seat Cushion
+        confidence: medium
+        evidence: Draft default for sofa listing contents; review if product includes ottoman, throw pillows, hardware, or sectional components.
+
+  is_assembly_required:
+    level: recommended
+    shape: list_value
+    transform: boolean
+    sources:
+      - path: product.attributes.Assembly Required
+      - path: product.requires_assembly
+      - default: true
+        confidence: medium
+        evidence: Supplier large furniture commonly requires assembly; review if source states fully assembled.
+
+  arm:
+    level: recommended
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+      - llm:
+          hint: Extract arm style only when product text clearly states arm style such as track, rolled, square, sloped, armless, or shelter. Return null if absent.
+          enum_locked: false
+      - default: null
+        confidence: low
+        evidence: "TODO: review nested SOFA arm schema shape before rendering."
+
+  back:
+    level: recommended
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+      - llm:
+          hint: Extract back style only when product text clearly states cushion back, pillow back, tufted back, tight back, loose back, or split back. Return null if absent.
+          enum_locked: false
+      - default: null
+        confidence: low
+        evidence: "TODO: review nested SOFA back schema shape before rendering."

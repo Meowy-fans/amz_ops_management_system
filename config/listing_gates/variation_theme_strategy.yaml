@@ -10,6 +10,17 @@ defaults:
   minimum_auto_pass_score: 70
 
 categories:
+  OTTOMAN:
+    allowed_themes:
+      - Color
+    buyer_theme_priority:
+      Color: 100
+    attribute_sources:
+      color_name:
+        - raw.attributes.Main Color
+        - raw.attributes.Color
+        - raw.color
+
   CABINET:
     allowed_themes:
       - Color
@@ -28,3 +39,4 @@ categories:
         - raw.attributes.Product Size
         - raw.attributes.Size
         - raw.assembledLength
+        - raw.name

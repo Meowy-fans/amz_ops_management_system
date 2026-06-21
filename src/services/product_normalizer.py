@@ -63,6 +63,9 @@ class GigaProductNormalizer:
         dim_factor = self._INCH_FACTORS.get(dim_unit, 1.0)
         wt_factor = self._LB_FACTORS.get(wt_unit, 1.0)
 
+        combo = raw_data.get("comboInfo") or []
+        combo_dims = self._combo_dimensions(combo, dim_factor, wt_factor, dim_unit)
+
         # ── dimensions ─────────────────────────────────────────────
         dims = DimensionSpec(
             length=self._to_float(raw_data.get("length")) * dim_factor
@@ -83,10 +86,22 @@ class GigaProductNormalizer:
             assembled_weight=self._to_float(raw_data.get("assembledWeight")),
             source_unit=dim_unit,
         )
+        if self._is_empty_dimensions(dims) and combo_dims is not None:
+            dims = combo_dims
+        elif self._has_no_spatial_dimensions(dims) and combo_dims is not None:
+            dims.length = combo_dims.length
+            dims.width = combo_dims.width
+            dims.height = combo_dims.height
+            dims.assembled_length = combo_dims.assembled_length
+            dims.assembled_width = combo_dims.assembled_width
+            dims.assembled_height = combo_dims.assembled_height
+            if dims.weight is None:
+                dims.weight = combo_dims.weight
+            if dims.assembled_weight is None:
+                dims.assembled_weight = combo_dims.assembled_weight
 
         # ── package dimensions (from comboInfo[0] if present) ───────
         pkg_dims: Optional[DimensionSpec] = None
-        combo = raw_data.get("comboInfo") or []
         if isinstance(combo, list) and combo:
             c0 = combo[0]
             pkg_dims = DimensionSpec(
@@ -192,6 +207,82 @@ class GigaProductNormalizer:
             return float(val)
         except (TypeError, ValueError):
             return None
+
+    @classmethod
+    def _combo_dimensions(
+        cls,
+        combo: Any,
+        dim_factor: float,
+        wt_factor: float,
+        dim_unit: str,
+    ) -> Optional[DimensionSpec]:
+        if not isinstance(combo, list) or not combo:
+            return None
+        lengths: List[float] = []
+        widths: List[float] = []
+        heights: List[float] = []
+        total_weight = 0.0
+        has_weight = False
+        for item in combo:
+            if not isinstance(item, dict):
+                continue
+            qty = cls._to_float(item.get("qty")) or 1
+            length = cls._to_float(item.get("length"))
+            width = cls._to_float(item.get("width"))
+            height = cls._to_float(item.get("height"))
+            weight = cls._to_float(item.get("weight"))
+            if length is not None:
+                lengths.append(length * dim_factor)
+            if width is not None:
+                widths.append(width * dim_factor)
+            if height is not None:
+                heights.append(height * dim_factor)
+            if weight is not None:
+                total_weight += weight * wt_factor * qty
+                has_weight = True
+        if not lengths and not widths and not heights and not has_weight:
+            return None
+        return DimensionSpec(
+            length=max(lengths) if lengths else None,
+            width=max(widths) if widths else None,
+            height=max(heights) if heights else None,
+            weight=round(total_weight, 2) if has_weight else None,
+            assembled_length=max(lengths) if lengths else None,
+            assembled_width=max(widths) if widths else None,
+            assembled_height=max(heights) if heights else None,
+            assembled_weight=round(total_weight, 2) if has_weight else None,
+            source_unit=dim_unit,
+        )
+
+    @staticmethod
+    def _is_empty_dimensions(dims: DimensionSpec) -> bool:
+        return all(
+            value is None
+            for value in (
+                dims.length,
+                dims.width,
+                dims.height,
+                dims.weight,
+                dims.assembled_length,
+                dims.assembled_width,
+                dims.assembled_height,
+                dims.assembled_weight,
+            )
+        )
+
+    @staticmethod
+    def _has_no_spatial_dimensions(dims: DimensionSpec) -> bool:
+        return all(
+            value is None
+            for value in (
+                dims.length,
+                dims.width,
+                dims.height,
+                dims.assembled_length,
+                dims.assembled_width,
+                dims.assembled_height,
+            )
+        )
 
 
 NORMALIZER_REGISTRY["giga"] = GigaProductNormalizer

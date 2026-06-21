@@ -196,6 +196,49 @@ def test_get_unmapped_categories_with_product_count_sql_contract():
     assert params == {"platform": "giga"}
 
 
+def test_get_category_sample_products_sql_contract_filters_listing_eligible_products():
+    rows = [
+        ("GIGA-1", "Modern Sofa With Chaise", "Sofas"),
+        ("GIGA-2", "Convertible Sofa Bed", "Sofas"),
+    ]
+    session = RecordingSession([FetchResult(rows=rows)])
+    repository = CategoryRepository(session)
+
+    samples = repository.get_category_sample_products("10027", limit=2)
+
+    sql, params = session.calls[0]
+    normalized_sql = _normalized(sql)
+    assert samples == [
+        {
+            "giga_sku": "GIGA-1",
+            "name": "Modern Sofa With Chaise",
+            "category_name": "Sofas",
+        },
+        {
+            "giga_sku": "GIGA-2",
+            "name": "Convertible Sofa Bed",
+            "category_name": "Sofas",
+        },
+    ]
+    assert "FROM giga_product_sync_records psr" in normalized_sql
+    assert "JOIN giga_product_base_prices pbp ON psr.giga_sku = pbp.giga_sku" in (
+        normalized_sql
+    )
+    assert "LOWER(psr.category_code) = LOWER(:category_code)" in normalized_sql
+    assert "psr.is_oversize IS NOT TRUE" in normalized_sql
+    assert "psr.raw_data -> 'sellerInfo' ->> 'sellerType' = 'GENERAL'" in normalized_sql
+    assert "pbp.sku_available IS TRUE" in normalized_sql
+    assert "LIMIT :limit" in normalized_sql
+    assert params == {"category_code": "10027", "limit": 2}
+
+
+def test_get_category_sample_products_returns_empty_list_on_error():
+    session = RecordingSession([RuntimeError("select failed")])
+    repository = CategoryRepository(session)
+
+    assert repository.get_category_sample_products("10027") == []
+
+
 def test_get_unmapped_categories_with_product_count_returns_empty_list_on_error():
     session = RecordingSession([RuntimeError("select failed")])
     repository = CategoryRepository(session)
@@ -289,3 +332,32 @@ def test_batch_update_category_mappings_rolls_back_and_reraises_on_error():
             ]
         )
     assert session.rollbacks == 1
+
+
+def test_update_category_mapping_if_unmapped_sql_contract_updates_only_empty_mapping():
+    session = RecordingSession([FetchResult(rowcount=1)])
+    repository = CategoryRepository(session)
+
+    updated = repository.update_category_mapping_if_unmapped(
+        supplier_platform="giga",
+        supplier_category_code="10027",
+        standard_category_name="SOFA",
+    )
+
+    sql, params = session.calls[0]
+    normalized_sql = _normalized(sql)
+    assert updated == 1
+    assert session.commits == 1
+    assert "UPDATE supplier_categories_map SET standard_category_name = :standard_category_name" in (
+        normalized_sql
+    )
+    assert "WHERE supplier_platform = :supplier_platform" in normalized_sql
+    assert "AND supplier_category_code = :supplier_category_code" in normalized_sql
+    assert "AND (standard_category_name = '' OR standard_category_name IS NULL)" in (
+        normalized_sql
+    )
+    assert params == {
+        "supplier_platform": "giga",
+        "supplier_category_code": "10027",
+        "standard_category_name": "SOFA",
+    }

@@ -138,6 +138,9 @@ class ProductDetailGenerationService:
             "compliance_blocked": content.compliance_blocked,
             "auto_sanitized": content.auto_sanitized,
             "compliance_retried": content.compliance_retried,
+            "review_status": getattr(content, "review_status", "not_reviewed"),
+            "review_attempts": getattr(content, "review_attempts", 0),
+            "review_result": getattr(content, "review_result", {}),
         }
         return (
             sku,

@@ -25,6 +25,7 @@ class AmazonListingSubmitter:
         submission_repo: Any = None,
         schema_service: Any = None,
         quality_gate: Any = None,
+        rule_loader: Any = None,
         confirmation_delay_seconds: float = 0,
     ):
         self.db = db
@@ -33,6 +34,7 @@ class AmazonListingSubmitter:
         self._submission_repo_instance = submission_repo
         self._schema_service_instance = schema_service
         self._quality_gate_instance = quality_gate
+        self._rule_loader_instance = rule_loader
         self.confirmation_delay_seconds = confirmation_delay_seconds
 
     def submit(
@@ -56,6 +58,11 @@ class AmazonListingSubmitter:
             return []
 
         quality_results = self._get_quality_gate().prepare_plans(plans)
+        if not dry_run:
+            quality_results = [
+                self._apply_live_blocking_findings(item)
+                for item in quality_results
+            ]
         submittable_plans = [
             item["plan"] for item in quality_results if not item["blocked"]
         ]
@@ -63,7 +70,10 @@ class AmazonListingSubmitter:
         # Pre-validation: local schema check (best-effort, Amazon is authoritative)
         self._pre_validate(submittable_plans)
 
-        listings_client = None if dry_run else self._get_listings_client()
+        strict_dry_run = dry_run and validation_only
+        listings_client = (
+            self._get_listings_client() if (not dry_run or strict_dry_run) else None
+        )
         submission_repo = self._get_submission_repo()
 
         results: List[Dict[str, Any]] = []
@@ -99,7 +109,7 @@ class AmazonListingSubmitter:
                 )
                 continue
 
-            if dry_run:
+            if dry_run and not validation_only:
                 self.reporter.emit(f"\n--- DRY RUN: {sku} ({product_type}) ---")
                 for finding in quality_findings:
                     self.reporter.emit(
@@ -127,7 +137,28 @@ class AmazonListingSubmitter:
                         "quality_findings": quality_findings,
                     }
                 )
+            elif dry_run and validation_only:
+                result = self._run_validation_preview(
+                    listings_client=listings_client,
+                    submission_repo=submission_repo,
+                    sku=sku,
+                    product_type=product_type,
+                    attributes=attributes,
+                    quality_findings=quality_findings,
+                )
+                results.append(result)
             else:
+                rule_block = self._rule_mode_block_result(
+                    sku=sku,
+                    product_type=product_type,
+                    attributes=attributes,
+                    quality_findings=quality_findings,
+                    submission_repo=submission_repo,
+                )
+                if rule_block is not None:
+                    results.append(rule_block)
+                    continue
+
                 try:
                     existing_listing = self._get_existing_listing(
                         listings_client=listings_client,
@@ -272,7 +303,12 @@ class AmazonListingSubmitter:
 
         success = sum(
             1 for r in results
-            if r["status"] in ("ACCEPTED", "dry_run", "listing_confirmed")
+            if r["status"] in (
+                "ACCEPTED",
+                "dry_run",
+                "listing_confirmed",
+                "validation_preview_passed",
+            )
         )
         fail = sum(1 for r in results if r["status"] == "failed")
         issues = sum(
@@ -284,6 +320,167 @@ class AmazonListingSubmitter:
             f"(ok={success} fail={fail} with_issues={issues})"
         )
         return results
+
+    @staticmethod
+    def _apply_live_blocking_findings(quality_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Promote configured nonblocking dry-run findings to LIVE blockers."""
+        if quality_result.get("blocked"):
+            return quality_result
+        findings = quality_result.get("findings") or []
+        if not any(bool(item.get("live_blocking")) for item in findings):
+            return quality_result
+        promoted = dict(quality_result)
+        promoted["blocked"] = True
+        return promoted
+
+    def _run_validation_preview(
+        self,
+        listings_client: Any,
+        submission_repo: Any,
+        sku: str,
+        product_type: str,
+        attributes: Dict[str, Any],
+        quality_findings: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Run strict dry-run read checks and VALIDATION_PREVIEW without PUT."""
+        try:
+            existing_listing = self._get_existing_listing(
+                listings_client=listings_client,
+                sku=sku,
+            )
+        except Exception as e:
+            logger.error("Existing listing check failed for SKU=%s: %s", sku, e)
+            submission_repo.insert_submission(
+                sku=sku,
+                operation="create",
+                status="failed_existing_check",
+                product_type=product_type,
+                request_payload={
+                    "productType": product_type,
+                    "attributes": attributes,
+                    "qualityFindings": quality_findings,
+                    "strictDryRun": True,
+                },
+                error_message=str(e),
+            )
+            self.reporter.emit(f"  FAIL {sku}: existing listing check failed: {e}")
+            return {"sku": sku, "status": "failed", "error": str(e)}
+
+        request_payload = {
+            "productType": product_type,
+            "attributes": attributes,
+            "qualityFindings": quality_findings,
+            "strictDryRun": True,
+        }
+        if existing_listing is not None:
+            submission_repo.insert_submission(
+                sku=sku,
+                operation="create",
+                status="skipped_existing",
+                product_type=product_type,
+                request_payload=request_payload,
+                response_body=existing_listing,
+            )
+            self.reporter.emit(f"  SKIP {sku}: listing already exists on Amazon")
+            return {
+                "sku": sku,
+                "status": "skipped_existing",
+                "issues": 0,
+                "quality_findings": quality_findings,
+            }
+
+        try:
+            response = listings_client.validation_preview(
+                sku=sku,
+                product_type=product_type,
+                attributes=attributes,
+            )
+            body = response["body"]
+            request_id = response["headers"].get("x-amzn-RequestId", "")
+            issues = body.get("issues", [])
+            status = (
+                "validation_preview_issues"
+                if issues
+                else "validation_preview_passed"
+            )
+            submission_repo.insert_submission(
+                sku=sku,
+                operation="create",
+                status=status,
+                amazon_request_id=request_id,
+                product_type=product_type,
+                request_payload=request_payload,
+                response_body=body,
+            )
+            self.reporter.emit(
+                f"  {status} {sku} request_id={request_id} issues={len(issues)}"
+            )
+            return {
+                "sku": sku,
+                "status": status,
+                "request_id": request_id,
+                "issues": len(issues),
+                "quality_findings": quality_findings,
+            }
+        except Exception as e:
+            logger.error("Validation preview failed for SKU=%s: %s", sku, e)
+            submission_repo.insert_submission(
+                sku=sku,
+                operation="create",
+                status="validation_preview_failed",
+                product_type=product_type,
+                request_payload=request_payload,
+                error_message=str(e),
+            )
+            self.reporter.emit(f"  FAIL {sku}: validation preview failed: {e}")
+            return {"sku": sku, "status": "failed", "error": str(e)}
+
+    def _rule_mode_block_result(
+        self,
+        sku: str,
+        product_type: str,
+        attributes: Dict[str, Any],
+        quality_findings: List[Dict[str, Any]],
+        submission_repo: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """Block LIVE submits unless attribute rules explicitly allow them."""
+        rule_loader = self._get_rule_loader()
+        mode = rule_loader.mode(product_type)
+        if mode == getattr(rule_loader, "LIVE_ELIGIBLE_MODE", "live_eligible"):
+            return None
+
+        finding = {
+            "severity": "ERROR",
+            "code": "RULE_MODE_NOT_LIVE_ELIGIBLE",
+            "message": (
+                f"Product type {product_type} attribute rules are mode={mode}; "
+                "LIVE submit requires mode=live_eligible"
+            ),
+            "attribute_names": [],
+            "blocking": True,
+        }
+        submission_repo.insert_submission(
+            sku=sku,
+            operation="create",
+            status="blocked_by_rule_mode",
+            product_type=product_type,
+            request_payload={
+                "productType": product_type,
+                "attributes": attributes,
+                "qualityFindings": quality_findings,
+                "ruleMode": mode,
+            },
+            error_message=finding["message"],
+        )
+        self.reporter.emit(f"  BLOCK {sku}: rule mode {mode} is not LIVE eligible")
+        return {
+            "sku": sku,
+            "status": "blocked_by_rule_mode",
+            "issues": 1,
+            "quality_findings": quality_findings,
+            "rule_mode": mode,
+            "blocking_codes": [finding["code"]],
+        }
 
     # ── lazy init ─────────────────────────────────────────────────
 
@@ -322,6 +519,14 @@ class AmazonListingSubmitter:
             schema_service=self._get_schema_service()
         )
         return self._quality_gate_instance
+
+    def _get_rule_loader(self):
+        if self._rule_loader_instance is not None:
+            return self._rule_loader_instance
+        from src.services.attribute_rule_loader import AttributeRuleLoader
+
+        self._rule_loader_instance = AttributeRuleLoader()
+        return self._rule_loader_instance
 
     # ── pre-validation ────────────────────────────────────────────
 

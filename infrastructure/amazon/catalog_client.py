@@ -75,7 +75,7 @@ class AmazonCatalogClient:
         if keywords:
             params["keywords"] = keywords
         if identifiers:
-            params["identifiers"] = identifiers
+            params["identifiers"] = ",".join(identifiers)
             params["identifiersType"] = identifiers_type
         if included_data:
             params["includedData"] = ",".join(included_data)
@@ -105,17 +105,19 @@ class AmazonCatalogClient:
 
     def get_summary(self, asin: str) -> Dict[str, str]:
         """Get basic product summary (title, brand, category)."""
-        result = self.get_catalog_item(asin, included_data=["summaries"])
+        result = self.get_catalog_item(asin, included_data=["summaries", "productTypes"])
         body = result.get("body") or result
         summaries = body.get("summaries") or []
+        product_types = body.get("productTypes") or []
         if summaries:
             s = summaries[0]
+            pt = product_types[0].get("productType", "") if product_types else ""
             return {
                 "asin": s.get("asin", asin),
                 "title": s.get("itemName", ""),
                 "brand": s.get("brand", ""),
                 "manufacturer": s.get("manufacturer", ""),
-                "product_type": s.get("productType", ""),
+                "product_type": pt or s.get("productType", ""),
                 "item_classification": s.get("itemClassification", ""),
             }
         return {"asin": asin, "title": "", "brand": "", "product_type": ""}
@@ -133,7 +135,7 @@ class AmazonCatalogClient:
                 resp = self.search_catalog_items(
                     identifiers=batch,
                     identifiers_type="ASIN",
-                    included_data=["summaries", "salesRanks"],
+                    included_data=["summaries", "salesRanks", "productTypes"],
                 )
                 body = resp.get("body") or resp
                 items = body.get("items") or []
@@ -141,7 +143,13 @@ class AmazonCatalogClient:
                     asin = item.get("asin", "")
                     summaries = item.get("summaries") or []
                     sales_ranks = item.get("salesRanks") or []
+                    product_types = item.get("productTypes") or []
                     s = summaries[0] if summaries else {}
+                    pt = (
+                        product_types[0].get("productType", "")
+                        if product_types
+                        else ""
+                    )
                     bsr = None
                     if sales_ranks:
                         ranks = sales_ranks[0].get("classificationRanks") or []
@@ -150,7 +158,7 @@ class AmazonCatalogClient:
                         "asin": asin,
                         "title": s.get("itemName", ""),
                         "brand": s.get("brand", ""),
-                        "product_type": s.get("productType", ""),
+                        "product_type": pt or s.get("productType", ""),
                         "bsr": bsr,
                     }
             except Exception as exc:

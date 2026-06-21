@@ -8,24 +8,38 @@
 
 > **项目状态**：[查看进度 (STATUS.md)](./STATUS.md) | [待办任务 (TODO.md)](./TODO.md)
 
+### 当前生产状态
+
+- 生产镜像：`amz-listing-management-system:2026-06-15`
+- 生产入口：`https://amz-listing.meowy.fans`（SSO ForwardAuth）
+- 新品发品主路径：`generate-listing-api`，默认 dry-run
+- Excel 新品发品：deprecated；`generate-listing` 仅作为 API-native dry-run 兼容入口
+- 最新部署验收：`docs/test-reports/2026-06-15-api-native-quality-production-deploy.md`
+
 ### 基础命令
 ```bash
 # 交互式菜单
 python3 main.py
 
 # 非交互式任务
-python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-dry-run]
+python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-dry-run] [--strict-validation] [--sku SKU] [--sku-file FILE] [--only-not-on-amazon]
 ```
 
-### 可用任务（38 个）
+### 可用任务（40 个）
 
 **Giga 商品管理**：`sync-products`, `import-amz-report`, `sync-amz-report-api`, `update-listing-status`, `generate-details`, `sync-prices`, `sync-inventory`, `update-prices`
 
 **数据查询**：`view-statistics`, `pending-statistics`, `recent-listings`, `list-categories`
 
-**类目配置**：`template-update`, `template-correction`, `sync-giga-categories`, `update-mappings-from-csv`, `discover-product-type`, `suggest-category-mappings`, `sku-sync-from-csv`
+**类目配置**：`discover-product-type`, `suggest-category-mappings`, `sync-giga-categories`, `update-mappings-from-csv`, `sku-sync-from-csv`
 
-**Listing 发品**：`generate-listing`（Excel）, `generate-listing-api`（SP-API）, `generate-update-file`, `update-price-inventory-api`
+> `template-update` / `template-correction` 属于 Excel 模板时代的 legacy 工具，仅用于历史模板迁移或排障，不再作为类目接入主路径。
+
+**Listing 发品**：`generate-listing-api`（API-native 唯一新品发品入口）, `generate-update-file`, `update-price-inventory-api`
+
+> `generate-listing` / Excel 新品发品流程已 deprecated。历史 Excel 解析、模板和文件生成模块仅保留为迁移参考与旧数据兼容，不再作为运营入口。
+> `generate-listing-api --strict-validation` 会在 dry-run 下调用 Amazon `VALIDATION_PREVIEW` 做权威预检并持久化 issues；默认 dry-run 仍为离线预览，不访问 Amazon 写接口。
+> `--sku` / `--sku-file` 可限制本次发品候选集；`--only-not-on-amazon` 会先只读查询 Amazon 并跳过已存在 SKU。
 
 **运营监控**：`sync-listing-issues`
 
@@ -67,7 +81,7 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 ├── src/
 │   ├── cli/                        # CLI 展现层
 │   │   ├── menu.py                # 交互式菜单
-│   │   ├── task_dispatcher.py     # 任务注册与分发（38 个任务）
+│   │   ├── task_dispatcher.py     # 任务注册与分发（40 个任务）
 │   │   ├── listing_handlers.py    # 发品 handler
 │   │   ├── operation_handlers.py  # 运营 + 🆕 Phase 1-3 handler
 │   │   ├── category_handlers.py   # 类目配置 handler
@@ -101,7 +115,7 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 │   ├── pricing/                   # 定价策略 YAML
 │   └── api_clients/               # 🆕 LLM Prompt 模板（8 个场景）
 ├── migrations/                    # SQL 迁移（12 张新表）
-├── template_files/                # Excel 模板
+├── template_files/                # Deprecated Excel 模板归档
 ├── output/                        # 输出目录
 ├── docs/                          # 设计文档
 └── tests/                         # 测试（500+ tests）
@@ -149,6 +163,14 @@ dependencies = [
 python3 -m pytest tests/ -q    # 全部测试
 python3 -m pytest tests/ -x -q # 遇到第一个失败停止
 ```
+
+## 🚢 生产部署
+
+```bash
+/home/liangqinhao/amz_listing_management_system/deploy/production/deploy.sh
+```
+
+部署契约与 smoke 命令见 `deploy/production/README.md`。生产 compose 源文件在 `deploy/production/docker-compose.yml`，上线时需同步到 `/data/docker-compose/amz-listing-management-system/docker-compose.yml` 并同步 `/data/README.md`、`/data/TODO.md` 服务登记。
 
 ---
 

@@ -2,6 +2,8 @@
 
 This directory is the source-controlled production deployment bundle for `/data/docker-compose/amz-listing-management-system/`.
 
+Current production image: `amz-listing-management-system:2026-06-15-auto-category-mapping`.
+
 ## Contract
 
 - Runs as a Docker service under `/data/docker-compose/`.
@@ -33,6 +35,23 @@ Then create `amz_listing` and `amz_listing` with least required privileges accor
 ```bash
 /home/liangqinhao/amz_listing_management_system/deploy/production/deploy.sh
 ```
+
+Post-deploy smoke checklist:
+
+```bash
+cd /data/docker-compose/amz-listing-management-system
+docker compose ps
+docker exec amz-listing-management-system python main.py --task list-categories
+docker exec amz-listing-management-system python main.py --task generate-listing-api --category OTTOMAN --sku meow2511088jSUW --sku meow260518LZZCw --strict-validation
+curl -I https://amz-listing.meowy.fans
+```
+
+Expected smoke result:
+
+- Main container is `healthy`.
+- Public route returns SSO redirect.
+- OTTOMAN strict dry-run reaches `VALIDATION_PREVIEW` for the parent and does not PUT.
+- `amz-price-inventory-scheduler`, `amz-order-sync-scheduler`, and `amz-order-daily-report-scheduler` remain running.
 
 For a one-off CLI task against the production container:
 

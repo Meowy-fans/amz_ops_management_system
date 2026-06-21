@@ -53,7 +53,11 @@ class AmazonListingDraftBuilder:
 
         offer = ListingOffer(
             price=self._to_float(product_data.get("final_price")),
-            quantity=int(product_data.get("total_quantity") or 0),
+            quantity=int(
+                product_data.get("publish_quantity")
+                if product_data.get("publish_quantity") is not None
+                else product_data.get("total_quantity") or 0
+            ),
         )
 
         return AmazonListingDraft(
@@ -67,6 +71,8 @@ class AmazonListingDraftBuilder:
                 "vendor_source": standard_product.vendor_source,
                 "vendor_sku": vendor_sku,
                 "category_name": product_data.get("category_name"),
+                "source_publish_quantity": product_data.get("source_publish_quantity"),
+                "publish_quantity": product_data.get("publish_quantity"),
             },
         )
 

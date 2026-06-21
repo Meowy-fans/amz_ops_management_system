@@ -171,6 +171,34 @@ def test_normalize_combo_dimensions():
     assert product.dimensions_package.height == 22.0
 
 
+def test_normalize_combo_dimensions_fill_spatial_values_when_only_weight_exists():
+    raw = _make_giga_raw()
+    raw.update(
+        {
+            "length": None,
+            "width": None,
+            "height": None,
+            "assembledLength": "Not Applicable",
+            "assembledWidth": "Not Applicable",
+            "assembledHeight": "Not Applicable",
+            "assembledWeight": 97.78,
+            "lengthUnit": "in",
+            "comboInfo": [
+                {"length": 31.5, "width": 24.5, "height": 15.25, "weight": 76.39},
+                {"length": 31.25, "width": 21.25, "height": 6, "weight": 41.78},
+            ],
+        }
+    )
+
+    product = GigaProductNormalizer().normalize(raw, "GIGA-SKU-001")
+    dims = product.dimensions
+
+    assert dims.assembled_length == 31.5
+    assert dims.assembled_width == 24.5
+    assert dims.assembled_height == 15.25
+    assert dims.assembled_weight == 97.78
+
+
 def test_normalize_price():
     n = GigaProductNormalizer()
     product = n.normalize(

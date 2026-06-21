@@ -20,6 +20,7 @@ class FakeListingsClient:
         self.confirm_not_found = False
         self.validation_calls = []
         self.put_body = {"status": "ACCEPTED", "issues": []}
+        self.validation_body = {"status": "ACCEPTED", "issues": []}
 
     def get_listings_item(self, sku, issue_locale="en_US", included_data=None):
         self.get_calls.append(
@@ -60,7 +61,7 @@ class FakeListingsClient:
         )
         return {
             "headers": {"x-amzn-RequestId": "REQ-VALID"},
-            "body": {"status": "ACCEPTED", "issues": []},
+            "body": self.validation_body,
         }
 
 
@@ -83,6 +84,37 @@ class NullQualityGate:
             }
             for plan in plans
         ]
+
+
+class LiveBlockingQualityGate:
+    def prepare_plans(self, plans):
+        return [
+            {
+                "plan": plan,
+                "blocked": False,
+                "findings": [
+                    {
+                        "severity": "WARNING",
+                        "code": "ISSUE_DERIVED_DIMENSION_RANGE",
+                        "message": "CABINET width warning",
+                        "attribute_names": ["item_depth_width_height"],
+                        "blocking": False,
+                        "live_blocking": True,
+                    }
+                ],
+            }
+            for plan in plans
+        ]
+
+
+class FakeRuleLoader:
+    LIVE_ELIGIBLE_MODE = "live_eligible"
+
+    def __init__(self, modes):
+        self.modes = modes
+
+    def mode(self, product_type):
+        return self.modes.get(product_type, "dry_run")
 
 
 def _valid_attrs(**overrides):
@@ -110,6 +142,73 @@ def test_dry_run_does_not_call_api():
     assert results[0]["status"] == "dry_run"
     assert len(repo.inserts) == 1
     assert repo.inserts[0]["status"] == "dry_run"
+
+
+def test_strict_dry_run_calls_validation_preview_without_put():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=True, validation_only=True)
+
+    assert results[0]["status"] == "validation_preview_passed"
+    assert len(client.get_calls) == 1
+    assert len(client.validation_calls) == 1
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "validation_preview_passed"
+    assert repo.inserts[0]["response_body"] == {"status": "ACCEPTED", "issues": []}
+
+
+def test_strict_dry_run_records_validation_preview_issues():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.validation_body = {
+        "status": "INVALID",
+        "issues": [{"code": "90220", "message": "Required attribute missing"}],
+    }
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=True, validation_only=True)
+
+    assert results[0]["status"] == "validation_preview_issues"
+    assert results[0]["issues"] == 1
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "validation_preview_issues"
+
+
+def test_strict_dry_run_skips_existing_before_validation_preview():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    client.existing_skus.add("SKU1")
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=True, validation_only=True)
+
+    assert results[0]["status"] == "skipped_existing"
+    assert len(client.validation_calls) == 0
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "skipped_existing"
 
 
 def test_real_mode_confirms_listing_after_put():
@@ -150,6 +249,68 @@ def test_real_mode_confirms_listing_after_put():
         "sku": "SKU1",
         "issues": [],
     }
+
+
+def test_real_mode_blocks_product_type_without_live_eligible_rule_mode():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+        rule_loader=FakeRuleLoader({"SOFA": "dry_run"}),
+    )
+    plans = [{"sku": "SKU1", "product_type": "SOFA", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "blocked_by_rule_mode"
+    assert results[0]["rule_mode"] == "dry_run"
+    assert len(client.get_calls) == 0
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "blocked_by_rule_mode"
+    assert repo.inserts[0]["request_payload"]["ruleMode"] == "dry_run"
+
+
+def test_rule_mode_does_not_block_strict_dry_run_validation_preview():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+        rule_loader=FakeRuleLoader({"SOFA": "dry_run"}),
+    )
+    plans = [{"sku": "SKU1", "product_type": "SOFA", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=True, validation_only=True)
+
+    assert results[0]["status"] == "validation_preview_passed"
+    assert len(client.validation_calls) == 1
+    assert repo.inserts[0]["status"] == "validation_preview_passed"
+
+
+def test_real_mode_allows_live_eligible_rule_mode():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=NullQualityGate(),
+        rule_loader=FakeRuleLoader({"CABINET": "live_eligible"}),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    results = submitter.submit(plans, dry_run=False)
+
+    assert results[0]["status"] == "listing_confirmed"
+    assert len(client.calls) == 1
 
 
 def test_real_mode_skips_existing_amazon_sku_before_put():
@@ -370,6 +531,28 @@ def test_quality_gate_blocks_high_risk_payload_before_api_call():
         item["code"] == "PESTICIDE_CLAIM_RISK"
         for item in repo.inserts[0]["request_payload"]["qualityFindings"]
     )
+
+
+def test_live_blocking_quality_finding_blocks_put_but_preserves_dry_run():
+    repo = FakeSubmissionRepo()
+    client = FakeListingsClient()
+    submitter = AmazonListingSubmitter(
+        db=MagicMock(spec=Session),
+        reporter=ProgressReporter(),
+        listings_client=client,
+        submission_repo=repo,
+        quality_gate=LiveBlockingQualityGate(),
+    )
+    plans = [{"sku": "SKU1", "product_type": "CABINET", "attributes": _valid_attrs()}]
+
+    live_results = submitter.submit(plans, dry_run=False)
+    dry_results = submitter.submit(plans, dry_run=True)
+
+    assert live_results[0]["status"] == "blocked"
+    assert dry_results[0]["status"] == "dry_run"
+    assert len(client.calls) == 0
+    assert repo.inserts[0]["status"] == "blocked_quality_gate"
+    assert repo.inserts[1]["status"] == "dry_run"
 
 
 def test_empty_plans_returns_empty():

@@ -47,6 +47,21 @@ def test_build_draft_from_product_data_uses_generated_content_and_offer():
     assert draft.source_trace["vendor_source"] == "giga"
 
 
+def test_build_draft_uses_commercial_gate_publish_quantity_when_present():
+    draft = AmazonListingDraftBuilder().build(
+        _product_data(
+            total_quantity=50,
+            source_publish_quantity=50,
+            publish_quantity=10,
+        ),
+        product_type="CABINET",
+    )
+
+    assert draft.offer.quantity == 10
+    assert draft.source_trace["source_publish_quantity"] == 50
+    assert draft.source_trace["publish_quantity"] == 10
+
+
 def test_build_draft_falls_back_to_raw_content_when_generated_details_missing():
     draft = AmazonListingDraftBuilder().build(
         _product_data(
@@ -59,6 +74,34 @@ def test_build_draft_falls_back_to_raw_content_when_generated_details_missing():
 
     assert draft.content.title == "Raw Cabinet"
     assert draft.content.description == ""
+
+
+def test_build_draft_uses_combo_info_when_main_dimensions_not_applicable():
+    draft = AmazonListingDraftBuilder().build(
+        _product_data(
+            raw_data={
+                "name": "Combo Vanity",
+                "mainImageUrl": "https://img.example/main.jpg",
+                "lengthUnit": "in",
+                "weightUnit": "lb",
+                "assembledLength": "Not Applicable",
+                "assembledWidth": "Not Applicable",
+                "assembledHeight": "Not Applicable",
+                "assembledWeight": "Not Applicable",
+                "comboInfo": [
+                    {"qty": 1, "length": 46.06, "width": 20.08, "height": 10.63, "weight": 99},
+                    {"qty": 1, "length": 53.54, "width": 24.02, "height": 13, "weight": 61.73},
+                ],
+            }
+        ),
+        product_type="CABINET",
+    )
+
+    dims = draft.standard_product.dimensions
+    assert dims.assembled_length == 53.54
+    assert dims.assembled_width == 24.02
+    assert dims.assembled_height == 13
+    assert dims.assembled_weight == 160.73
 
 
 def test_build_draft_rejects_missing_sku():
