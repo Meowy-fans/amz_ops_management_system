@@ -59,3 +59,31 @@ class AmazonVariationResolutionRepository:
         )
         self.db.commit()
         return result.scalar_one()
+
+    def update_run_audit(
+        self,
+        run_id: int,
+        existing_family_snapshot: Dict[str, Any],
+        finding_snapshot: List[Dict[str, Any]],
+        decision: Optional[str] = None,
+    ) -> None:
+        """Update audit snapshots after online hierarchy checks."""
+        query = text("""
+            UPDATE amazon_variation_resolution_runs
+            SET existing_family_snapshot = :existing_family_snapshot,
+                finding_snapshot = :finding_snapshot,
+                decision = COALESCE(:decision, decision)
+            WHERE id = :run_id
+        """)
+        self.db.execute(
+            query,
+            {
+                "run_id": int(run_id),
+                "existing_family_snapshot": json.dumps(
+                    existing_family_snapshot, default=str
+                ),
+                "finding_snapshot": json.dumps(finding_snapshot, default=str),
+                "decision": decision,
+            },
+        )
+        self.db.commit()

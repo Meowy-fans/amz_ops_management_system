@@ -26,6 +26,7 @@ from src.cli.operation_handlers import (
     handle_keyword_research,
     handle_lifecycle_summary,
     handle_profit_analysis,
+    handle_probe_variation_hierarchy,
     handle_repair_listing_issues,
     handle_suggest_category_mappings,
     handle_sync_amazon_report_api,
@@ -171,6 +172,10 @@ TASK_HANDLERS = {
     "generate-attribute-rules": lambda db, **kwargs: handle_generate_attribute_rules(
         db,
         product_type=kwargs.get("product_type") or kwargs.get("category"),
+    ),
+    "probe-variation-hierarchy": lambda db, **kwargs: handle_probe_variation_hierarchy(
+        db,
+        parent_sku=(kwargs.get("sku_list") or [kwargs.get("category") or ""])[0],
     ),
     "keyword-research": lambda db, **kwargs: handle_keyword_research(
         db,

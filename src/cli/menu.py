@@ -26,6 +26,7 @@ INTERACTIVE_TASK_CHOICES = {
     "3.5": "update-mappings-from-csv",
     "3.6": "auto-discover-category",
     "3.7": "generate-attribute-rules",
+    "3.8": "probe-variation-hierarchy",
     "4.1": "sku-sync-from-csv",
     "5.1": "generate-update-file",
     "5.2": "keyword-research",
@@ -74,6 +75,7 @@ def print_menu():
     print("  3.5 从CSV批量更新品类映射 ⭐")
     print("  3.6 自动判定并映射 Amazon Product Type")
     print("  3.7 生成 API 属性规则草稿")
+    print("  3.8 只读探测线上变体父子关系")
     print("\n【4】系统维护")
     print("  4.1 从CSV批量同步SKU映射 🚧 (待实现)")
     print("\n【5】亚马逊运营每日常规 ⭐")

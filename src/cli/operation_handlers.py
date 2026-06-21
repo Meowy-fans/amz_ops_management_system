@@ -576,6 +576,42 @@ def handle_generate_attribute_rules(
     return result.as_dict()
 
 
+def handle_probe_variation_hierarchy(
+    db: Session,
+    parent_sku: Optional[str] = None,
+):
+    """Read-only probe for an online variation parent hierarchy."""
+    if not parent_sku:
+        parent_sku = input("\nEnter parent SKU: ").strip()
+    if not parent_sku:
+        print("No parent SKU provided.")
+        return None
+
+    from infrastructure.amazon.catalog_client import AmazonCatalogClient
+    from infrastructure.amazon.listings_client import AmazonListingsClient
+    from src.services.variation_hierarchy_probe import VariationHierarchyProbe
+
+    print("\n" + "=" * 70)
+    print("Variation Hierarchy Probe - READ ONLY")
+    print("=" * 70)
+    print(f"Parent SKU: {parent_sku}")
+
+    probe = VariationHierarchyProbe(
+        listings_client=AmazonListingsClient(),
+        catalog_client=AmazonCatalogClient(),
+    )
+    result = probe.probe_parent(parent_sku)
+    print(f"Status: {result.probe_status}")
+    print(f"Parent ASIN: {result.parent_asin or 'N/A'}")
+    print(f"Child ASINs: {len(result.child_asins)}")
+    if result.child_asins:
+        print(f"  {', '.join(result.child_asins[:10])}")
+    print(f"Online sibling facts: {len(result.online_sibling_facts)}")
+    for warning in result.warnings:
+        print(f"Warning: {warning}")
+    return result.as_dict()
+
+
 def handle_keyword_research(
     db: Session, category: Optional[str] = None, auto_confirm: bool = False
 ):

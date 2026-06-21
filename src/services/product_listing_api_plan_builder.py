@@ -310,13 +310,21 @@ class ProductListingAPIPlanBuilder:
         existing_children = self.service.listing_log_repo.get_family_details_by_parent(
             parent_sku
         )
-        return self._get_variation_resolver().resolve_append_child(
+        result = self._get_variation_resolver().resolve_append_child(
             new_child_data=product_data,
             product_type=product_type,
             parent_sku=parent_sku,
             existing_theme=existing_theme,
             existing_children=existing_children,
         )
+        if result.decision == "passed":
+            self._get_variation_hierarchy_audit_coordinator().apply(
+                result=result,
+                parent_sku=parent_sku,
+                existing_theme=existing_theme,
+                existing_children=existing_children,
+            )
+        return result
 
     def _get_schema_service_or_none(self):
         if hasattr(self.service, "_schema_service_instance"):
@@ -371,15 +379,36 @@ class ProductListingAPIPlanBuilder:
     def _get_variation_resolver(self):
         if hasattr(self.service, "_variation_resolver_instance"):
             return self.service._variation_resolver_instance
-        from src.repositories.amazon_variation_resolution_repository import (
-            AmazonVariationResolutionRepository,
-        )
         from src.services.amazon_variation_resolver import AmazonVariationResolver
 
         self.service._variation_resolver_instance = AmazonVariationResolver(
-            audit_repo=AmazonVariationResolutionRepository(self.service.db)
+            audit_repo=self._get_variation_resolution_repo()
         )
         return self.service._variation_resolver_instance
+
+    def _get_variation_resolution_repo(self):
+        if hasattr(self.service, "_variation_resolution_repo_instance"):
+            return self.service._variation_resolution_repo_instance
+        from src.repositories.amazon_variation_resolution_repository import (
+            AmazonVariationResolutionRepository,
+        )
+
+        self.service._variation_resolution_repo_instance = (
+            AmazonVariationResolutionRepository(self.service.db)
+        )
+        return self.service._variation_resolution_repo_instance
+
+    def _get_variation_hierarchy_audit_coordinator(self):
+        if hasattr(self.service, "_variation_hierarchy_audit_coordinator_instance"):
+            return self.service._variation_hierarchy_audit_coordinator_instance
+        from src.services.variation_hierarchy_audit_coordinator import (
+            VariationHierarchyAuditCoordinator,
+        )
+
+        self.service._variation_hierarchy_audit_coordinator_instance = (
+            VariationHierarchyAuditCoordinator(self.service)
+        )
+        return self.service._variation_hierarchy_audit_coordinator_instance
 
     @staticmethod
     def _commercial_block_result(sku: str, result) -> Dict[str, Any]:
