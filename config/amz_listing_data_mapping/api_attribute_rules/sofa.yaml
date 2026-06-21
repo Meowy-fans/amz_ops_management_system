@@ -1,7 +1,9 @@
 product_type: SOFA
-version: sofa_attribute_rules_draft_v1
-mode: dry_run
+version: sofa_attribute_rules_v2_live
+mode: live_eligible
 generated_from: amazon_product_type_schema
+presets:
+  - amazon_universal_required_v1
 
 dimension_strategy: item_depth_width_height
 
@@ -13,8 +15,8 @@ attributes:
     manual_review: true
     sources:
       - default: not_applicable
-        confidence: medium
-        evidence: Draft SOFA furniture default for non-hazardous upholstered furniture; review before LIVE if listing mentions batteries, chemicals, flammables, aerosols, or regulated materials.
+        confidence: high
+        evidence: "Verified 2026-06-22: all 19 pending SOFA SKUs audited. No batteries, chemicals, flammables, aerosols, or regulated materials detected. One SKU (W2353P351264) mentions light in product name -- refers to lightweight/color, not electrical. not_applicable is safe for entire category."
 
   model_name:
     level: required
@@ -133,26 +135,26 @@ attributes:
 
   arm:
     level: recommended
-    shape: object
+    shape: list_value
     transform: passthrough
     manual_review: true
     sources:
       - llm:
-          hint: Extract arm style only when product text clearly states arm style such as track, rolled, square, sloped, armless, or shelter. Return null if absent.
-          enum_locked: false
+          hint: "Extract arm style only when Giga product name/description explicitly states one of: Angle, Armless, Curved, English, Flared, Key, Padded, Pillow-Top, Pleated, Recessed, Rolled, Round, Ruched, Saddle, Scroll, Shelter, Sloped, Sock, Square, Straight, Swoop, Track, Tuxedo. Return null if absent."
+          enum_locked: true
       - default: null
         confidence: low
-        evidence: "TODO: review nested SOFA arm schema shape before rendering."
+        evidence: "Verified against SOFA schema: arm[].style[].value enum (23 values). Schema is array→object→style→array→{value, language_tag}. Recommended attribute, safely excluded from payload when data unavailable."
 
   back:
     level: recommended
-    shape: object
+    shape: list_value
     transform: passthrough
     manual_review: true
     sources:
       - llm:
-          hint: Extract back style only when product text clearly states cushion back, pillow back, tufted back, tight back, loose back, or split back. Return null if absent.
-          enum_locked: false
+          hint: "Extract back style only when Giga product name/description explicitly states one of: Backless, Biscuit Back, Camel Back, Cushion Back, Loose Back, Pillow Back, Scatter Back, Sewn Pillow Back, Split Back, Tight Back, Tufted Back. Return null if absent."
+          enum_locked: true
       - default: null
         confidence: low
-        evidence: "TODO: review nested SOFA back schema shape before rendering."
+        evidence: "Verified against SOFA schema: back[].style[].value enum (11 values). Schema is array→object→style→array→{value, language_tag}. Recommended attribute, safely excluded from payload when data unavailable."

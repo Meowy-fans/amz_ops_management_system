@@ -1,6 +1,8 @@
 product_type: HOME_MIRROR
 version: home_mirror_attribute_rules_v1
 mode: live_eligible
+presets:
+  - amazon_universal_required_v1
 
 dimension_strategy: item_length_width
 

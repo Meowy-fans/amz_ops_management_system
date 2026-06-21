@@ -1,6 +1,8 @@
 product_type: OTTOMAN
 version: ottoman_attribute_rules_v1
 mode: live_eligible
+presets:
+  - amazon_universal_required_v1
 
 remove_attributes:
   - item_type_name

@@ -33,6 +33,11 @@ def _draft():
             vendor_sku="GIGA1",
             vendor_source="giga",
             attributes={"Main Material": "Metal"},
+            raw_source_data={
+                "name": "Supplier Wall Mirror",
+                "description": "Supplier raw description",
+                "characteristics": ["Raw mounting fact", "Raw frame fact"],
+            },
         ),
         content=ListingContent(
             title="Wall Mirror",
@@ -99,6 +104,12 @@ def test_extractor_caps_confidence_at_medium():
     assert result.confidence == "medium"
     assert result.evidence == "Wall mounted"
     assert client.context["attribute"] == "mounting_type"
+    assert client.context["raw_name"] == "Supplier Wall Mirror"
+    assert client.context["raw_description"] == "Supplier raw description"
+    assert client.context["raw_characteristics"] == [
+        "Raw mounting fact",
+        "Raw frame fact",
+    ]
 
 
 def test_extractor_default_client_is_disabled_without_env(monkeypatch):

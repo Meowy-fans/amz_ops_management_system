@@ -43,9 +43,28 @@ class AttributeRuleGenerationResult:
 class AttributeRuleGenerator:
     """Build conservative YAML rule drafts from Product Type Definitions schema."""
 
-    _SENSITIVE_EXACT = {
+    UNIVERSAL_PRESET = "amazon_universal_required_v1"
+    _UNIVERSAL_PRESET_ATTRIBUTES = {
+        "item_name",
+        "bullet_point",
+        "product_description",
         "brand",
         "manufacturer",
+        "target_audience_base",
+        "item_type_keyword",
+        "item_type_name",
+        "country_of_origin",
+        "supplier_declared_dg_hz_regulation",
+        "externally_assigned_product_identifier",
+        "supplier_declared_has_product_identifier_exemption",
+    }
+    _SAFE_DEFAULT_ATTRIBUTES = {
+        "brand",
+        "manufacturer",
+        "supplier_declared_dg_hz_regulation",
+        "supplier_declared_has_product_identifier_exemption",
+    }
+    _SENSITIVE_EXACT = {
         "externally_assigned_product_identifier",
         "supplier_declared_has_product_identifier_exemption",
     }
@@ -55,7 +74,6 @@ class AttributeRuleGenerator:
         "certification",
         "compliance",
         "regulation",
-        "supplier_declared",
     )
     _DEFAULT_SOURCE_CANDIDATES = {
         "model_name": ["product.attributes.Model Name", "product.attributes.mpn", "product.vendor_sku"],
@@ -71,6 +89,50 @@ class AttributeRuleGenerator:
         "included_components": ["product.attributes.Included Components"],
         "special_feature": ["product.attributes.Special Feature"],
         "is_assembly_required": ["product.attributes.Assembly Required", "product.requires_assembly"],
+        "brand": [
+            {
+                "default": "Generic",
+                "confidence": "medium",
+                "evidence": "Fallback brand for unbranded Giga products.",
+            }
+        ],
+        "manufacturer": [
+            {
+                "default": "Nova Home Essentials",
+                "confidence": "medium",
+                "evidence": "Existing production default manufacturer for Giga-sourced products.",
+            }
+        ],
+        "country_of_origin": [
+            {"path": "product.attributes.place_of_origin"},
+            {
+                "default": "CN",
+                "confidence": "medium",
+                "evidence": "Fallback country for Giga products when place_of_origin is missing.",
+            },
+        ],
+        "supplier_declared_dg_hz_regulation": [
+            {
+                "default": "not_applicable",
+                "confidence": "medium",
+                "evidence": (
+                    "Default for non-hazardous goods; review per category for "
+                    "battery or hazmat risk."
+                ),
+            }
+        ],
+        "item_name": [{"path": "content.title"}],
+        "product_description": [{"path": "content.description"}],
+        "bullet_point": [{"path": "content.bullets", "transform": "passthrough"}],
+        "target_audience_base": [
+            {
+                "default": "Homeowners",
+                "confidence": "medium",
+                "evidence": "Default target audience for home and furniture products.",
+            }
+        ],
+        "item_type_keyword": [{"path": "content.title"}],
+        "item_type_name": [{"path": "content.title"}],
     }
 
     def __init__(
@@ -113,6 +175,7 @@ class AttributeRuleGenerator:
             "version": f"{normalized.lower()}_attribute_rules_draft_v1",
             "mode": AttributeRuleLoader.DEFAULT_MODE,
             "generated_from": "amazon_product_type_schema",
+            "presets": [self.UNIVERSAL_PRESET],
             "attributes": attributes,
         }
 
@@ -148,10 +211,18 @@ class AttributeRuleGenerator:
     ) -> List[str]:
         names: List[str] = []
         for name in required:
-            if name in properties and name not in names:
+            if (
+                name in properties
+                and name not in names
+                and name not in self._UNIVERSAL_PRESET_ATTRIBUTES
+            ):
                 names.append(name)
         for name in self._DEFAULT_SOURCE_CANDIDATES:
-            if name in properties and name not in names:
+            if (
+                name in properties
+                and name not in names
+                and name not in self._UNIVERSAL_PRESET_ATTRIBUTES
+            ):
                 names.append(name)
         return names
 
@@ -163,16 +234,35 @@ class AttributeRuleGenerator:
     ) -> Dict[str, Any]:
         level = "required" if name in required else "recommended"
         shape = self._shape(prop_schema)
-        transform = self._transform(name, prop_schema, shape)
-        sources = [
-            {"path": path}
-            for path in self._DEFAULT_SOURCE_CANDIDATES.get(name, [])
-        ]
-        manual_review = self._is_sensitive(name) or not sources or shape in {
+        default_transform = self._transform(name, prop_schema, shape)
+        sources: List[Dict[str, Any]] = []
+        override_transform = None
+        for candidate in self._DEFAULT_SOURCE_CANDIDATES.get(name, []):
+            entry: Dict[str, Any] = {}
+            if isinstance(candidate, str):
+                entry["path"] = candidate
+            elif isinstance(candidate, dict):
+                if "path" in candidate:
+                    entry["path"] = candidate["path"]
+                if "default" in candidate:
+                    entry["default"] = candidate["default"]
+                    entry["confidence"] = candidate.get("confidence", "medium")
+                    entry["evidence"] = candidate.get("evidence", "")
+                if "llm" in candidate:
+                    entry["llm"] = candidate["llm"]
+                if "transform" in candidate:
+                    override_transform = candidate["transform"]
+            if entry:
+                sources.append(entry)
+        manual_review = (
+            (self._is_sensitive(name) and name not in self._SAFE_DEFAULT_ATTRIBUTES)
+            or not sources
+            or shape in {
             "object",
             "nested_object",
-        }
-        if manual_review:
+            }
+        )
+        if manual_review and not sources:
             sources.append({
                 "default": None,
                 "confidence": "low",
@@ -181,7 +271,7 @@ class AttributeRuleGenerator:
         return {
             "level": level,
             "shape": shape,
-            "transform": transform,
+            "transform": override_transform or default_transform,
             "manual_review": manual_review,
             "sources": sources,
         }

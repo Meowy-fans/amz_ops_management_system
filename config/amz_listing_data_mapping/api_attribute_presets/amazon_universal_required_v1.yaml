@@ -1,0 +1,103 @@
+name: amazon_universal_required_v1
+version: amazon_universal_required_v1
+attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: content.title
+
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+      - path: content.bullets
+
+  product_description:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: content.description
+
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - default: Generic
+        confidence: medium
+        evidence: Fallback brand for unbranded Giga products.
+
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - default: Nova Home Essentials
+        confidence: medium
+        evidence: Existing production default manufacturer for Giga-sourced products.
+
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - default: Homeowners
+        confidence: medium
+        evidence: Default target audience for home and furniture products.
+
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: content.title
+
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: content.title
+
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.place_of_origin
+      - default: CN
+        confidence: medium
+        evidence: Fallback country for Giga products when place_of_origin is missing.
+
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - default: not_applicable
+        confidence: medium
+        evidence: Default for non-hazardous goods; review per category for battery or hazmat risk.
+
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+      - default:
+          type: GTIN_EXEMPTION
+          value: product_does_not_have_gtin
+        confidence: medium
+        evidence: Existing GTIN exemption behavior for listings without supplier product identifiers.
+
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+      - default: Yes
+        confidence: medium
+        evidence: Existing product identifier exemption declaration for GTIN-exempt listings.

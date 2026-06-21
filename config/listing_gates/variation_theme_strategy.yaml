@@ -40,3 +40,39 @@ categories:
         - raw.attributes.Size
         - raw.assembledLength
         - raw.name
+
+  SOFA:
+    allowed_themes:
+      - Color
+    buyer_theme_priority:
+      Color: 100
+    attribute_sources:
+      color_name:
+        - raw.attributes.Main Color
+        - raw.attributes.Color
+        - raw.color
+        - raw.name
+
+  HOME_MIRROR:
+    allowed_themes:
+      - Color
+    buyer_theme_priority:
+      Color: 100
+    attribute_sources:
+      color_name:
+        - raw.attributes.Main Color
+        - raw.attributes.Color
+        - raw.color
+        - raw.name
+
+  CHAIR:
+    allowed_themes:
+      - Color
+    buyer_theme_priority:
+      Color: 100
+    attribute_sources:
+      color_name:
+        - raw.attributes.Main Color
+        - raw.attributes.Color
+        - raw.color
+        - raw.name

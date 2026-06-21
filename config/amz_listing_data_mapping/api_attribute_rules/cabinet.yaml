@@ -1,6 +1,8 @@
 product_type: CABINET
 version: cabinet_attribute_rules_v1
 mode: live_eligible
+presets:
+  - amazon_universal_required_v1
 
 dimension_strategy: item_depth_width_height
 additional_dimension_measures:

@@ -46,13 +46,8 @@ class AmazonListingPayloadBuilder:
         self._set_text(attrs, "item_name", draft.content.title)
         self._set_text(attrs, "product_description", draft.content.description)
         self._set_list(attrs, "bullet_point", draft.content.bullets)
-        self._set_text(attrs, "brand", "Generic")
-        self._set_text(attrs, "manufacturer", "Nova Home Essentials")
         self._set_text(attrs, "part_number", self._attr(product, "mpn") or draft.vendor_sku)
         self._set_text(attrs, "model_number", self._attr(product, "mpn") or draft.vendor_sku)
-        self._set_text(attrs, "item_type_keyword", draft.product_type.lower())
-        self._set_text(attrs, "item_type_name", draft.product_type.replace("_", " ").title())
-        self._set_text(attrs, "target_audience_base", "Homeowners")
         self._set_text(attrs, "condition_type", draft.offer.condition_type)
 
         color = self._attr(product, "Main Color", "color")
@@ -61,13 +56,6 @@ class AmazonListingPayloadBuilder:
         self._set_list(attrs, "color", [self._valid_value(draft.product_type, "color", color)])
         self._set_list(attrs, "material", [material])
         self._set_text(attrs, "style", style)
-
-        country = self._country_code(self._attr(product, "place_of_origin") or "China")
-        self._set_text(
-            attrs,
-            "country_of_origin",
-            self._valid_value(draft.product_type, "country_of_origin", country),
-        )
 
         self._set_images(attrs, product.images)
         self._set_offer(attrs, draft.offer.price, draft.offer.currency)
@@ -107,7 +95,6 @@ class AmazonListingPayloadBuilder:
         attribute_resolutions = self._apply_attribute_rules(attrs, draft)
         self._normalize_product_type_attributes(attrs, draft)
         self._remove_configured_attributes(attrs, draft.product_type)
-        self._add_required_defaults(attrs)
         attrs = self._filter_schema_allowed_attributes(attrs, draft.product_type)
 
         return {
@@ -308,7 +295,7 @@ class AmazonListingPayloadBuilder:
         except Exception:
             return {}
         for key, value in rendered.items():
-            attrs.setdefault(key, value)
+            attrs[key] = value
         return {key: value.as_dict() for key, value in resolved.items()}
 
     def _filter_schema_allowed_attributes(
@@ -371,15 +358,3 @@ class AmazonListingPayloadBuilder:
             return
         for name in rules.get("remove_attributes") or []:
             attrs.pop(str(name), None)
-
-    @staticmethod
-    def _add_required_defaults(attrs: Dict[str, Any]) -> None:
-        defaults = {
-            "supplier_declared_dg_hz_regulation": [{"value": "not_applicable"}],
-            "externally_assigned_product_identifier": [
-                {"type": "GTIN_EXEMPTION", "value": "product_does_not_have_gtin"}
-            ],
-            "supplier_declared_has_product_identifier_exemption": [{"value": "Yes"}],
-        }
-        for key, value in defaults.items():
-            attrs.setdefault(key, value)

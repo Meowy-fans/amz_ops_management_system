@@ -1,0 +1,86 @@
+product_type: BICYCLE
+version: bicycle_attribute_rules_draft_v1
+mode: dry_run
+generated_from: amazon_product_type_schema
+presets:
+- amazon_universal_required_v1
+attributes:
+  model_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Model Name
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
+  model_number:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Model Number
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
+  part_number:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Part Number
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
+  material:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Main Material
+    - path: product.attributes.material
+  color:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Main Color
+    - path: product.attributes.color
+  item_shape:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Item Shape
+  number_of_items:
+    level: recommended
+    shape: list_value
+    transform: integer
+    manual_review: false
+    sources:
+    - path: product.attributes.Number of Items
+  included_components:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Included Components
+  special_feature:
+    level: recommended
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Special Feature
+  is_assembly_required:
+    level: recommended
+    shape: list_value
+    transform: enum
+    manual_review: false
+    sources:
+    - path: product.attributes.Assembly Required
+    - path: product.requires_assembly

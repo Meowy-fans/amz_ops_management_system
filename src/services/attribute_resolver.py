@@ -225,6 +225,8 @@ class AttributeResolver:
         text = str(value or "").strip()
         if not text or self.schema_service is None:
             return text
+        if attribute == "country_of_origin":
+            text = self._country_code(text)
         try:
             candidates = self.schema_service.get_cached_valid_values(
                 product_type, attribute
@@ -238,6 +240,23 @@ class AttributeResolver:
             return exact[text.lower()]
         match = get_close_matches(text.lower(), list(exact.keys()), n=1, cutoff=0.75)
         return exact[match[0]] if match else text
+
+    @staticmethod
+    def _country_code(value: str) -> str:
+        aliases = {
+            "china": "CN",
+            "cn": "CN",
+            "prc": "CN",
+            "malaysia": "MY",
+            "my": "MY",
+            "united states": "US",
+            "usa": "US",
+            "us": "US",
+            "vietnam": "VN",
+            "viet nam": "VN",
+            "vn": "VN",
+        }
+        return aliases.get(str(value or "").strip().lower(), str(value or "").strip())
 
     @staticmethod
     def _finish(result: AttributeResolution) -> AttributeResolution:

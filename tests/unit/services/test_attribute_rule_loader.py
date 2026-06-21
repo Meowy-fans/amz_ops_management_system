@@ -32,3 +32,43 @@ def test_loader_preserves_explicit_live_eligible_mode_from_config_map():
     assert rules["mode"] == "live_eligible"
     assert loader.mode("CABINET") == "live_eligible"
     assert loader.is_live_eligible("CABINET") is True
+
+
+def test_loader_merges_presets_before_product_rules():
+    loader = AttributeRuleLoader(
+        config_by_type={
+            "CHAIR": {
+                "product_type": "CHAIR",
+                "presets": ["amazon_universal_required_v1"],
+                "attributes": {
+                    "brand": {
+                        "level": "required",
+                        "sources": [{"default": "Custom"}],
+                    },
+                    "seat_depth": {"level": "recommended"},
+                },
+            }
+        },
+        preset_by_name={
+            "amazon_universal_required_v1": {
+                "attributes": {
+                    "brand": {
+                        "level": "required",
+                        "sources": [{"default": "Generic"}],
+                    },
+                    "item_name": {
+                        "level": "required",
+                        "sources": [{"path": "content.title"}],
+                    },
+                }
+            }
+        },
+    )
+
+    rules = loader.load("CHAIR")
+
+    assert rules["attributes"]["brand"]["sources"] == [{"default": "Custom"}]
+    assert rules["attributes"]["item_name"]["sources"] == [
+        {"path": "content.title"}
+    ]
+    assert rules["attributes"]["seat_depth"]["level"] == "recommended"

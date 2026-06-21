@@ -131,6 +131,8 @@ class LLMAttributeExtractor:
         valid_values: List[str],
     ) -> Dict[str, Any]:
         content = draft.content
+        product = draft.standard_product
+        raw = getattr(product, "raw_source_data", {}) or {}
         return {
             "sku": draft.sku,
             "product_type": draft.product_type,
@@ -141,7 +143,10 @@ class LLMAttributeExtractor:
             "title": content.title,
             "bullets": list(content.bullets or []),
             "description": content.description,
-            "product_attributes": dict(draft.standard_product.attributes or {}),
+            "product_attributes": dict(product.attributes or {}),
+            "raw_name": raw.get("name", ""),
+            "raw_description": raw.get("description", ""),
+            "raw_characteristics": list(raw.get("characteristics") or []),
         }
 
     @staticmethod

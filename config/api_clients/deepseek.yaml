@@ -317,7 +317,7 @@ prompts:
     ▼ AMAZON STYLE RULES (violations cause rejection):
     1. NO ALL CAPS anywhere
     2. NO promotional claims: "best", "#1", "amazing", "incredible", "top-rated"
-    3. NO pricing/shipping: "cheap", "free shipping", "on sale", "discount"
+    3. NO pricing/shipping/delivery terms: "cheap", "free shipping", "on sale", "discount", "free delivery", "threshold delivery", "white-glove"
     4. NO contact info: URLs, emails, phone, store names
     5. NO time-sensitive: "limited time", "while supplies last"
     6. NO first-person: "we", "our", "I", "us"
@@ -330,6 +330,7 @@ prompts:
         moisture-resistant, stain-resistant, easy to clean, non-porous surface,
         resists water spots, suitable for humid bathrooms
     11. Do NOT translate supplier anti-bacterial or mold-proof wording literally.
+    12. NO warranty, guarantee, return policy, refund, replacement, or shipping/delivery method claims unless explicitly present in the source facts.
 
     ▼ REQUIRED ATTRIBUTES (must be reflected):
     {required_attributes}
