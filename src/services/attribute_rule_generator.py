@@ -44,6 +44,7 @@ class AttributeRuleGenerator:
     """Build conservative YAML rule drafts from Product Type Definitions schema."""
 
     UNIVERSAL_PRESET = "amazon_universal_required_v1"
+    SAFE_DEFAULT_PRESET = "amazon_required_safe_defaults_v1"
     _UNIVERSAL_PRESET_ATTRIBUTES = {
         "item_name",
         "bullet_point",
@@ -139,9 +140,12 @@ class AttributeRuleGenerator:
         self,
         schema_service: AmazonSchemaService,
         output_dir: Optional[Path] = None,
+        rule_loader: Optional[AttributeRuleLoader] = None,
     ):
         self.schema_service = schema_service
-        self.output_dir = Path(output_dir) if output_dir else AttributeRuleLoader().config_dir
+        self.rule_loader = rule_loader or AttributeRuleLoader()
+        self.output_dir = Path(output_dir) if output_dir else self.rule_loader.config_dir
+        self._safe_default_rules = self._load_safe_default_rules()
 
     def generate(
         self,
@@ -157,7 +161,7 @@ class AttributeRuleGenerator:
         target_path = self.output_dir / f"{normalized.lower()}.yaml"
         schema_data = self.schema_service.get_or_fetch_schema(normalized)
         schema = schema_data.get("schema_json", {}) or {}
-        required = list(schema_data.get("required_properties") or [])
+        required = self._required_properties(normalized, schema_data)
         properties = AmazonSchemaService._merged_properties(schema)
         attribute_names = self._candidate_attribute_names(properties, required)
 
@@ -203,6 +207,20 @@ class AttributeRuleGenerator:
             warnings=warnings,
             rules=rules,
         )
+
+    def _required_properties(
+        self,
+        product_type: str,
+        schema_data: Dict[str, Any],
+    ) -> List[str]:
+        if hasattr(self.schema_service, "get_coverage_required_properties"):
+            try:
+                required = self.schema_service.get_coverage_required_properties(product_type)
+                if required:
+                    return list(required)
+            except Exception:
+                pass
+        return list(schema_data.get("required_properties") or [])
 
     def _candidate_attribute_names(
         self,
@@ -254,13 +272,33 @@ class AttributeRuleGenerator:
                     override_transform = candidate["transform"]
             if entry:
                 sources.append(entry)
+        is_sensitive_attr = (
+            self._is_sensitive(name) and name not in self._SAFE_DEFAULT_ATTRIBUTES
+        )
+        is_structural_attr = shape in {"object", "nested_object"}
+        eligible_required = (
+            level == "required"
+            and not is_sensitive_attr
+            and not is_structural_attr
+        )
+        safe_default = self._safe_default_source(name)
+        has_initial_sources = bool(sources)
+        if eligible_required:
+            if not self._has_source_type(sources, "llm"):
+                sources.append({"llm": {"hint": self._auto_llm_hint(name)}})
+            if safe_default and not self._has_concrete_default(sources):
+                sources.append(safe_default)
+            elif not safe_default and not self._has_source_type(sources, "default"):
+                sources.append({
+                    "default": None,
+                    "confidence": "low",
+                    "evidence": f"TODO: review safe default for {name}",
+                })
         manual_review = (
-            (self._is_sensitive(name) and name not in self._SAFE_DEFAULT_ATTRIBUTES)
+            is_sensitive_attr
+            or is_structural_attr
             or not sources
-            or shape in {
-            "object",
-            "nested_object",
-            }
+            or (eligible_required and not has_initial_sources and not safe_default)
         )
         if manual_review and not sources:
             sources.append({
@@ -318,3 +356,36 @@ class AttributeRuleGenerator:
         if name in cls._SENSITIVE_EXACT:
             return True
         return any(marker in name for marker in cls._SENSITIVE_MARKERS)
+
+    def _load_safe_default_rules(self) -> Dict[str, Dict[str, Any]]:
+        preset = self.rule_loader.load_preset(self.SAFE_DEFAULT_PRESET)
+        return dict((preset.get("attributes") or {}))
+
+    def _safe_default_source(self, name: str) -> Dict[str, Any]:
+        rule = self._safe_default_rules.get(name) or {}
+        for source in rule.get("sources") or []:
+            if "default" not in source:
+                continue
+            return {
+                "default": source.get("default"),
+                "confidence": source.get("confidence", "medium"),
+                "evidence": source.get("evidence", ""),
+                "safe_default": True,
+            }
+        return {}
+
+    @staticmethod
+    def _auto_llm_hint(name: str) -> str:
+        label = str(name or "").replace("_", " ")
+        return (
+            f"Extract {label} from the product title, description, bullet points, "
+            "and supplier characteristics. Return null if the information is not found."
+        )
+
+    @staticmethod
+    def _has_source_type(sources: List[Dict[str, Any]], source_type: str) -> bool:
+        return any(source_type in source for source in sources)
+
+    @staticmethod
+    def _has_concrete_default(sources: List[Dict[str, Any]]) -> bool:
+        return any("default" in source and source.get("default") is not None for source in sources)

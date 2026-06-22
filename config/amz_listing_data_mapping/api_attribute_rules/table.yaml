@@ -5,6 +5,102 @@ generated_from: amazon_product_type_schema
 presets:
 - amazon_universal_required_v1
 attributes:
+  base_type:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract base type from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for base_type'
+  frame:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for frame'
+  included_components:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Included Components
+    - llm:
+        hint: Extract included components from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for included_components'
+  is_fragile:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract is fragile from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for is_fragile'
+  item_depth_width_height:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for item_depth_width_height'
+  item_shape:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Item Shape
+    - llm:
+        hint: Extract item shape from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for item_shape'
+  number_of_items:
+    level: required
+    shape: list_value
+    transform: integer
+    manual_review: false
+    sources:
+    - path: product.attributes.Number of Items
+    - llm:
+        hint: Extract number of items from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: 1
+      confidence: medium
+      evidence: Single-item listing fallback when supplier data lacks package count.
+      safe_default: true
+  top:
+    level: required
+    shape: value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract top from the product title, description, bullet points, and
+          supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for top'
   model_name:
     level: recommended
     shape: list_value
@@ -62,27 +158,6 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Mounting Type
-  item_shape:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Item Shape
-  number_of_items:
-    level: recommended
-    shape: list_value
-    transform: integer
-    manual_review: false
-    sources:
-    - path: product.attributes.Number of Items
-  included_components:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Included Components
   special_feature:
     level: recommended
     shape: list_value

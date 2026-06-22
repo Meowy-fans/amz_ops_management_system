@@ -90,6 +90,16 @@ class AmazonListingAttributeCoverageGate:
                     )
                 elif self._is_evidenced_default_required(resolution):
                     result.defaulted_required.append(name)
+                elif self._is_unsafe_default_required(resolution):
+                    self._add_blocking(
+                        result,
+                        code="UNSAFE_DEFAULT_REQUIRED_ATTRIBUTE",
+                        attribute=name,
+                        message=(
+                            f"Required attribute '{name}' resolved with a default "
+                            "that is not explicitly safe-default whitelisted"
+                        ),
+                    )
                 continue
 
             result.missing_required.append(name)
@@ -174,6 +184,17 @@ class AmazonListingAttributeCoverageGate:
             and resolution.get("source") == "default"
             and resolution.get("confidence") in {"medium", "high"}
             and bool(resolution.get("evidence"))
+            and bool(resolution.get("safe_default"))
+        )
+
+    @staticmethod
+    def _is_unsafe_default_required(resolution: Dict[str, Any]) -> bool:
+        if not resolution:
+            return False
+        return (
+            resolution.get("level") == "required"
+            and resolution.get("source") == "default"
+            and not bool(resolution.get("safe_default"))
         )
 
     def _add_blocking(

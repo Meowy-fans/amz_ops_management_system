@@ -241,6 +241,46 @@ def test_required_llm_resolution_is_blocking_for_manual_review():
     assert result.blocking is True
 
 
+def test_required_llm_null_falls_through_to_safe_default():
+    rules = {
+        "product_type": "HOME_MIRROR",
+        "attributes": {
+            "number_of_items": {
+                "level": "required",
+                "shape": "list_value",
+                "sources": [
+                    {"llm": {"hint": "Extract item count"}},
+                    {
+                        "default": 1,
+                        "confidence": "medium",
+                        "evidence": "Single item fallback.",
+                        "safe_default": True,
+                    },
+                ],
+                "transform": "integer",
+            }
+        },
+    }
+    extractor = FakeLLMExtractor(
+        LLMAttributeExtraction(value=None, warnings=["not_found"])
+    )
+    resolver = AttributeResolver(
+        rule_loader=AttributeRuleLoader(config_by_type={"HOME_MIRROR": rules}),
+        llm_extractor=extractor,
+    )
+    draft = _draft()
+    draft.product_type = "HOME_MIRROR"
+
+    result = resolver.resolve(draft)["number_of_items"]
+
+    assert result.value == 1
+    assert result.source == "default"
+    assert result.state == "resolved_with_default"
+    assert result.blocking is False
+    assert result.safe_default is True
+    assert result.as_dict()["safe_default"] is True
+
+
 def test_resolver_supports_boolean_and_passthrough_transforms():
     rules = {
         "product_type": "HOME_MIRROR",

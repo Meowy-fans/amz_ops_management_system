@@ -17,6 +17,7 @@ attributes:
       - default: not_applicable
         confidence: high
         evidence: "Verified 2026-06-22: all 19 pending SOFA SKUs audited. No batteries, chemicals, flammables, aerosols, or regulated materials detected. One SKU (W2353P351264) mentions light in product name -- refers to lightweight/color, not electrical. not_applicable is safe for entire category."
+        safe_default: true
 
   model_name:
     level: required
@@ -36,6 +37,7 @@ attributes:
       - default: 1
         confidence: high
         evidence: One purchasable sofa listing unit.
+        safe_default: true
 
   is_fragile:
     level: required
@@ -46,6 +48,7 @@ attributes:
       - default: No
         confidence: medium
         evidence: Draft SOFA furniture default; review if listing includes glass, stone, ceramic, or fragile decorative components.
+        safe_default: true
 
   seat:
     level: required
@@ -59,6 +62,7 @@ attributes:
               unit: inches
         confidence: medium
         evidence: Draft ergonomic sofa seat height fallback; review against supplier dimensions before LIVE.
+        safe_default: true
 
   fabric_type:
     level: recommended
@@ -71,6 +75,7 @@ attributes:
       - default: Polyester
         confidence: medium
         evidence: Conservative sofa upholstery fallback when supplier material is missing; review if source specifies leather, linen, velvet, or blended fabric.
+        safe_default: true
 
   sofa_type:
     level: recommended
@@ -85,6 +90,7 @@ attributes:
       - default: standard
         confidence: medium
         evidence: Conservative sofa type fallback for ordinary sofas when no specialized form is stated.
+        safe_default: true
 
   seating_capacity:
     level: recommended
@@ -98,6 +104,7 @@ attributes:
       - default: 3
         confidence: medium
         evidence: Conservative draft fallback for standard sofas; review for loveseat, sectional, or oversized seating.
+        safe_default: true
 
   room_type:
     level: recommended
@@ -111,6 +118,7 @@ attributes:
       - default: Living Room
         confidence: medium
         evidence: Common sofa placement fallback; review if product is marketed for bedroom, nursery, office, or home theater.
+        safe_default: true
 
   included_components:
     level: recommended
@@ -121,6 +129,7 @@ attributes:
       - default: Seat Cushion
         confidence: medium
         evidence: Draft default for sofa listing contents; review if product includes ottoman, throw pillows, hardware, or sectional components.
+        safe_default: true
 
   is_assembly_required:
     level: recommended
@@ -132,6 +141,7 @@ attributes:
       - default: true
         confidence: medium
         evidence: Supplier large furniture commonly requires assembly; review if source states fully assembled.
+        safe_default: true
 
   arm:
     level: recommended

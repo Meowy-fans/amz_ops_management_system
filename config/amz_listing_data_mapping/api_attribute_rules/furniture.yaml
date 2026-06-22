@@ -13,6 +13,90 @@ attributes:
     sources:
     - path: product.attributes.Fabric Type
     - path: product.attributes.Main Material
+    - llm:
+        hint: Extract fabric type from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for fabric_type'
+  included_components:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Included Components
+    - llm:
+        hint: Extract included components from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for included_components'
+  is_assembly_required:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: false
+    sources:
+    - path: product.attributes.Assembly Required
+    - path: product.requires_assembly
+    - llm:
+        hint: Extract is assembly required from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for is_assembly_required'
+  is_fragile:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract is fragile from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for is_fragile'
+  item_dimensions:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for item_dimensions'
+  item_shape:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Item Shape
+    - llm:
+        hint: Extract item shape from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for item_shape'
+  number_of_items:
+    level: required
+    shape: list_value
+    transform: integer
+    manual_review: false
+    sources:
+    - path: product.attributes.Number of Items
+    - llm:
+        hint: Extract number of items from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: 1
+      confidence: medium
+      evidence: Single-item listing fallback when supplier data lacks package count.
+      safe_default: true
   model_name:
     level: recommended
     shape: list_value
@@ -56,27 +140,6 @@ attributes:
     sources:
     - path: product.attributes.Main Color
     - path: product.attributes.color
-  item_shape:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Item Shape
-  number_of_items:
-    level: recommended
-    shape: list_value
-    transform: integer
-    manual_review: false
-    sources:
-    - path: product.attributes.Number of Items
-  included_components:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Included Components
   special_feature:
     level: recommended
     shape: list_value
@@ -84,11 +147,3 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Special Feature
-  is_assembly_required:
-    level: recommended
-    shape: list_value
-    transform: enum
-    manual_review: false
-    sources:
-    - path: product.attributes.Assembly Required
-    - path: product.requires_assembly

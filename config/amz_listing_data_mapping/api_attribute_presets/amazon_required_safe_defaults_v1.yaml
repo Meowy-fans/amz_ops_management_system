@@ -1,0 +1,12 @@
+name: amazon_required_safe_defaults_v1
+version: amazon_required_safe_defaults_v1
+attributes:
+  number_of_items:
+    level: required
+    shape: list_value
+    transform: integer
+    sources:
+      - default: 1
+        confidence: medium
+        evidence: Single-item listing fallback when supplier data lacks package count.
+        safe_default: true

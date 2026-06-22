@@ -62,6 +62,10 @@ class AttributeRuleLoader:
         """Return True only when the product type rules explicitly allow LIVE."""
         return self.mode(product_type) == self.LIVE_ELIGIBLE_MODE
 
+    def load_preset(self, name: str) -> Dict[str, Any]:
+        """Return one named preset without applying it to a product type."""
+        return self._load_preset(str(name or "").strip())
+
     @classmethod
     def _with_defaults(
         cls,

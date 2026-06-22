@@ -104,7 +104,7 @@ def test_coverage_gate_blocks_low_confidence_required_resolution():
     assert result.blocking_codes == ["LOW_CONFIDENCE_REQUIRED_ATTRIBUTE"]
 
 
-def test_coverage_gate_allows_evidenced_medium_confidence_default():
+def test_coverage_gate_allows_safe_evidenced_medium_confidence_default():
     gate = AmazonListingAttributeCoverageGate(
         schema_service=FakeSchemaService(required=["fabric_type"])
     )
@@ -119,6 +119,7 @@ def test_coverage_gate_allows_evidenced_medium_confidence_default():
                     "confidence": "medium",
                     "source": "default",
                     "evidence": "Safe HOME_MIRROR material fallback.",
+                    "safe_default": True,
                 }
             },
         )
@@ -126,6 +127,31 @@ def test_coverage_gate_allows_evidenced_medium_confidence_default():
 
     assert result.blocked is False
     assert result.defaulted_required == ["fabric_type"]
+
+
+def test_coverage_gate_blocks_default_without_safe_default_marker():
+    gate = AmazonListingAttributeCoverageGate(
+        schema_service=FakeSchemaService(required=["fabric_type"])
+    )
+
+    result = gate.evaluate(
+        _plan(
+            attrs={"fabric_type": [{"value": "Unknown"}]},
+            resolutions={
+                "fabric_type": {
+                    "state": "resolved_with_default",
+                    "level": "required",
+                    "confidence": "medium",
+                    "source": "default",
+                    "evidence": "Generic fallback.",
+                }
+            },
+        )
+    )
+
+    assert result.blocked is True
+    assert result.blocking_codes == ["UNSAFE_DEFAULT_REQUIRED_ATTRIBUTE"]
+    assert result.findings[0]["attribute"] == "fabric_type"
 
 
 def test_coverage_gate_uses_coverage_required_properties_when_available():

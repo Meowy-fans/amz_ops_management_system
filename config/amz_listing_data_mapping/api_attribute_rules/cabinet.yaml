@@ -24,6 +24,7 @@ attributes:
       - default: Wood
         confidence: medium
         evidence: CABINET listings are furniture items commonly made from wood or engineered wood when supplier material is unavailable.
+        safe_default: true
 
   mounting_type:
     level: required
@@ -34,6 +35,7 @@ attributes:
       - default: Freestanding
         confidence: high
         evidence: CABINET listing default for freestanding bathroom storage unless source indicates wall mount.
+        safe_default: true
 
   model_name:
     level: required
@@ -53,6 +55,7 @@ attributes:
       - default: Freestanding
         confidence: medium
         evidence: Supplier cabinet assortment is normally standalone/freestanding unless product attributes indicate otherwise.
+        safe_default: true
 
   number_of_items:
     level: required
@@ -63,6 +66,7 @@ attributes:
       - default: 1
         confidence: high
         evidence: One purchasable cabinet listing unit.
+        safe_default: true
 
   door:
     level: required
@@ -74,6 +78,7 @@ attributes:
       - default: Shaker
         confidence: medium
         evidence: Conservative Amazon-valid cabinet door style default; review if source says drawers-only, slab, glass front, or open shelf.
+        safe_default: true
 
   special_feature:
     level: recommended
@@ -84,6 +89,7 @@ attributes:
       - default: Storage
         confidence: medium
         evidence: Conservative feature for cabinet category; does not invent technical claims.
+        safe_default: true
 
   included_components:
     level: required
@@ -94,6 +100,7 @@ attributes:
       - default: Cabinet
         confidence: high
         evidence: Listing unit includes the cabinet itself.
+        safe_default: true
 
   is_assembly_required:
     level: required
@@ -105,6 +112,7 @@ attributes:
       - default: Yes
         confidence: medium
         evidence: Supplier furniture items commonly require assembly; review if source states fully assembled.
+        safe_default: true
 
   item_shape:
     level: required
@@ -115,6 +123,7 @@ attributes:
       - default: Rectangular
         confidence: high
         evidence: Conservative shape for standard cabinet furniture.
+        safe_default: true
 
   room_type:
     level: recommended
@@ -125,6 +134,7 @@ attributes:
       - default: Bathroom
         confidence: high
         evidence: CABINET mapped assortment is bathroom vanity/storage unless source category changes.
+        safe_default: true
 
   is_fragile:
     level: required
@@ -135,6 +145,7 @@ attributes:
       - default: No
         confidence: medium
         evidence: Cabinet body is not fragile by default; review if glass/ceramic sink is included.
+        safe_default: true
 
   number_of_drawers:
     level: recommended
@@ -145,3 +156,4 @@ attributes:
       - default: 0
         confidence: medium
         evidence: Conservative default when drawer count is not stated.
+        safe_default: true

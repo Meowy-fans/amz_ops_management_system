@@ -5,6 +5,77 @@ generated_from: amazon_product_type_schema
 presets:
 - amazon_universal_required_v1
 attributes:
+  generic_keyword:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract generic keyword from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for generic_keyword'
+  item_depth_width_height:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for item_depth_width_height'
+  number_of_items:
+    level: required
+    shape: list_value
+    transform: integer
+    manual_review: false
+    sources:
+    - path: product.attributes.Number of Items
+    - llm:
+        hint: Extract number of items from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: 1
+      confidence: medium
+      evidence: Single-item listing fallback when supplier data lacks package count.
+      safe_default: true
+  occasion_type:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract occasion type from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for occasion_type'
+  recommended_uses_for_product:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract recommended uses for product from the product title, description,
+          bullet points, and supplier characteristics. Return null if the information
+          is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for recommended_uses_for_product'
+  required_product_compliance_certificate:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for required_product_compliance_certificate'
   model_name:
     level: recommended
     shape: list_value
@@ -55,13 +126,6 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Item Shape
-  number_of_items:
-    level: recommended
-    shape: list_value
-    transform: integer
-    manual_review: false
-    sources:
-    - path: product.attributes.Number of Items
   included_components:
     level: recommended
     shape: list_value

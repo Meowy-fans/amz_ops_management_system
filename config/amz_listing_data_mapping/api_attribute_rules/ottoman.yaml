@@ -23,6 +23,7 @@ attributes:
       - default: Polyester
         confidence: medium
         evidence: Safe fallback only when supplier fabric field is unavailable.
+        safe_default: true
 
   room_type:
     level: recommended
@@ -33,6 +34,7 @@ attributes:
       - default: Living Room
         confidence: medium
         evidence: Common ottoman placement; safe recommendation only.
+        safe_default: true
 
   included_components:
     level: recommended
@@ -43,3 +45,4 @@ attributes:
       - default: Ottoman
         confidence: high
         evidence: Listing unit includes the ottoman itself.
+        safe_default: true

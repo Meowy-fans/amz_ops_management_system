@@ -5,6 +5,51 @@ generated_from: amazon_product_type_schema
 presets:
 - amazon_universal_required_v1
 attributes:
+  department:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract department from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for department'
+  item_length_width_height:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for item_length_width_height'
+  shell_type:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract shell type from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for shell_type'
+  style:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract style from the product title, description, bullet points, and
+          supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for style'
   model_name:
     level: recommended
     shape: list_value

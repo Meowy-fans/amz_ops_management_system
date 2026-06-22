@@ -5,6 +5,159 @@ generated_from: amazon_product_type_schema
 presets:
 - amazon_universal_required_v1
 attributes:
+  age_range_description:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract age range description from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for age_range_description'
+  bike_type:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract bike type from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for bike_type'
+  brake_style:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract brake style from the product title, description, bullet points,
+          and supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for brake_style'
+  frame:
+    level: required
+    shape: value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract frame from the product title, description, bullet points, and
+          supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for frame'
+  import_designation:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract import designation from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for import_designation'
+  included_components:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Included Components
+    - llm:
+        hint: Extract included components from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for included_components'
+  number_of_speeds:
+    level: required
+    shape: list_value
+    transform: integer
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract number of speeds from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for number_of_speeds'
+  size:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract size from the product title, description, bullet points, and
+          supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for size'
+  special_feature:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: false
+    sources:
+    - path: product.attributes.Special Feature
+    - llm:
+        hint: Extract special feature from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for special_feature'
+  suspension_type:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract suspension type from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for suspension_type'
+  tire:
+    level: required
+    shape: value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract tire from the product title, description, bullet points, and
+          supplier characteristics. Return null if the information is not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for tire'
+  warranty_description:
+    level: required
+    shape: list_value
+    transform: text
+    manual_review: true
+    sources:
+    - llm:
+        hint: Extract warranty description from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for warranty_description'
   model_name:
     level: recommended
     shape: list_value
@@ -62,20 +215,6 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Number of Items
-  included_components:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Included Components
-  special_feature:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Special Feature
   is_assembly_required:
     level: recommended
     shape: list_value

@@ -1,6 +1,6 @@
 services:
   amz-listing-management-system:
-    image: amz-listing-management-system:2026-06-22-unified-attribute-pipeline
+    image: amz-listing-management-system:2026-06-22-safe-default-fallback
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
@@ -53,7 +53,7 @@ services:
       - "traefik.http.services.amz-listing.loadbalancer.server.port=8080"
 
   amz-order-sync-scheduler:
-    image: amz-listing-management-system:2026-06-22-unified-attribute-pipeline
+    image: amz-listing-management-system:2026-06-22-safe-default-fallback
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
@@ -92,7 +92,7 @@ services:
       - proxy
 
   amz-order-daily-report-scheduler:
-    image: amz-listing-management-system:2026-06-22-unified-attribute-pipeline
+    image: amz-listing-management-system:2026-06-22-safe-default-fallback
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
@@ -132,7 +132,7 @@ services:
       - proxy
 
   amz-price-inventory-scheduler:
-    image: amz-listing-management-system:2026-06-22-unified-attribute-pipeline
+    image: amz-listing-management-system:2026-06-22-safe-default-fallback
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile

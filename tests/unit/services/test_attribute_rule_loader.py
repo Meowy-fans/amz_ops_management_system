@@ -72,3 +72,28 @@ def test_loader_merges_presets_before_product_rules():
         {"path": "content.title"}
     ]
     assert rules["attributes"]["seat_depth"]["level"] == "recommended"
+
+
+def test_loader_can_read_named_preset_without_product_merge():
+    loader = AttributeRuleLoader(
+        preset_by_name={
+            "amazon_required_safe_defaults_v1": {
+                "attributes": {
+                    "number_of_items": {
+                        "sources": [
+                            {
+                                "default": 1,
+                                "confidence": "medium",
+                                "evidence": "Single item fallback.",
+                                "safe_default": True,
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    )
+
+    preset = loader.load_preset("amazon_required_safe_defaults_v1")
+
+    assert preset["attributes"]["number_of_items"]["sources"][0]["safe_default"] is True

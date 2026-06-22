@@ -24,6 +24,7 @@ class AttributeResolution:
     state: str = "unresolved"
     blocking: bool = False
     rule_version: str = ""
+    safe_default: bool = False
     warnings: List[str] = field(default_factory=list)
 
     def as_dict(self) -> Dict[str, Any]:
@@ -38,6 +39,7 @@ class AttributeResolution:
             "state": self.state,
             "blocking": self.blocking,
             "rule_version": self.rule_version,
+            "safe_default": self.safe_default,
             "warnings": self.warnings,
         }
 
@@ -75,7 +77,7 @@ class AttributeResolver:
         shape = rule.get("shape", "value")
         transform = rule.get("transform", "text")
         for source in rule.get("sources") or []:
-            raw_value, source_name, confidence, evidence = self._read_source(
+            raw_value, source_name, confidence, evidence, safe_default = self._read_source(
                 draft,
                 attribute,
                 source,
@@ -95,6 +97,7 @@ class AttributeResolver:
                     evidence=evidence,
                     confidence=confidence,
                     rule_version=version,
+                    safe_default=safe_default,
                 )
             )
         return self._finish(
@@ -112,24 +115,26 @@ class AttributeResolver:
         draft: AmazonListingDraft,
         attribute: str,
         source: Dict[str, Any],
-    ) -> tuple[Any, str, str, str]:
+    ) -> tuple[Any, str, str, str, bool]:
         if "default" in source:
             return (
                 source.get("default"),
                 "default",
                 source.get("confidence", "medium"),
                 source.get("evidence", ""),
+                bool(source.get("safe_default")),
             )
         if "llm" in source:
             return self._read_llm_source(draft, attribute, source)
         path = source.get("path")
         if not path:
-            return None, "", "low", ""
+            return None, "", "low", "", False
         return (
             self._path_value(draft, path),
             path,
             source.get("confidence", "high"),
             source.get("evidence", path),
+            False,
         )
 
     def _read_llm_source(
@@ -137,7 +142,7 @@ class AttributeResolver:
         draft: AmazonListingDraft,
         attribute: str,
         source: Dict[str, Any],
-    ) -> tuple[Any, str, str, str]:
+    ) -> tuple[Any, str, str, str, bool]:
         extractor = self.llm_extractor
         if extractor is None:
             try:
@@ -145,7 +150,7 @@ class AttributeResolver:
 
                 extractor = LLMAttributeExtractor()
             except Exception:
-                return None, "llm", "low", ""
+                return None, "llm", "low", "", False
         config = source.get("llm") or {}
         extraction = extractor.extract(
             draft,
@@ -158,6 +163,7 @@ class AttributeResolver:
             "llm",
             self._llm_confidence(getattr(extraction, "confidence", "medium")),
             getattr(extraction, "evidence", ""),
+            False,
         )
 
     def _path_value(self, draft: AmazonListingDraft, path: str) -> Any:

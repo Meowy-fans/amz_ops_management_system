@@ -30,6 +30,7 @@ attributes:
       - default: Generic
         confidence: medium
         evidence: Fallback brand for unbranded Giga products.
+        safe_default: true
 
   manufacturer:
     level: recommended
@@ -39,6 +40,7 @@ attributes:
       - default: Nova Home Essentials
         confidence: medium
         evidence: Existing production default manufacturer for Giga-sourced products.
+        safe_default: true
 
   target_audience_base:
     level: recommended
@@ -48,6 +50,7 @@ attributes:
       - default: Homeowners
         confidence: medium
         evidence: Default target audience for home and furniture products.
+        safe_default: true
 
   item_type_keyword:
     level: recommended
@@ -72,6 +75,7 @@ attributes:
       - default: CN
         confidence: medium
         evidence: Fallback country for Giga products when place_of_origin is missing.
+        safe_default: true
 
   supplier_declared_dg_hz_regulation:
     level: required
@@ -81,6 +85,7 @@ attributes:
       - default: not_applicable
         confidence: medium
         evidence: Default for non-hazardous goods; review per category for battery or hazmat risk.
+        safe_default: true
 
   externally_assigned_product_identifier:
     level: required
@@ -92,6 +97,7 @@ attributes:
           value: product_does_not_have_gtin
         confidence: medium
         evidence: Existing GTIN exemption behavior for listings without supplier product identifiers.
+        safe_default: true
 
   supplier_declared_has_product_identifier_exemption:
     level: required
@@ -101,3 +107,4 @@ attributes:
       - default: Yes
         confidence: medium
         evidence: Existing product identifier exemption declaration for GTIN-exempt listings.
+        safe_default: true

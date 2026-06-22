@@ -5,6 +5,39 @@ generated_from: amazon_product_type_schema
 presets:
 - amazon_universal_required_v1
 attributes:
+  is_assembly_required:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: false
+    sources:
+    - path: product.attributes.Assembly Required
+    - path: product.requires_assembly
+    - llm:
+        hint: Extract is assembly required from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
+    - default: null
+      confidence: low
+      evidence: 'TODO: review safe default for is_assembly_required'
+  item_width_height:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for item_width_height'
+  required_product_compliance_certificate:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for required_product_compliance_certificate'
   model_name:
     level: recommended
     shape: list_value
@@ -62,11 +95,3 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Number of Items
-  is_assembly_required:
-    level: recommended
-    shape: list_value
-    transform: enum
-    manual_review: false
-    sources:
-    - path: product.attributes.Assembly Required
-    - path: product.requires_assembly
