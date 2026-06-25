@@ -91,16 +91,13 @@ attributes:
       safe_default: true
   top:
     level: required
-    shape: value
-    transform: text
+    shape: object
+    transform: passthrough
     manual_review: true
     sources:
-    - llm:
-        hint: Extract top from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
     - default: null
       confidence: low
-      evidence: 'TODO: review safe default for top'
+      evidence: 'TODO: review source mapping for top'
   model_name:
     level: recommended
     shape: list_value

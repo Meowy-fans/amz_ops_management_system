@@ -44,16 +44,13 @@ attributes:
       evidence: 'TODO: review safe default for brake_style'
   frame:
     level: required
-    shape: value
-    transform: text
+    shape: object
+    transform: passthrough
     manual_review: true
     sources:
-    - llm:
-        hint: Extract frame from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
     - default: null
       confidence: low
-      evidence: 'TODO: review safe default for frame'
+      evidence: 'TODO: review source mapping for frame'
   import_designation:
     level: required
     shape: list_value
@@ -135,16 +132,13 @@ attributes:
       evidence: 'TODO: review safe default for suspension_type'
   tire:
     level: required
-    shape: value
-    transform: text
+    shape: object
+    transform: passthrough
     manual_review: true
     sources:
-    - llm:
-        hint: Extract tire from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
     - default: null
       confidence: low
-      evidence: 'TODO: review safe default for tire'
+      evidence: 'TODO: review source mapping for tire'
   warranty_description:
     level: required
     shape: list_value

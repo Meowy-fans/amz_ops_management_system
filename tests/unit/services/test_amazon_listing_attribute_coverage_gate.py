@@ -104,6 +104,55 @@ def test_coverage_gate_blocks_low_confidence_required_resolution():
     assert result.blocking_codes == ["LOW_CONFIDENCE_REQUIRED_ATTRIBUTE"]
 
 
+def test_coverage_gate_blocks_pending_required_llm_review():
+    gate = AmazonListingAttributeCoverageGate(
+        schema_service=FakeSchemaService(required=["included_components"])
+    )
+
+    result = gate.evaluate(
+        _plan(
+            attrs={"included_components": [{"value": "Chair"}]},
+            resolutions={
+                "included_components": {
+                    "state": "needs_manual_review",
+                    "level": "required",
+                    "confidence": "medium",
+                    "source": "llm",
+                    "review_status": "pending",
+                }
+            },
+        )
+    )
+
+    assert result.blocked is True
+    assert result.review_required == ["included_components"]
+    assert result.blocking_codes == ["NEEDS_REVIEW_REQUIRED_ATTRIBUTE"]
+
+
+def test_coverage_gate_allows_auto_approved_required_llm_review():
+    gate = AmazonListingAttributeCoverageGate(
+        schema_service=FakeSchemaService(required=["included_components"])
+    )
+
+    result = gate.evaluate(
+        _plan(
+            attrs={"included_components": [{"value": "Chair"}]},
+            resolutions={
+                "included_components": {
+                    "state": "auto_approved",
+                    "level": "required",
+                    "confidence": "medium",
+                    "source": "llm",
+                    "review_status": "auto_approved",
+                }
+            },
+        )
+    )
+
+    assert result.blocked is False
+    assert result.review_required == []
+
+
 def test_coverage_gate_allows_safe_evidenced_medium_confidence_default():
     gate = AmazonListingAttributeCoverageGate(
         schema_service=FakeSchemaService(required=["fabric_type"])

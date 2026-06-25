@@ -16,6 +16,7 @@ class AttributeCoverageResult:
     covered_required: List[str] = field(default_factory=list)
     missing_required: List[str] = field(default_factory=list)
     low_confidence_required: List[str] = field(default_factory=list)
+    review_required: List[str] = field(default_factory=list)
     defaulted_required: List[str] = field(default_factory=list)
     blocking_codes: List[str] = field(default_factory=list)
     warning_codes: List[str] = field(default_factory=list)
@@ -27,6 +28,7 @@ class AttributeCoverageResult:
             "covered_required": self.covered_required,
             "missing_required": self.missing_required,
             "low_confidence_required": self.low_confidence_required,
+            "review_required": self.review_required,
             "defaulted_required": self.defaulted_required,
             "blocking_codes": self.blocking_codes,
             "warning_codes": self.warning_codes,
@@ -80,7 +82,15 @@ class AmazonListingAttributeCoverageGate:
             if self._has_payload_value(attrs.get(name)):
                 result.covered_required.append(name)
                 resolution = self._resolution_dict(resolutions.get(name))
-                if self._is_low_confidence_required(resolution):
+                if self._is_review_pending_required(resolution):
+                    result.review_required.append(name)
+                    self._add_blocking(
+                        result,
+                        code="NEEDS_REVIEW_REQUIRED_ATTRIBUTE",
+                        attribute=name,
+                        message=f"Required attribute '{name}' needs review approval",
+                    )
+                elif self._is_low_confidence_required(resolution):
                     result.low_confidence_required.append(name)
                     self._add_blocking(
                         result,
@@ -166,6 +176,8 @@ class AmazonListingAttributeCoverageGate:
     def _is_low_confidence_required(resolution: Dict[str, Any]) -> bool:
         if not resolution:
             return False
+        if AmazonListingAttributeCoverageGate._review_completed(resolution):
+            return False
         return (
             resolution.get("level") == "required"
             and (
@@ -174,6 +186,27 @@ class AmazonListingAttributeCoverageGate:
                 or bool(resolution.get("blocking"))
             )
         )
+
+    @staticmethod
+    def _is_review_pending_required(resolution: Dict[str, Any]) -> bool:
+        if not resolution:
+            return False
+        if AmazonListingAttributeCoverageGate._review_completed(resolution):
+            return False
+        return (
+            resolution.get("level") == "required"
+            and resolution.get("source") == "llm"
+            and resolution.get("state") == "needs_manual_review"
+        )
+
+    @staticmethod
+    def _review_completed(resolution: Dict[str, Any]) -> bool:
+        status = str(resolution.get("review_status") or "").strip().lower()
+        state = str(resolution.get("state") or "").strip().lower()
+        return status in {"auto_approved", "completed", "approved"} or state in {
+            "auto_approved",
+            "review_completed",
+        }
 
     @staticmethod
     def _is_evidenced_default_required(resolution: Dict[str, Any]) -> bool:

@@ -285,10 +285,12 @@ class AmazonListingPayloadBuilder:
             from src.services.attribute_payload_renderer import AttributePayloadRenderer
             from src.services.attribute_resolver import AttributeResolver
             from src.services.attribute_rule_loader import AttributeRuleLoader
+            from src.services.confidence_scorer import ConfidenceScorer
 
             resolver = AttributeResolver(
                 rule_loader=AttributeRuleLoader(),
                 schema_service=self.schema_service,
+                confidence_scorer=ConfidenceScorer(schema_service=self.schema_service),
             )
             resolved = resolver.resolve(draft)
             rendered = AttributePayloadRenderer().render(resolved)

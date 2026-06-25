@@ -242,6 +242,44 @@ def test_dispatch_sync_confirmation_listing_issues_passes_dry_run(monkeypatch):
     assert calls == [(db, False)]
 
 
+def test_dispatch_review_pending_attributes_passes_category(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_review_pending_attributes",
+        lambda db, category=None: calls.append((db, category)),
+    )
+
+    db = object()
+    result = dispatch_task(db, "review-pending-attributes", category="CHAIR")
+
+    assert result is None
+    assert calls == [(db, "CHAIR")]
+
+
+def test_dispatch_submit_reviewed_plans_passes_flags(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_submit_reviewed_plans",
+        lambda db, category=None, dry_run=True, strict_validation=False: calls.append(
+            (db, category, dry_run, strict_validation)
+        ),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "submit-reviewed-plans",
+        category="CHAIR",
+        dry_run=False,
+        strict_validation=True,
+    )
+
+    assert result is None
+    assert calls == [(db, "CHAIR", False, True)]
+
+
 def test_dispatch_repair_listing_issues_passes_dry_run(monkeypatch):
     calls = []
     monkeypatch.setattr(

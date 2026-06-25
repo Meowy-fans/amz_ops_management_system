@@ -113,7 +113,7 @@ attributes:
     - path: product.attributes.material
   color:
     level: recommended
-    shape: value
+    shape: list_value
     transform: text
     manual_review: false
     sources:

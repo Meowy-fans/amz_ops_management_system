@@ -7,16 +7,13 @@ presets:
 attributes:
   frame:
     level: required
-    shape: value
-    transform: text
+    shape: object
+    transform: passthrough
     manual_review: true
     sources:
-    - llm:
-        hint: Extract frame from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
     - default: null
       confidence: low
-      evidence: 'TODO: review safe default for frame'
+      evidence: 'TODO: review source mapping for frame'
   included_components:
     level: required
     shape: list_value
@@ -110,16 +107,13 @@ attributes:
       safe_default: true
   seat:
     level: required
-    shape: value
-    transform: text
+    shape: object
+    transform: passthrough
     manual_review: true
     sources:
-    - llm:
-        hint: Extract seat from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
     - default: null
       confidence: low
-      evidence: 'TODO: review safe default for seat'
+      evidence: 'TODO: review source mapping for seat'
   model_name:
     level: recommended
     shape: list_value

@@ -1,0 +1,18 @@
+enabled: true
+enabled_product_types:
+  - CHAIR
+
+thresholds:
+  auto_approved: 55
+  ai_agent: 35
+
+weights:
+  evidence_context_match: 45
+  evidence_min_length: 10
+  enum_valid: 15
+  llm_confidence_not_low: 10
+  history_accuracy: 20
+
+evidence_min_length: 20
+history_min_samples: 10
+ai_agent_enabled: true

@@ -62,11 +62,33 @@ class FakeAuditRepo:
 
 class FakeService:
     def __init__(self):
+        self.db = object()
         self.product_listing_repo = FakeProductListingRepo()
         self.listing_log_repo = FakeListingLogRepo()
         self._variation_resolver_instance = FakeVariationResolver()
         self._variation_hierarchy_probe_instance = FakeProbe()
         self._variation_resolution_repo_instance = FakeAuditRepo()
+
+
+class FakeReviewManager:
+    def __init__(self):
+        self.plans = []
+
+    def persist_pending_plan(self, plan):
+        self.plans.append(plan)
+        return 33
+
+
+class FakeCoverageResult:
+    blocked = True
+    review_required = ["included_components"]
+    blocking_codes = ["NEEDS_REVIEW_REQUIRED_ATTRIBUTE"]
+    warning_codes = []
+    findings = [{"code": "NEEDS_REVIEW_REQUIRED_ATTRIBUTE"}]
+    missing_required = []
+    low_confidence_required = []
+    defaulted_required = []
+    covered_required = ["included_components"]
 
 
 def test_append_child_blocks_when_online_hierarchy_has_duplicate_signature():
@@ -89,3 +111,17 @@ def test_append_child_blocks_when_online_hierarchy_has_duplicate_signature():
         service._variation_resolution_repo_instance.updates[0]["decision"]
         == "blocked"
     )
+
+
+def test_review_only_attribute_coverage_block_is_persisted_as_needs_review():
+    service = FakeService()
+    service._review_manager_instance = FakeReviewManager()
+    builder = ProductListingAPIPlanBuilder(service)
+    plan = {"sku": "SKU1", "product_type": "CHAIR"}
+
+    result = builder._coverage_result("SKU1", plan, FakeCoverageResult())
+
+    assert result["status"] == "needs_review"
+    assert result["review_id"] == 33
+    assert result["review_required"] == ["included_components"]
+    assert service._review_manager_instance.plans == [plan]

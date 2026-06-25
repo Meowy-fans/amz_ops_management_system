@@ -8,6 +8,19 @@ from dashscope.api_entities.dashscope_response import GenerationResponse
 from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
+_JSON_ERROR_PREVIEW_LIMIT = 1000
+
+
+def _json_error_preview(content: Any) -> str:
+    text = str(content or "")
+    if len(text) <= _JSON_ERROR_PREVIEW_LIMIT:
+        return text
+    return f"{text[:_JSON_ERROR_PREVIEW_LIMIT]}...[truncated]"
+
+
+def _contains_json_instruction(messages: list[Dict[str, str]]) -> bool:
+    return any("json" in str(message.get("content") or "").lower() for message in messages)
+
 
 class QwenAPIClient:
     """千问API客户端"""
@@ -33,14 +46,26 @@ class QwenAPIClient:
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_prompt}
         ]
+        if json_mode and not _contains_json_instruction(messages):
+            messages.insert(
+                0,
+                {
+                    "role": "system",
+                    "content": "Return valid JSON only. The output must be a JSON object.",
+                },
+            )
+        content = ""
+        request_kwargs = {
+            "model": model,
+            "messages": messages,
+            "result_format": "message",
+            "temperature": temperature,
+        }
+        if json_mode:
+            request_kwargs["response_format"] = {"type": "json_object"}
         
         try:
-            response: GenerationResponse = dashscope.Generation.call(
-                model=model,
-                messages=messages,
-                result_format='message',
-                temperature=temperature,
-            )
+            response: GenerationResponse = dashscope.Generation.call(**request_kwargs)
             
             if response.status_code == HTTPStatus.OK:
                 content = response.output.choices[0]['message']['content']
@@ -60,9 +85,12 @@ class QwenAPIClient:
                 raise ValueError(f"API错误: {response.code} - {response.message}")
                 
         except json.JSONDecodeError as e:
-            # content variable might not be defined if error happens before assignment
-            # but standard logic suggests it happens in json.loads
-            logger.error(f"JSON解析失败")
+            logger.error(
+                "JSON解析失败 | provider=qwen model=%s content_len=%s content_preview=%r",
+                model,
+                len(str(content or "")),
+                _json_error_preview(content),
+            )
             raise ValueError(f"无效JSON响应: {e}")
         except Exception as e:
             logger.error(f"千问API错误: {e}")

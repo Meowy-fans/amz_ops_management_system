@@ -1,5 +1,6 @@
 """Amazon Product Type Schema Service — cache, validate, inspect."""
 
+import copy
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -162,12 +163,52 @@ class AmazonSchemaService:
 
     @classmethod
     def _merged_properties(cls, schema: Dict[str, Any]) -> Dict[str, Any]:
-        props = dict(schema.get("properties", {}) or {})
+        props = copy.deepcopy(schema.get("properties", {}) or {})
         for part in schema.get("allOf", []) or []:
-            props.update(part.get("properties", {}) or {})
+            cls._merge_property_layer(props, part.get("properties", {}) or {})
             for key in ("then", "else"):
-                props.update((part.get(key) or {}).get("properties", {}) or {})
+                cls._merge_property_layer(
+                    props,
+                    (part.get(key) or {}).get("properties", {}) or {},
+                )
         return props
+
+    @classmethod
+    def _merge_property_layer(
+        cls,
+        props: Dict[str, Any],
+        layer: Dict[str, Any],
+    ) -> None:
+        for name, definition in (layer or {}).items():
+            if (
+                name in props
+                and isinstance(props[name], dict)
+                and isinstance(definition, dict)
+            ):
+                props[name] = cls._deep_merge_schema_node(props[name], definition)
+            else:
+                props[name] = copy.deepcopy(definition)
+
+    @classmethod
+    def _deep_merge_schema_node(cls, base: Any, overlay: Any) -> Any:
+        if not isinstance(base, dict) or not isinstance(overlay, dict):
+            return copy.deepcopy(overlay)
+
+        merged = copy.deepcopy(base)
+        for key, value in overlay.items():
+            if key not in merged:
+                merged[key] = copy.deepcopy(value)
+                continue
+            if key == "required" and isinstance(merged[key], list) and isinstance(value, list):
+                merged[key] = list(dict.fromkeys([*merged[key], *value]))
+                continue
+            if isinstance(merged[key], dict) and isinstance(value, dict):
+                merged[key] = cls._deep_merge_schema_node(merged[key], value)
+                continue
+            if isinstance(merged[key], dict) and not isinstance(value, dict):
+                continue
+            merged[key] = copy.deepcopy(value)
+        return merged
 
     @classmethod
     def _collect_direct_required_property_names(

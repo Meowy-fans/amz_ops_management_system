@@ -101,7 +101,7 @@ def test_deepseek_client_rejects_empty_content(monkeypatch):
         client.generate("system", "user", "deepseek-chat")
 
 
-def test_deepseek_client_wraps_invalid_json_content(monkeypatch):
+def test_deepseek_client_wraps_invalid_json_content(monkeypatch, caplog):
     monkeypatch.setattr(
         "infrastructure.llm.clients.deepseek_client.settings.DEEPSEEK_API_KEY",
         "deepseek-key",
@@ -112,9 +112,13 @@ def test_deepseek_client_wraps_invalid_json_content(monkeypatch):
 
     monkeypatch.setattr("infrastructure.llm.clients.deepseek_client.requests.post", fake_post)
     client = DeepSeekAPIClient()
+    caplog.set_level("ERROR")
 
     with pytest.raises(ValueError, match="无效JSON响应"):
         client.generate("system", "user", "deepseek-chat", json_mode=True)
+    assert "provider=deepseek" in caplog.text
+    assert "content_len=9" in caplog.text
+    assert "{bad-json" in caplog.text
 
 
 def test_deepseek_client_reraises_request_errors(monkeypatch):
@@ -184,8 +188,10 @@ def test_qwen_client_generate_json_response(monkeypatch):
         "infrastructure.llm.clients.qwen_client.settings.DASHSCOPE_API_KEY",
         "dashscope-key",
     )
+    call_args = []
 
     def fake_call(**kwargs):
+        call_args.append(kwargs)
         return SimpleNamespace(
             status_code=HTTPStatus.OK,
             output=SimpleNamespace(
@@ -203,6 +209,43 @@ def test_qwen_client_generate_json_response(monkeypatch):
         "content": {"title": "Cabinet"},
         "usage": {},
     }
+    assert call_args[0]["response_format"] == {"type": "json_object"}
+    assert call_args[0]["result_format"] == "message"
+    assert call_args[0]["messages"][0] == {
+        "role": "system",
+        "content": "Return valid JSON only. The output must be a JSON object.",
+    }
+
+
+def test_qwen_client_json_mode_does_not_duplicate_existing_json_instruction(monkeypatch):
+    monkeypatch.setattr(
+        "infrastructure.llm.clients.qwen_client.settings.DASHSCOPE_API_KEY",
+        "dashscope-key",
+    )
+    call_args = []
+
+    def fake_call(**kwargs):
+        call_args.append(kwargs)
+        return SimpleNamespace(
+            status_code=HTTPStatus.OK,
+            output=SimpleNamespace(
+                choices=[{"message": {"content": '{"title": "Cabinet"}'}}]
+            ),
+        )
+
+    monkeypatch.setattr(
+        "infrastructure.llm.clients.qwen_client.dashscope.Generation.call",
+        fake_call,
+    )
+    client = QwenAPIClient()
+
+    client.generate("Return JSON only.", "user", "qwen-plus", json_mode=True)
+
+    assert call_args[0]["response_format"] == {"type": "json_object"}
+    assert call_args[0]["messages"] == [
+        {"role": "system", "content": "Return JSON only."},
+        {"role": "user", "content": "user"},
+    ]
 
 
 def test_qwen_client_raises_for_non_ok_response(monkeypatch):
@@ -228,7 +271,7 @@ def test_qwen_client_raises_for_non_ok_response(monkeypatch):
         client.generate("system", "user", "qwen-plus")
 
 
-def test_qwen_client_wraps_invalid_json_content(monkeypatch):
+def test_qwen_client_wraps_invalid_json_content(monkeypatch, caplog):
     monkeypatch.setattr(
         "infrastructure.llm.clients.qwen_client.settings.DASHSCOPE_API_KEY",
         "dashscope-key",
@@ -245,9 +288,13 @@ def test_qwen_client_wraps_invalid_json_content(monkeypatch):
         fake_call,
     )
     client = QwenAPIClient()
+    caplog.set_level("ERROR")
 
     with pytest.raises(ValueError, match="无效JSON响应"):
         client.generate("system", "user", "qwen-plus", json_mode=True)
+    assert "provider=qwen" in caplog.text
+    assert "content_len=9" in caplog.text
+    assert "{bad-json" in caplog.text
 
 
 def test_qwen_client_reraises_generation_errors(monkeypatch):

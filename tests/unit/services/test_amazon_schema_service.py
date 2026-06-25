@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from src.services.attribute_rule_generator import AttributeRuleGenerator
 from src.services.amazon_schema_service import AmazonSchemaService
 
 
@@ -134,6 +135,160 @@ def test_get_property_names_merges_root_allof_and_conditional_properties(monkeyp
         "item_name",
         "brand",
         "model_name",
+    ]
+
+
+def test_merged_properties_preserves_base_properties_when_conditional_is_partial():
+    schema = {
+        "properties": {
+            "frame": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": [],
+                    "properties": {
+                        "color": {"type": "array"},
+                        "material": {"type": "array"},
+                    },
+                },
+            }
+        },
+        "allOf": [
+            {
+                "then": {
+                    "required": ["frame"],
+                    "properties": {
+                        "frame": {"items": {"required": ["color"]}},
+                    },
+                }
+            }
+        ],
+    }
+
+    merged = AmazonSchemaService._merged_properties(schema)
+
+    assert merged["frame"]["type"] == "array"
+    assert merged["frame"]["items"]["type"] == "object"
+    assert merged["frame"]["items"]["required"] == ["color"]
+    assert set(merged["frame"]["items"]["properties"]) == {"color", "material"}
+
+
+def test_merged_properties_frame_resolves_to_object_after_deep_merge():
+    schema = {
+        "properties": {
+            "frame": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": [],
+                    "properties": {
+                        "color": {"type": "array"},
+                        "material": {"type": "array"},
+                    },
+                },
+            }
+        },
+        "allOf": [
+            {
+                "then": {
+                    "properties": {
+                        "frame": {"items": {"required": ["color"]}},
+                    }
+                }
+            }
+        ],
+    }
+
+    merged = AmazonSchemaService._merged_properties(schema)
+    generator = AttributeRuleGenerator.__new__(AttributeRuleGenerator)
+
+    assert generator._shape(merged["frame"]) == "object"
+
+
+def test_merged_properties_measure_shape_is_unaffected_by_unrelated_condition():
+    schema = {
+        "properties": {
+            "maximum_weight_recommendation": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["unit", "value"],
+                    "properties": {
+                        "unit": {"enum": ["pounds", "kilograms"]},
+                        "value": {"type": "number"},
+                    },
+                },
+            }
+        },
+        "allOf": [
+            {"then": {"properties": {"other_attribute": {"title": "Other"}}}}
+        ],
+    }
+
+    merged = AmazonSchemaService._merged_properties(schema)
+    generator = AttributeRuleGenerator.__new__(AttributeRuleGenerator)
+
+    assert generator._shape(merged["maximum_weight_recommendation"]) == "measure"
+
+
+def test_merged_properties_required_lists_are_union_without_duplicates():
+    schema = {
+        "properties": {
+            "seat": {
+                "items": {
+                    "required": ["depth"],
+                    "properties": {"depth": {"type": "array"}},
+                }
+            }
+        },
+        "allOf": [
+            {
+                "then": {
+                    "properties": {
+                        "seat": {"items": {"required": ["depth", "height"]}},
+                    }
+                }
+            }
+        ],
+    }
+
+    merged = AmazonSchemaService._merged_properties(schema)
+
+    assert merged["seat"]["items"]["required"] == ["depth", "height"]
+
+
+def test_merged_properties_does_not_union_enum_lists():
+    schema = {
+        "properties": {
+            "item_shape": {
+                "items": {
+                    "properties": {
+                        "value": {"enum": ["Square", "Round"]},
+                    }
+                }
+            }
+        },
+        "allOf": [
+            {
+                "then": {
+                    "properties": {
+                        "item_shape": {
+                            "items": {
+                                "properties": {
+                                    "value": {"enum": ["Rectangular"]},
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ],
+    }
+
+    merged = AmazonSchemaService._merged_properties(schema)
+
+    assert merged["item_shape"]["items"]["properties"]["value"]["enum"] == [
+        "Rectangular"
     ]
 
 

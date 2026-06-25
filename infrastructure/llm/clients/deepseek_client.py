@@ -6,6 +6,15 @@ from typing import Dict, Any
 from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
+_JSON_ERROR_PREVIEW_LIMIT = 1000
+
+
+def _json_error_preview(content: Any) -> str:
+    text = str(content or "")
+    if len(text) <= _JSON_ERROR_PREVIEW_LIMIT:
+        return text
+    return f"{text[:_JSON_ERROR_PREVIEW_LIMIT]}...[truncated]"
+
 
 class DeepSeekAPIClient:
     """DeepSeek API客户端"""
@@ -43,6 +52,7 @@ class DeepSeekAPIClient:
             "temperature": temperature,
             "response_format": {"type": "json_object"} if json_mode else {"type": "text"}
         }
+        content_str = ""
         
         try:
             response = requests.post(
@@ -74,7 +84,12 @@ class DeepSeekAPIClient:
                 }
                 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON解析失败: {content_str[:200]}")
+            logger.error(
+                "JSON解析失败 | provider=deepseek model=%s content_len=%s content_preview=%r",
+                model,
+                len(str(content_str or "")),
+                _json_error_preview(content_str),
+            )
             raise ValueError(f"无效JSON响应: {e}")
         except requests.exceptions.RequestException as e:
             logger.error(f"API请求失败: {e}")

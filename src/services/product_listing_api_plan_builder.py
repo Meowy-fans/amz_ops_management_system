@@ -8,6 +8,7 @@ from src.services.product_listing_scope import (
     ListingScope,
     ProductListingScopeFilter,
 )
+from src.services.attribute_review_plan_router import AttributeReviewPlanRouter
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,7 @@ class ProductListingAPIPlanBuilder:
                 plan = payload_builder.build_plan(draft)
                 coverage_result = self._evaluate_attribute_coverage(plan)
                 if coverage_result.blocked:
-                    pre_submit_results.append(
-                        self._attribute_coverage_block_result(sku, coverage_result)
-                    )
+                    pre_submit_results.append(self._coverage_result(sku, plan, coverage_result))
                     continue
                 variation_logs.append({
                     "meow_sku": sku,
@@ -119,9 +118,7 @@ class ProductListingAPIPlanBuilder:
             plan = payload_builder.build_plan(draft)
             coverage_result = self._evaluate_attribute_coverage(plan)
             if coverage_result.blocked:
-                pre_submit_results.append(
-                    self._attribute_coverage_block_result(sku, coverage_result)
-                )
+                pre_submit_results.append(self._coverage_result(sku, plan, coverage_result))
                 continue
             plans.append(plan)
 
@@ -212,7 +209,7 @@ class ProductListingAPIPlanBuilder:
             parent_blocked = parent_coverage.blocked
             if parent_blocked:
                 pre_submit_results.append(
-                    self._attribute_coverage_block_result(parent_sku, parent_coverage)
+                    self._coverage_result(parent_sku, parent_plan, parent_coverage)
                 )
             else:
                 plans.append(parent_plan)
@@ -269,7 +266,7 @@ class ProductListingAPIPlanBuilder:
                 child_coverage = self._evaluate_attribute_coverage(child_plan)
                 if child_coverage.blocked:
                     pre_submit_results.append(
-                        self._attribute_coverage_block_result(child_sku, child_coverage)
+                        self._coverage_result(child_sku, child_plan, child_coverage)
                     )
                     continue
                 plans.append(child_plan)
@@ -459,6 +456,14 @@ class ProductListingAPIPlanBuilder:
             "covered_required": result.covered_required,
             "attribute_coverage_findings": result.findings,
         }
+
+    def _coverage_result(self, sku: str, plan: Dict[str, Any], result) -> Dict[str, Any]:
+        return AttributeReviewPlanRouter(self.service).route(
+            sku,
+            plan,
+            result,
+            self._attribute_coverage_block_result,
+        )
 
     def _apply_approved_images(self, draft) -> None:
         try:

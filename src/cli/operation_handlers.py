@@ -344,6 +344,66 @@ def handle_confirm_listing_issue_repairs(db: Session):
         raise
 
 
+def handle_review_pending_attributes(
+    db: Session,
+    category: Optional[str] = None,
+):
+    """Review pending required LLM attributes."""
+    from src.services.review_manager import ReviewManager
+
+    print("\n" + "=" * 70)
+    print("Amazon Listing Pending Attribute Review")
+    print("=" * 70)
+    if not category:
+        print("缺少 --category；请指定需要审核的 Amazon product type。")
+        return {"success": False, "message": "category_required"}
+
+    limit = int(os.getenv("ATTRIBUTE_REVIEW_LIMIT", "50"))
+    result = ReviewManager(db=db).review_pending_attributes(
+        category=category,
+        limit=limit,
+    )
+    print(
+        f"Reviewed rows={result['rows']} reviewed={result['reviewed']} "
+        f"completed={result['completed']} human_required={result['human_required']}"
+    )
+    return {"success": True, **result}
+
+
+def handle_submit_reviewed_plans(
+    db: Session,
+    category: Optional[str] = None,
+    dry_run: bool = True,
+    strict_validation: bool = False,
+):
+    """Submit completed pending-review listing plans."""
+    from src.services.review_manager import ReviewManager
+
+    print("\n" + "=" * 70)
+    mode_label = (
+        "STRICT DRY RUN (Amazon VALIDATION_PREVIEW)"
+        if strict_validation
+        else "DRY RUN" if dry_run else "LIVE"
+    )
+    print(f"Amazon Listing Reviewed Plan Submission - {mode_label}")
+    print("=" * 70)
+    if not category:
+        print("缺少 --category；请指定需要提交的 Amazon product type。")
+        return {"success": False, "message": "category_required", "results": []}
+
+    limit = int(os.getenv("ATTRIBUTE_REVIEW_SUBMIT_LIMIT", "50"))
+    results = ReviewManager(db=db).submit_reviewed_plans(
+        category=category,
+        dry_run=dry_run,
+        validation_only=strict_validation,
+        limit=limit,
+    )
+    print(f"Submitted reviewed plans: {len(results)}")
+    for item in results[:5]:
+        print(f"  {item.get('sku')}: {item.get('status')}")
+    return {"success": True, "results": results}
+
+
 def handle_discover_product_type(db: Session, keywords: Optional[str] = None):
     """6.1 通过 Amazon Product Type Definitions API 搜索品类"""
     print("\n" + "=" * 70)

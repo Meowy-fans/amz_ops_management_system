@@ -204,7 +204,7 @@ def test_resolver_uses_llm_source_before_default_with_medium_confidence_cap():
     assert extractor.calls[0][1] == "room_type"
 
 
-def test_required_llm_resolution_is_blocking_for_manual_review():
+def test_required_llm_resolution_needs_review_without_hard_blocking():
     rules = {
         "product_type": "HOME_MIRROR",
         "attributes": {
@@ -238,7 +238,44 @@ def test_required_llm_resolution_is_blocking_for_manual_review():
     assert result.source == "llm"
     assert result.confidence == "medium"
     assert result.state == "needs_manual_review"
-    assert result.blocking is True
+    assert result.review_status == "pending"
+    assert result.review_route == "human"
+    assert result.blocking is False
+
+
+def test_required_llm_resolution_can_be_auto_approved_by_confidence_scorer():
+    rules = {
+        "product_type": "CHAIR",
+        "attributes": {
+            "included_components": {
+                "level": "required",
+                "shape": "list_value",
+                "sources": [{"llm": {"hint": "Extract included components"}}],
+                "transform": "text",
+            }
+        },
+    }
+    extractor = FakeLLMExtractor(
+        LLMAttributeExtraction(
+            value="Chair",
+            evidence="Cabinet with drawer storage",
+            confidence="medium",
+        )
+    )
+    resolver = AttributeResolver(
+        rule_loader=AttributeRuleLoader(config_by_type={"CHAIR": rules}),
+        llm_extractor=extractor,
+    )
+    draft = _draft()
+    draft.product_type = "CHAIR"
+
+    result = resolver.resolve(draft)["included_components"]
+
+    assert result.state == "auto_approved"
+    assert result.review_status == "auto_approved"
+    assert result.review_route == "auto_approved"
+    assert result.confidence_score == 65
+    assert result.blocking is False
 
 
 def test_required_llm_null_falls_through_to_safe_default():
@@ -279,6 +316,41 @@ def test_required_llm_null_falls_through_to_safe_default():
     assert result.blocking is False
     assert result.safe_default is True
     assert result.as_dict()["safe_default"] is True
+
+
+def test_resolver_override_skips_source_chain_and_keeps_review_completed():
+    rules = {
+        "product_type": "CHAIR",
+        "attributes": {
+            "included_components": {
+                "level": "required",
+                "shape": "list_value",
+                "sources": [{"llm": {"hint": "Extract included components"}}],
+                "transform": "text",
+            }
+        },
+    }
+    extractor = FakeLLMExtractor(
+        LLMAttributeExtraction(value="ShouldNotBeUsed", evidence="x", confidence="medium")
+    )
+    resolver = AttributeResolver(
+        rule_loader=AttributeRuleLoader(config_by_type={"CHAIR": rules}),
+        llm_extractor=extractor,
+    )
+    draft = _draft()
+    draft.product_type = "CHAIR"
+
+    result = resolver.resolve(
+        draft,
+        overrides={"included_components": {"value": "Chair", "evidence": "Reviewed"}},
+    )["included_components"]
+
+    assert result.value == "Chair"
+    assert result.source == "review_override"
+    assert result.state == "review_completed"
+    assert result.review_status == "completed"
+    assert result.blocking is False
+    assert extractor.calls == []
 
 
 def test_resolver_supports_boolean_and_passthrough_transforms():

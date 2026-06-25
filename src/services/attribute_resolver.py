@@ -25,6 +25,10 @@ class AttributeResolution:
     blocking: bool = False
     rule_version: str = ""
     safe_default: bool = False
+    review_status: str = ""
+    review_route: str = ""
+    confidence_score: int | None = None
+    review_context: str = ""
     warnings: List[str] = field(default_factory=list)
 
     def as_dict(self) -> Dict[str, Any]:
@@ -40,6 +44,10 @@ class AttributeResolution:
             "blocking": self.blocking,
             "rule_version": self.rule_version,
             "safe_default": self.safe_default,
+            "review_status": self.review_status,
+            "review_route": self.review_route,
+            "confidence_score": self.confidence_score,
+            "review_context": self.review_context,
             "warnings": self.warnings,
         }
 
@@ -52,19 +60,62 @@ class AttributeResolver:
         rule_loader: AttributeRuleLoader | None = None,
         schema_service: Any = None,
         llm_extractor: Any = None,
+        confidence_scorer: Any = None,
     ):
         self.rule_loader = rule_loader or AttributeRuleLoader()
         self.schema_service = schema_service
         self.llm_extractor = llm_extractor
+        self.confidence_scorer = confidence_scorer
 
-    def resolve(self, draft: AmazonListingDraft) -> Dict[str, AttributeResolution]:
+    def resolve(
+        self,
+        draft: AmazonListingDraft,
+        overrides: Dict[str, Any] | None = None,
+    ) -> Dict[str, AttributeResolution]:
         rules = self.rule_loader.load(draft.product_type)
         version = rules.get("version", "attribute_rules_unknown")
         resolved: Dict[str, AttributeResolution] = {}
+        normalized_overrides = overrides or {}
         for attribute, rule in (rules.get("attributes") or {}).items():
-            result = self._resolve_one(draft, attribute, rule, version)
+            if attribute in normalized_overrides:
+                result = self._override_resolution(
+                    attribute,
+                    normalized_overrides[attribute],
+                    rule,
+                    version,
+                )
+            else:
+                result = self._resolve_one(draft, attribute, rule, version)
+                result = self._apply_review_policy(draft, result)
             resolved[attribute] = result
         return resolved
+
+    def _override_resolution(
+        self,
+        attribute: str,
+        override: Any,
+        rule: Dict[str, Any],
+        version: str,
+    ) -> AttributeResolution:
+        metadata = override if isinstance(override, dict) else {"value": override}
+        value = metadata.get("value")
+        return AttributeResolution(
+            attribute=attribute,
+            value=value,
+            level=rule.get("level", "optional"),
+            shape=rule.get("shape", "value"),
+            source=metadata.get("source", "review_override"),
+            evidence=metadata.get("evidence", "Reviewed attribute override"),
+            confidence=metadata.get("confidence", "high"),
+            state=metadata.get("state", "review_completed"),
+            blocking=False,
+            rule_version=version,
+            safe_default=bool(metadata.get("safe_default", False)),
+            review_status=metadata.get("review_status", "completed"),
+            review_route=metadata.get("review_route", "human"),
+            confidence_score=metadata.get("confidence_score"),
+            review_context=metadata.get("review_context", ""),
+        )
 
     def _resolve_one(
         self,
@@ -165,6 +216,45 @@ class AttributeResolver:
             getattr(extraction, "evidence", ""),
             False,
         )
+
+    def _apply_review_policy(
+        self,
+        draft: AmazonListingDraft,
+        result: AttributeResolution,
+    ) -> AttributeResolution:
+        if (
+            result.source != "llm"
+            or result.level != "required"
+            or result.value in (None, "")
+            or result.confidence == "low"
+        ):
+            return result
+        scorer = self.confidence_scorer
+        if scorer is None:
+            try:
+                from src.services.confidence_scorer import ConfidenceScorer
+
+                scorer = ConfidenceScorer(schema_service=self.schema_service)
+                self.confidence_scorer = scorer
+            except Exception:
+                return result
+        score = scorer.score(result, draft)
+        result.confidence_score = score.score
+        result.review_route = score.route
+        try:
+            result.review_context = scorer.context_text(draft, result.attribute)
+        except Exception:
+            result.review_context = ""
+        if score.route == "auto_approved":
+            result.state = "auto_approved"
+            result.review_status = "auto_approved"
+            result.blocking = False
+        else:
+            result.state = "needs_manual_review"
+            result.review_status = "pending"
+            result.blocking = False
+        result.warnings.extend(score.reasons)
+        return result
 
     def _path_value(self, draft: AmazonListingDraft, path: str) -> Any:
         parts = path.split(".")
@@ -276,7 +366,8 @@ class AttributeResolver:
             return result
         if result.source == "llm" and result.level == "required":
             result.state = "needs_manual_review"
-            result.blocking = True
+            result.review_status = "pending"
+            result.blocking = False
             return result
         if result.source == "default":
             result.state = "resolved_with_default"

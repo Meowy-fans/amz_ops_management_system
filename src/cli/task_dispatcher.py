@@ -28,7 +28,9 @@ from src.cli.operation_handlers import (
     handle_profit_analysis,
     handle_probe_variation_hierarchy,
     handle_repair_listing_issues,
+    handle_review_pending_attributes,
     handle_suggest_category_mappings,
+    handle_submit_reviewed_plans,
     handle_sync_amazon_report_api,
     handle_sync_confirmation_listing_issues,
     handle_sku_sync_from_csv,
@@ -151,6 +153,16 @@ TASK_HANDLERS = {
     ),
     "confirm-listing-issue-repairs": lambda db, **kwargs: (
         handle_confirm_listing_issue_repairs(db)
+    ),
+    "review-pending-attributes": lambda db, **kwargs: handle_review_pending_attributes(
+        db,
+        category=kwargs.get("category"),
+    ),
+    "submit-reviewed-plans": lambda db, **kwargs: handle_submit_reviewed_plans(
+        db,
+        category=kwargs.get("category"),
+        dry_run=kwargs.get("dry_run", True),
+        strict_validation=kwargs.get("strict_validation", False),
     ),
     "update-package-dimensions": lambda db, **kwargs: handle_update_package_dimensions(
         db, dry_run=kwargs.get("dry_run", True)
