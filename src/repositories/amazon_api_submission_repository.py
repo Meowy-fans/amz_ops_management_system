@@ -159,3 +159,35 @@ class AmazonAPISubmissionRepository:
         """)
         rows = self.db.execute(query, {"product_type": product_type}).mappings()
         return [str(row["attribute_name"]) for row in rows]
+
+    def list_submissions_with_issue_code(
+        self,
+        product_type: str,
+        issue_code: str,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Return submissions whose response_body contains an issue with the given code."""
+        query = text("""
+            SELECT id, sku, product_type, response_body, submitted_at
+            FROM amazon_api_submissions
+            WHERE product_type = :product_type
+              AND operation = 'create'
+              AND response_body IS NOT NULL
+              AND response_body ? 'issues'
+              AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements(response_body->'issues') AS issue
+                  WHERE issue->>'code' = :issue_code
+              )
+            ORDER BY submitted_at DESC
+            LIMIT :limit
+        """)
+        rows = self.db.execute(
+            query,
+            {
+                "product_type": product_type,
+                "issue_code": issue_code,
+                "limit": int(limit),
+            },
+        ).mappings()
+        return [dict(row) for row in rows]

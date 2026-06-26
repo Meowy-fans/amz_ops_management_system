@@ -16,6 +16,9 @@ from src.cli.operation_handlers import (
     handle_daily_check,
     handle_sync_amazon_orders,
     handle_amazon_order_daily_report,
+    handle_analyze_listing_requirements_v2,
+    handle_validate_listing_v2,
+    handle_learn_required_from_submissions,
     handle_test_feishu_alert,
     handle_discover_product_type,
     handle_generate_details,
@@ -157,12 +160,14 @@ TASK_HANDLERS = {
     "review-pending-attributes": lambda db, **kwargs: handle_review_pending_attributes(
         db,
         category=kwargs.get("category"),
+        engine=kwargs.get("engine", "v1"),
     ),
     "submit-reviewed-plans": lambda db, **kwargs: handle_submit_reviewed_plans(
         db,
         category=kwargs.get("category"),
         dry_run=kwargs.get("dry_run", True),
         strict_validation=kwargs.get("strict_validation", False),
+        engine=kwargs.get("engine", "v1"),
     ),
     "update-package-dimensions": lambda db, **kwargs: handle_update_package_dimensions(
         db, dry_run=kwargs.get("dry_run", True)
@@ -184,6 +189,26 @@ TASK_HANDLERS = {
     "generate-attribute-rules": lambda db, **kwargs: handle_generate_attribute_rules(
         db,
         product_type=kwargs.get("product_type") or kwargs.get("category"),
+    ),
+    "analyze-listing-requirements-v2": lambda db, **kwargs: (
+        handle_analyze_listing_requirements_v2(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+            sku_list=kwargs.get("sku_list"),
+        )
+    ),
+    "validate-listing-v2": lambda db, **kwargs: (
+        handle_validate_listing_v2(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+            sku_list=kwargs.get("sku_list"),
+        )
+    ),
+    "learn-required-from-submissions": lambda db, **kwargs: (
+        handle_learn_required_from_submissions(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+        )
     ),
     "probe-variation-hierarchy": lambda db, **kwargs: handle_probe_variation_hierarchy(
         db,
@@ -225,6 +250,7 @@ def dispatch_task(
     category_code: Optional[str] = None,
     all_unmapped: bool = False,
     product_type: Optional[str] = None,
+    engine: str = "v1",
 ):
     """Dispatch a task while preserving existing task behavior."""
     t = task.strip().lower()
@@ -245,4 +271,5 @@ def dispatch_task(
         category_code=category_code,
         all_unmapped=all_unmapped,
         product_type=product_type,
+        engine=engine,
     )

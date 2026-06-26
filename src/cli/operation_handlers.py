@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+import json
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -45,7 +46,7 @@ def handle_sync_products(db: Session, auto_confirm: bool = False):
             print("❌ 错误: 在 Web 界面运行此任务时，请务必勾选 '自动确认 (Auto Confirm)'")
             return
 
-    print(f"\n➡️  步骤 2/2: 同步商品详情...")
+    print("\n➡️  步骤 2/2: 同步商品详情...")
 
     total, success, failed = service.sync_product_details(sku_list)
 
@@ -347,18 +348,32 @@ def handle_confirm_listing_issue_repairs(db: Session):
 def handle_review_pending_attributes(
     db: Session,
     category: Optional[str] = None,
+    engine: str = "v1",
 ):
     """Review pending required LLM attributes."""
-    from src.services.review_manager import ReviewManager
-
     print("\n" + "=" * 70)
-    print("Amazon Listing Pending Attribute Review")
+    print(f"Amazon Listing Pending Attribute Review (engine={engine})")
     print("=" * 70)
     if not category:
         print("缺少 --category；请指定需要审核的 Amazon product type。")
         return {"success": False, "message": "category_required"}
 
     limit = int(os.getenv("ATTRIBUTE_REVIEW_LIMIT", "50"))
+    if engine == "v2":
+        from src.services.review_adapter_v2 import ReviewAdapterV2
+
+        result = ReviewAdapterV2(db=db).review_pending_paths(
+            category=category,
+            limit=limit,
+        )
+        print(
+            f"Reviewed rows={result['rows']} reviewed={result['reviewed']} "
+            f"human_required={result['human_required']}"
+        )
+        return {"success": True, **result}
+
+    from src.services.review_manager import ReviewManager
+
     result = ReviewManager(db=db).review_pending_attributes(
         category=category,
         limit=limit,
@@ -375,23 +390,37 @@ def handle_submit_reviewed_plans(
     category: Optional[str] = None,
     dry_run: bool = True,
     strict_validation: bool = False,
+    engine: str = "v1",
 ):
     """Submit completed pending-review listing plans."""
-    from src.services.review_manager import ReviewManager
-
     print("\n" + "=" * 70)
     mode_label = (
         "STRICT DRY RUN (Amazon VALIDATION_PREVIEW)"
         if strict_validation
         else "DRY RUN" if dry_run else "LIVE"
     )
-    print(f"Amazon Listing Reviewed Plan Submission - {mode_label}")
+    print(f"Amazon Listing Reviewed Plan Submission - {mode_label} (engine={engine})")
     print("=" * 70)
     if not category:
         print("缺少 --category；请指定需要提交的 Amazon product type。")
         return {"success": False, "message": "category_required", "results": []}
 
     limit = int(os.getenv("ATTRIBUTE_REVIEW_SUBMIT_LIMIT", "50"))
+    if engine == "v2":
+        from src.services.review_adapter_v2 import ReviewAdapterV2
+
+        results = ReviewAdapterV2(db=db).submit_reviewed_paths(
+            category=category,
+            dry_run=dry_run,
+            limit=limit,
+        )
+        print(f"Submitted reviewed V2 plans: {len(results)}")
+        for item in results[:5]:
+            print(f"  {item.get('sku')}: {item.get('status')}")
+        return {"success": True, "results": results}
+
+    from src.services.review_manager import ReviewManager
+
     results = ReviewManager(db=db).submit_reviewed_plans(
         category=category,
         dry_run=dry_run,
@@ -444,9 +473,9 @@ def handle_discover_product_type(db: Session, keywords: Optional[str] = None):
                 if len(required) > 15:
                     print(f"      ... and {len(required) - 15} more")
         except Exception:
-            print(f"      (could not fetch requirements)")
+            print("      (could not fetch requirements)")
 
-    print(f"\n  [0] Cancel")
+    print("\n  [0] Cancel")
     choice = input("\nSelect product type to cache schema and set as mapping target: ").strip()
     if choice == "0" or not choice:
         return
@@ -929,7 +958,7 @@ def handle_competitive_analysis(
         name = (item["name"] or sku)[:50]
         print(f"  [{count}] {name}")
         print(f"      ASIN: {asin}  Our Price: ${our_price:.2f}" if our_price else f"      ASIN: {asin}")
-        print(f"      Landed Cost: ${landed_cost:.2f}" if landed_cost else f"      Landed Cost: N/A")
+        print(f"      Landed Cost: ${landed_cost:.2f}" if landed_cost else "      Landed Cost: N/A")
         print(f"      Searching keywords: {keywords}")
 
         landscape = service.analyze_by_keywords(
@@ -970,7 +999,7 @@ def handle_weekly_report(db: Session, **kwargs):
 
     # Collect daily check summary
     daily = DailyCheckService(db)
-    check_result = daily.run()
+    daily.run()
 
     # Collect listing issue stats from the database
     listing_issue_summary = {"open_issues": 0, "resolved_this_week": 0, "new_this_week": 0}
@@ -1102,11 +1131,11 @@ def handle_profit_analysis(db: Session, **kwargs):
     print(f"Total Cost:    ${float(report.total_cost):.2f}")
     print(f"Total Profit:  ${float(report.total_profit):.2f}")
     print(f"Overall Margin: {float(report.overall_margin):.1%}")
-    print(f"\nTop 5 Most Profitable:")
+    print("\nTop 5 Most Profitable:")
     for b in report.top_profitable:
         print(f"  {b.sku}: margin={float(b.margin):.1%}, profit=${float(b.net_profit):.2f}")
     if report.bottom_profitable:
-        print(f"\nBottom 5 Least Profitable:")
+        print("\nBottom 5 Least Profitable:")
         for b in report.bottom_profitable:
             print(f"  {b.sku}: margin={float(b.margin):.1%}, profit=${float(b.net_profit):.2f}")
 
@@ -1167,7 +1196,7 @@ def handle_inventory_health(db: Session, **kwargs):
         for s in report.liquidation_suggestions[:5]:
             print(f"  • {s}")
 
-    print(f"\nInventory analysis complete.")
+    print("\nInventory analysis complete.")
     print("Note: units_sold uses 0 values — requires Orders API for velocity-based recommendations.")
 
 
@@ -1380,3 +1409,117 @@ def handle_delete_orphan_listings(db: Session, dry_run: bool = True):
         print(f"\nOrphan listing cleanup failed: {e}")
         logging.exception("Detailed error:")
         raise
+
+
+def handle_analyze_listing_requirements_v2(
+    db: Session,
+    product_type: Optional[str] = None,
+    sku_list: Optional[List[str]] = None,
+):
+    """Read-only V2 requirement tree analysis for one SKU."""
+    from src.services.listing_payload_engine_v2 import ListingPayloadEngineV2
+
+    sku = (sku_list or [None])[0]
+    if not product_type:
+        raise ValueError("--product-type or --category is required")
+    if not sku:
+        raise ValueError("--sku is required")
+
+    print("\n" + "=" * 70)
+    print("Listing Requirement Analysis V2 - READ ONLY")
+    print("=" * 70)
+
+    service = ListingPayloadEngineV2(db=db)
+    result = service.analyze_requirements(product_type=product_type, sku=sku)
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+
+
+def handle_validate_listing_v2(
+    db: Session,
+    product_type: Optional[str] = None,
+    sku_list: Optional[List[str]] = None,
+):
+    """Run Amazon VALIDATION_PREVIEW for a V2 plan without PUT."""
+    from src.services.attribute_rule_loader import AttributeRuleLoader
+    from src.services.listing_payload_engine_v2 import ListingPayloadEngineV2
+    from src.services.validation_preview_v2 import ValidationPreviewV2
+
+    sku = (sku_list or [None])[0]
+    if not product_type:
+        raise ValueError("--product-type or --category is required")
+    if not sku:
+        raise ValueError("--sku is required")
+
+    print("\n" + "=" * 70)
+    print("Listing Validation Preview V2 - AMAZON VALIDATION_PREVIEW (no PUT)")
+    print("=" * 70)
+
+    rules = AttributeRuleLoader().load(product_type)
+    plan = ListingPayloadEngineV2(db=db).build_read_only_plan(
+        product_type=product_type,
+        sku=sku,
+        rules=rules,
+    )
+    preview = ValidationPreviewV2(db=db)
+    result = preview.preview(plan)
+    comparison = preview.compare(plan, result)
+
+    print(
+        f"\nSKU={sku} product_type={product_type} "
+        f"status={result.status} request_id={result.amazon_request_id} "
+        f"amazon_issues={len(result.issues)} "
+        f"v2_findings={len(plan.findings or [])}"
+    )
+    print(
+        f"comparison: matched={len(comparison.matched)} "
+        f"amazon_only={len(comparison.amazon_only)} "
+        f"v2_only={len(comparison.v2_only)}"
+    )
+    if comparison.amazon_only:
+        print("\nAmazon flagged but V2 missed:")
+        for issue in comparison.amazon_only:
+            attrs = issue.get("attributeNames") or []
+            print(f"  [{issue.get('code')}] {issue.get('message')} ({', '.join(attrs)})")
+    if comparison.v2_only:
+        print("\nV2 flagged but Amazon accepted:")
+        for finding in comparison.v2_only:
+            print(f"  [{finding.get('code')}] {finding.get('path_key')}")
+    return {
+        "success": True,
+        "status": result.status,
+        "amazon_issues": len(result.issues),
+        "v2_findings": len(plan.findings or []),
+        "comparison": {
+            "matched": len(comparison.matched),
+            "amazon_only": len(comparison.amazon_only),
+            "v2_only": len(comparison.v2_only),
+        },
+    }
+
+
+def handle_learn_required_from_submissions(
+    db: Session,
+    product_type: Optional[str] = None,
+):
+    """Learn V2 required path_keys from Amazon 90220 missing-required feedback."""
+    from src.services.feedback_learning_adapter_v2 import FeedbackLearningAdapterV2
+
+    if not product_type:
+        raise ValueError("--product-type or --category is required")
+
+    print("\n" + "=" * 70)
+    print(f"V2 Feedback Learning - Amazon 90220 missing-required (category={product_type})")
+    print("=" * 70)
+
+    adapter = FeedbackLearningAdapterV2(db=db)
+    summary = adapter.learn_from_recent_submissions(category=product_type, limit=100)
+    learned_paths = adapter.get_learned_required_paths(category=product_type)
+
+    print(
+        f"\nsubmissions_scanned={summary['submissions_scanned']} "
+        f"paths_learned={summary['paths_learned']}"
+    )
+    print(f"learned required path_keys for {product_type}: {len(learned_paths)}")
+    for path_key in learned_paths:
+        print(f"  {path_key}")
+    return {"success": True, **summary, "learned_paths": learned_paths}

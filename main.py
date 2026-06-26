@@ -69,6 +69,12 @@ def main():
         action="store_true",
         help="处理所有未映射供应商品类",
     )
+    parser.add_argument(
+        "--engine",
+        choices=["v1", "v2"],
+        default="v1",
+        help="Listing payload engine version for review/submit tasks (default: v1)",
+    )
     args = parser.parse_args()
 
     non_interactive_task = args.task or os.getenv("APP_TASK")
@@ -89,6 +95,7 @@ def main():
     all_unmapped = args.all_unmapped or (
         os.getenv("LISTING_ALL_UNMAPPED", "false").lower() == "true"
     )
+    engine = args.engine or os.getenv("LISTING_PAYLOAD_ENGINE", "v1")
 
     if non_interactive_task:
         try:
@@ -107,6 +114,7 @@ def main():
                     category_code=category_code,
                     all_unmapped=all_unmapped,
                     product_type=product_type,
+                    engine=engine,
                 )
             sys.exit(0)
         except UnknownTaskError:

@@ -220,6 +220,33 @@ def test_handle_sku_sync_from_csv_prints_not_implemented(capsys):
     assert "此功能暂未实现" in capsys.readouterr().out
 
 
+def test_handle_analyze_listing_requirements_v2_prints_json(monkeypatch, capsys):
+    service = MagicMock()
+    service.analyze_requirements.return_value = {
+        "sku": "SKU1",
+        "product_type": "CHAIR",
+        "requirement_tree": {"required_paths": ["frame"]},
+    }
+    monkeypatch.setattr(
+        "src.services.listing_payload_engine_v2.ListingPayloadEngineV2",
+        lambda db: service,
+    )
+
+    operation_handlers.handle_analyze_listing_requirements_v2(
+        db=object(),
+        product_type="CHAIR",
+        sku_list=["SKU1"],
+    )
+
+    service.analyze_requirements.assert_called_once_with(
+        product_type="CHAIR",
+        sku="SKU1",
+    )
+    output = capsys.readouterr().out
+    assert "Listing Requirement Analysis V2" in output
+    assert '"product_type": "CHAIR"' in output
+
+
 def test_handle_generate_update_file_runs_service(monkeypatch, capsys):
     service = MagicMock()
     monkeypatch.setattr(

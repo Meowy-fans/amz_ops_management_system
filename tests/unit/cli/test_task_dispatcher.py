@@ -162,6 +162,30 @@ def test_dispatch_generate_attribute_rules_passes_product_type(monkeypatch):
     assert calls == [(db, "SOFA")]
 
 
+def test_dispatch_analyze_listing_requirements_v2_passes_product_type_and_sku(
+    monkeypatch,
+):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_analyze_listing_requirements_v2",
+        lambda db, product_type=None, sku_list=None: calls.append(
+            (db, product_type, sku_list)
+        ),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "analyze-listing-requirements-v2",
+        product_type="CHAIR",
+        sku_list=["SKU1"],
+    )
+
+    assert result is None
+    assert calls == [(db, "CHAIR", ["SKU1"])]
+
+
 def test_dispatch_generate_listing_api_passes_strict_validation(monkeypatch):
     calls = []
     monkeypatch.setattr(
@@ -247,14 +271,14 @@ def test_dispatch_review_pending_attributes_passes_category(monkeypatch):
     monkeypatch.setattr(
         task_dispatcher,
         "handle_review_pending_attributes",
-        lambda db, category=None: calls.append((db, category)),
+        lambda db, category=None, engine="v1": calls.append((db, category, engine)),
     )
 
     db = object()
     result = dispatch_task(db, "review-pending-attributes", category="CHAIR")
 
     assert result is None
-    assert calls == [(db, "CHAIR")]
+    assert calls == [(db, "CHAIR", "v1")]
 
 
 def test_dispatch_submit_reviewed_plans_passes_flags(monkeypatch):
@@ -262,8 +286,8 @@ def test_dispatch_submit_reviewed_plans_passes_flags(monkeypatch):
     monkeypatch.setattr(
         task_dispatcher,
         "handle_submit_reviewed_plans",
-        lambda db, category=None, dry_run=True, strict_validation=False: calls.append(
-            (db, category, dry_run, strict_validation)
+        lambda db, category=None, dry_run=True, strict_validation=False, engine="v1": calls.append(
+            (db, category, dry_run, strict_validation, engine)
         ),
     )
 
@@ -277,7 +301,7 @@ def test_dispatch_submit_reviewed_plans_passes_flags(monkeypatch):
     )
 
     assert result is None
-    assert calls == [(db, "CHAIR", False, True)]
+    assert calls == [(db, "CHAIR", False, True, "v1")]
 
 
 def test_dispatch_repair_listing_issues_passes_dry_run(monkeypatch):

@@ -71,6 +71,7 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
         "category_code": "10027",
         "product_type": "SOFA",
         "all_unmapped": True,
+        "engine": "v1",
     }
 
 
