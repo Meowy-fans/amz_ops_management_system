@@ -25,23 +25,29 @@ python3 main.py
 python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-dry-run] [--strict-validation] [--sku SKU] [--sku-file FILE] [--only-not-on-amazon]
 ```
 
-### 可用任务（40 个）
+### 可用任务（48 个）
 
 **Giga 商品管理**：`sync-products`, `import-amz-report`, `sync-amz-report-api`, `update-listing-status`, `generate-details`, `sync-prices`, `sync-inventory`, `update-prices`
 
 **数据查询**：`view-statistics`, `pending-statistics`, `recent-listings`, `list-categories`
 
-**类目配置**：`discover-product-type`, `suggest-category-mappings`, `sync-giga-categories`, `update-mappings-from-csv`, `sku-sync-from-csv`
+**类目配置**：`discover-product-type`, `suggest-category-mappings`, `sync-giga-categories`, `update-mappings-from-csv`, `sku-sync-from-csv`, `auto-discover-category`, `generate-attribute-rules`
 
 > `template-update` / `template-correction` 属于 Excel 模板时代的 legacy 工具，仅用于历史模板迁移或排障，不再作为类目接入主路径。
 
-**Listing 发品**：`generate-listing-api`（API-native 唯一新品发品入口）, `generate-update-file`, `update-price-inventory-api`
+**Listing 发品**：`generate-listing-api`（API-native 唯一新品发品入口）, `generate-update-file`, `update-price-inventory-api`, `confirm-price-inventory-api`, `update-package-dimensions`, `delete-orphan-listings`, `probe-variation-hierarchy`
 
 > `generate-listing` / Excel 新品发品流程已 deprecated。历史 Excel 解析、模板和文件生成模块仅保留为迁移参考与旧数据兼容，不再作为运营入口。
 > `generate-listing-api --strict-validation` 会在 dry-run 下调用 Amazon `VALIDATION_PREVIEW` 做权威预检并持久化 issues；默认 dry-run 仍为离线预览，不访问 Amazon 写接口。
 > `--sku` / `--sku-file` 可限制本次发品候选集；`--only-not-on-amazon` 会先只读查询 Amazon 并跳过已存在 SKU。
 
-**运营监控**：`sync-listing-issues`
+**运营监控**：`sync-listing-issues`, `sync-confirmation-listing-issues`, `repair-listing-issues`, `confirm-listing-issue-repairs`, `review-pending-attributes`, `submit-reviewed-plans`
+
+> `review-pending-attributes` / `submit-reviewed-plans` 支持 `--engine v1|v2` 切换 V1 attribute 级或 V2 path_key 级审核流程；V2 仍为 read-only，不影响生产发品链路。
+
+**🆕 V2 Engine read-only**：`analyze-listing-requirements-v2`, `validate-listing-v2`, `learn-required-from-submissions`
+
+> V2 engine 当前为 read-only / shadow foundation，独立于 V1 主链路运行；`learn-required-from-submissions` 从 Amazon 90220 反馈学习 path_key 级必填项并回灌 V2 tree builder。Epic 见 `docs/epics/listing-requirement-payload-engine-v2.md`。
 
 **🆕 关键词与竞品**：`keyword-research`, `competitive-analysis`
 
@@ -81,7 +87,7 @@ python3 main.py --task <task-name> [--category CATEGORY] [--auto-confirm] [--no-
 ├── src/
 │   ├── cli/                        # CLI 展现层
 │   │   ├── menu.py                # 交互式菜单
-│   │   ├── task_dispatcher.py     # 任务注册与分发（40 个任务）
+│   │   ├── task_dispatcher.py     # 任务注册与分发（48 个任务）
 │   │   ├── listing_handlers.py    # 发品 handler
 │   │   ├── operation_handlers.py  # 运营 + 🆕 Phase 1-3 handler
 │   │   ├── category_handlers.py   # 类目配置 handler
