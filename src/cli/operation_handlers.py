@@ -349,6 +349,8 @@ def handle_review_pending_attributes(
     db: Session,
     category: Optional[str] = None,
     engine: str = "v1",
+    approve_human: bool = False,
+    sku: Optional[str] = None,
 ):
     """Review pending required LLM attributes."""
     print("\n" + "=" * 70)
@@ -365,11 +367,20 @@ def handle_review_pending_attributes(
         result = ReviewAdapterV2(db=db).review_pending_paths(
             category=category,
             limit=limit,
+            approve_human=approve_human,
+            sku=sku,
         )
         print(
             f"Reviewed rows={result['rows']} reviewed={result['reviewed']} "
             f"human_required={result['human_required']}"
         )
+        if approve_human:
+            print(
+                "Human approvals: "
+                f"approved={result.get('human_approved', 0)} "
+                f"skipped={result.get('human_skipped', 0)} "
+                f"rows={result.get('human_rows', 0)}"
+            )
         return {"success": True, **result}
 
     from src.services.review_manager import ReviewManager
@@ -1411,115 +1422,22 @@ def handle_delete_orphan_listings(db: Session, dry_run: bool = True):
         raise
 
 
-def handle_analyze_listing_requirements_v2(
-    db: Session,
-    product_type: Optional[str] = None,
-    sku_list: Optional[List[str]] = None,
-):
-    """Read-only V2 requirement tree analysis for one SKU."""
-    from src.services.listing_payload_engine_v2 import ListingPayloadEngineV2
-
-    sku = (sku_list or [None])[0]
-    if not product_type:
-        raise ValueError("--product-type or --category is required")
-    if not sku:
-        raise ValueError("--sku is required")
-
-    print("\n" + "=" * 70)
-    print("Listing Requirement Analysis V2 - READ ONLY")
-    print("=" * 70)
-
-    service = ListingPayloadEngineV2(db=db)
-    result = service.analyze_requirements(product_type=product_type, sku=sku)
-    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
-
-
-def handle_validate_listing_v2(
-    db: Session,
-    product_type: Optional[str] = None,
-    sku_list: Optional[List[str]] = None,
-):
-    """Run Amazon VALIDATION_PREVIEW for a V2 plan without PUT."""
-    from src.services.attribute_rule_loader import AttributeRuleLoader
-    from src.services.listing_payload_engine_v2 import ListingPayloadEngineV2
-    from src.services.validation_preview_v2 import ValidationPreviewV2
-
-    sku = (sku_list or [None])[0]
-    if not product_type:
-        raise ValueError("--product-type or --category is required")
-    if not sku:
-        raise ValueError("--sku is required")
-
-    print("\n" + "=" * 70)
-    print("Listing Validation Preview V2 - AMAZON VALIDATION_PREVIEW (no PUT)")
-    print("=" * 70)
-
-    rules = AttributeRuleLoader().load(product_type)
-    plan = ListingPayloadEngineV2(db=db).build_read_only_plan(
-        product_type=product_type,
-        sku=sku,
-        rules=rules,
-    )
-    preview = ValidationPreviewV2(db=db)
-    result = preview.preview(plan)
-    comparison = preview.compare(plan, result)
-
-    print(
-        f"\nSKU={sku} product_type={product_type} "
-        f"status={result.status} request_id={result.amazon_request_id} "
-        f"amazon_issues={len(result.issues)} "
-        f"v2_findings={len(plan.findings or [])}"
-    )
-    print(
-        f"comparison: matched={len(comparison.matched)} "
-        f"amazon_only={len(comparison.amazon_only)} "
-        f"v2_only={len(comparison.v2_only)}"
-    )
-    if comparison.amazon_only:
-        print("\nAmazon flagged but V2 missed:")
-        for issue in comparison.amazon_only:
-            attrs = issue.get("attributeNames") or []
-            print(f"  [{issue.get('code')}] {issue.get('message')} ({', '.join(attrs)})")
-    if comparison.v2_only:
-        print("\nV2 flagged but Amazon accepted:")
-        for finding in comparison.v2_only:
-            print(f"  [{finding.get('code')}] {finding.get('path_key')}")
-    return {
-        "success": True,
-        "status": result.status,
-        "amazon_issues": len(result.issues),
-        "v2_findings": len(plan.findings or []),
-        "comparison": {
-            "matched": len(comparison.matched),
-            "amazon_only": len(comparison.amazon_only),
-            "v2_only": len(comparison.v2_only),
-        },
-    }
-
-
-def handle_learn_required_from_submissions(
-    db: Session,
-    product_type: Optional[str] = None,
-):
-    """Learn V2 required path_keys from Amazon 90220 missing-required feedback."""
-    from src.services.feedback_learning_adapter_v2 import FeedbackLearningAdapterV2
-
-    if not product_type:
-        raise ValueError("--product-type or --category is required")
-
-    print("\n" + "=" * 70)
-    print(f"V2 Feedback Learning - Amazon 90220 missing-required (category={product_type})")
-    print("=" * 70)
-
-    adapter = FeedbackLearningAdapterV2(db=db)
-    summary = adapter.learn_from_recent_submissions(category=product_type, limit=100)
-    learned_paths = adapter.get_learned_required_paths(category=product_type)
-
-    print(
-        f"\nsubmissions_scanned={summary['submissions_scanned']} "
-        f"paths_learned={summary['paths_learned']}"
-    )
-    print(f"learned required path_keys for {product_type}: {len(learned_paths)}")
-    for path_key in learned_paths:
-        print(f"  {path_key}")
-    return {"success": True, **summary, "learned_paths": learned_paths}
+from src.cli.operation_handlers_v2 import (
+    handle_analyze_listing_requirements_v2,
+    handle_evaluate_listing_v2_regression,
+    handle_evaluate_listing_v2_validation_compare,
+    handle_evaluate_rules_v2_golden,
+    handle_generate_rule_skeleton_v2,
+    handle_learn_required_from_submissions,
+    handle_learn_rules_from_feedback_v2,
+    handle_map_rule_fields_v2,
+    handle_migrate_rules_v2,
+    handle_report_listing_shadow_diff_v2,
+    handle_reuse_rule_patterns_v2,
+    handle_review_pending_rules,
+    handle_approve_rule,
+    handle_promote_category_rules_v2,
+    handle_onboard_category_v2,
+    handle_analyze_listing_feedback_v2,
+    handle_validate_listing_v2,
+)

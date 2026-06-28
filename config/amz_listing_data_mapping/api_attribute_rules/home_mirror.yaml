@@ -5,6 +5,9 @@ presets:
   - amazon_universal_required_v1
 
 dimension_strategy: item_length_width
+coverage_ignore_required:
+  - merchant_shipping_group
+  - merchant_suggested_asin
 
 attributes:
   fabric_type:

@@ -66,6 +66,34 @@ def test_gate_covers_required_child_paths_when_payload_is_complete():
     assert result.covered_required_paths == ["frame", "frame.color"]
 
 
+def test_gate_ignores_configured_required_paths():
+    root = _root(
+        RequirementNode(
+            path_key="merchant_shipping_group",
+            schema_path="$.properties.merchant_shipping_group",
+            name="merchant_shipping_group",
+            shape="array_object",
+            required=True,
+        ),
+        RequirementNode(
+            path_key="item_name",
+            schema_path="$.properties.item_name",
+            name="item_name",
+            shape="array_object",
+            required=True,
+        ),
+    )
+    attrs = {"item_name": [{"value": "Chair"}]}
+
+    result = CoverageGateV2(
+        ignored_required_paths=["merchant_shipping_group"]
+    ).evaluate(root, _resolution_root(), attrs)
+
+    assert result.blocked is False
+    assert result.missing_required_paths == []
+    assert result.covered_required_paths == ["item_name"]
+
+
 def test_gate_covers_nested_list_value_child_value_path():
     root = _root(
         RequirementNode(

@@ -1,0 +1,122 @@
+{
+  "acceptance": "S7-listing-rule-authoring-v2",
+  "preview_enabled": true,
+  "categories": {
+    "TABLE": {
+      "rule_yaml": {
+        "product_type": "TABLE",
+        "rule_file_exists": true,
+        "leaf_count": 36,
+        "placeholder_leaf_count": 0,
+        "placeholder_rate": 0.0,
+        "dimension_strategy": "item_depth_width_height",
+        "mode": "dry_run"
+      },
+      "pool_size": 4,
+      "offline": {
+        "product_type": "TABLE",
+        "sku_count": 4,
+        "zero_missing": 4,
+        "not_missing_only": 4,
+        "clean": 0,
+        "by_status": {
+          "findings_only": 4
+        },
+        "rows": [
+          {
+            "sku": "meow2511086pcXe",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "findings_only",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow251108FAsJo",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "findings_only",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow251108PlHb2",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "findings_only",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow251108uwb5L",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "findings_only",
+            "missing_paths": [],
+            "pending_paths": []
+          }
+        ]
+      },
+      "preview": {
+        "product_type": "TABLE",
+        "sku_count": 4,
+        "validation_preview_passed": 4,
+        "passed_skus": [
+          "meow2511086pcXe",
+          "meow251108FAsJo",
+          "meow251108PlHb2",
+          "meow251108uwb5L"
+        ],
+        "by_status": {
+          "validation_preview_passed": 4
+        },
+        "rows": [
+          {
+            "sku": "meow2511086pcXe",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 1,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          },
+          {
+            "sku": "meow251108FAsJo",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 1,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          },
+          {
+            "sku": "meow251108PlHb2",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 1,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          },
+          {
+            "sku": "meow251108uwb5L",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 1,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          }
+        ]
+      }
+    }
+  },
+  "gates": {
+    "chair_preview_passed_ge_1": false,
+    "chair_zero_missing_all": true,
+    "chair_placeholder_rate_lt_20pct": false,
+    "table_not_missing_only_ge_1": true,
+    "bed_frame_skeleton_generated": false,
+    "bed_frame_preview_passed_all": null
+  }
+}

@@ -41,6 +41,13 @@ class CoverageGateResultV2:
 class CoverageGateV2:
     """Validate required tree coverage and path-level review/default policy."""
 
+    def __init__(self, ignored_required_paths: List[str] | None = None):
+        self.ignored_required_paths = {
+            str(path or "").strip()
+            for path in (ignored_required_paths or [])
+            if str(path or "").strip()
+        }
+
     def evaluate(
         self,
         requirement_root: RequirementNode,
@@ -75,6 +82,8 @@ class CoverageGateV2:
         attributes: Dict[str, Any],
         result: CoverageGateResultV2,
     ) -> None:
+        if requirement.path_key in self.ignored_required_paths:
+            return
         if not requirement.required:
             return
         resolution = resolution_index.get(requirement.path_key)

@@ -11,6 +11,9 @@ post_processors:
   - cabinet_attribute_shapes
 coverage_ignore_when_parent:
   - item_width
+coverage_ignore_required:
+  - merchant_shipping_group
+  - merchant_suggested_asin
 
 attributes:
   fabric_type:

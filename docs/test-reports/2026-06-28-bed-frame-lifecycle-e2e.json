@@ -1,0 +1,131 @@
+{
+  "acceptance": "S7-listing-rule-authoring-v2",
+  "preview_enabled": true,
+  "categories": {
+    "BED_FRAME": {
+      "rule_yaml": {
+        "product_type": "BED_FRAME",
+        "rule_file_exists": true,
+        "leaf_count": 47,
+        "placeholder_leaf_count": 0,
+        "placeholder_rate": 0.0,
+        "dimension_strategy": "item_length_width_height",
+        "mode": "dry_run"
+      },
+      "skeleton": {
+        "product_type": "BED_FRAME",
+        "attribute_count": 23,
+        "leaf_path_count": 36,
+        "placeholder_leaf_count": 36,
+        "dimension_strategy": "item_length_width_height",
+        "generated": true,
+        "warnings": []
+      },
+      "pool_size": 4,
+      "offline": {
+        "product_type": "BED_FRAME",
+        "sku_count": 4,
+        "zero_missing": 4,
+        "not_missing_only": 4,
+        "clean": 4,
+        "by_status": {
+          "clean": 4
+        },
+        "rows": [
+          {
+            "sku": "meow25110896fzS",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "clean",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow251108FetOX",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "clean",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow251108VJprf",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "clean",
+            "missing_paths": [],
+            "pending_paths": []
+          },
+          {
+            "sku": "meow260518aoxYQ",
+            "missing_count": 0,
+            "pending_count": 0,
+            "blocking": false,
+            "status": "clean",
+            "missing_paths": [],
+            "pending_paths": []
+          }
+        ]
+      },
+      "preview": {
+        "product_type": "BED_FRAME",
+        "sku_count": 4,
+        "validation_preview_passed": 3,
+        "passed_skus": [
+          "meow25110896fzS",
+          "meow251108VJprf",
+          "meow260518aoxYQ"
+        ],
+        "by_status": {
+          "validation_preview_passed": 3,
+          "validation_preview_issues": 1
+        },
+        "rows": [
+          {
+            "sku": "meow25110896fzS",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 0,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          },
+          {
+            "sku": "meow251108FetOX",
+            "preview_status": "validation_preview_issues",
+            "amazon_issues": 1,
+            "v2_findings": 0,
+            "unexplained_amazon_only": 1,
+            "error_message": null
+          },
+          {
+            "sku": "meow251108VJprf",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 0,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          },
+          {
+            "sku": "meow260518aoxYQ",
+            "preview_status": "validation_preview_passed",
+            "amazon_issues": 0,
+            "v2_findings": 0,
+            "unexplained_amazon_only": 0,
+            "error_message": null
+          }
+        ]
+      }
+    }
+  },
+  "gates": {
+    "chair_preview_passed_ge_1": false,
+    "chair_zero_missing_all": true,
+    "chair_placeholder_rate_lt_20pct": false,
+    "table_not_missing_only_ge_1": false,
+    "bed_frame_skeleton_generated": true,
+    "bed_frame_preview_passed_all": false
+  }
+}

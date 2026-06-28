@@ -247,6 +247,59 @@ def test_handle_analyze_listing_requirements_v2_prints_json(monkeypatch, capsys)
     assert '"product_type": "CHAIR"' in output
 
 
+def test_handle_report_listing_shadow_diff_v2_prints_path_details(
+    monkeypatch,
+    capsys,
+):
+    class Service:
+        def __init__(self, db):
+            self.db = db
+
+        def report(self, product_type=None, sku=None, limit=20):
+            return {
+                "product_type": product_type,
+                "sku": sku,
+                "limit": limit,
+                "count": 1,
+                "summary": {
+                    "shadow_built": 1,
+                    "shadow_failed": 0,
+                    "v2_blocking": 1,
+                    "with_pending_review": 1,
+                    "with_missing_required": 1,
+                },
+                "diffs": [
+                    {
+                        "sku": "SKU1",
+                        "shadow_status": "shadow_built",
+                        "v1_status": "plan_generated",
+                        "v1_attribute_count": 3,
+                        "v2_attribute_count": 4,
+                        "v2_missing_required_paths": ["frame.material.value"],
+                        "v2_pending_review_paths": ["seat.color.value"],
+                        "v2_low_confidence_required_paths": ["item_name.value"],
+                        "v2_blocking_codes": ["MISSING_REQUIRED_ATTRIBUTE_RULE"],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(
+        "src.services.listing_payload_shadow_diff_v2.ListingPayloadShadowDiffV2",
+        Service,
+    )
+
+    operation_handlers.handle_report_listing_shadow_diff_v2(
+        db=object(),
+        product_type="CHAIR",
+        sku_list=["SKU1"],
+    )
+
+    output = capsys.readouterr().out
+    assert "missing: frame.material.value" in output
+    assert "pending: seat.color.value" in output
+    assert "low_confidence: item_name.value" in output
+
+
 def test_handle_generate_update_file_runs_service(monkeypatch, capsys):
     service = MagicMock()
     monkeypatch.setattr(

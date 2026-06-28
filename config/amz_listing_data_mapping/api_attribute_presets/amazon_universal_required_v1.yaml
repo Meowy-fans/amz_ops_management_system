@@ -18,9 +18,13 @@ attributes:
   product_description:
     level: required
     shape: list_value
-    transform: text
+    transform: text_join
     sources:
       - path: content.description
+      - path: product.description
+      - path: content.bullets
+        confidence: high
+        evidence: Compose required description from listing bullets when no persisted description exists.
 
   brand:
     level: required

@@ -6,6 +6,9 @@ presets:
   - amazon_universal_required_v1
 
 dimension_strategy: item_depth_width_height
+coverage_ignore_required:
+  - merchant_shipping_group
+  - merchant_suggested_asin
 
 attributes:
   supplier_declared_dg_hz_regulation:
@@ -55,14 +58,83 @@ attributes:
     shape: object
     transform: passthrough
     manual_review: true
-    sources:
-      - default:
-          height:
-            - value: 18
-              unit: inches
-        confidence: medium
-        evidence: Draft ergonomic sofa seat height fallback; review against supplier dimensions before LIVE.
-        safe_default: true
+    children:
+      depth:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_width
+                confidence: high
+              - path: product.dimensions.width
+                confidence: medium
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      height:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_height
+                confidence: high
+              - path: product.dimensions.height
+                confidence: medium
+              - default: 18
+                confidence: medium
+                evidence: Draft ergonomic sofa seat height fallback; review against supplier dimensions before LIVE.
+                safe_default: true
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      interior_width:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_length
+                confidence: high
+              - path: product.dimensions.length
+                confidence: medium
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      fill_material:
+        shape: list_value
+        transform: enum
+        sources:
+          - path: product.attributes.Fill Material
+            confidence: high
+          - path: product.attributes.Filler
+            confidence: high
+          - default: foam
+            confidence: medium
+            evidence: SOFA seat.fill_material schema tokens use snake_case values such as foam; map supplier foam fills to the approved enum token.
+            safe_default: true
+      material_type:
+        shape: list_value
+        transform: text
+        sources:
+          - path: product.attributes.Main Material
+            confidence: high
+          - path: product.attributes.material
+            confidence: high
+          - default: Polyester
+            confidence: medium
+            evidence: Conservative sofa upholstery fallback when supplier material is missing; review if source specifies leather, linen, velvet, or blended fabric.
+            safe_default: true
 
   fabric_type:
     level: recommended
@@ -80,13 +152,13 @@ attributes:
   sofa_type:
     level: recommended
     shape: list_value
-    transform: enum
+    transform: enum_scan
     sources:
+      - path: content.title
+        confidence: high
+        evidence: Match explicit sofa-form keywords in the supplier title against Amazon sofa_type enum tokens.
       - path: product.attributes.Sofa Type
       - path: product.attributes.Product Type
-      - llm:
-          hint: Extract the sofa type only when the title or description clearly states sectional, loveseat, sleeper, futon, sofa bed, sofa chaise, settee, convertible, or standard sofa. Return null if unclear.
-          enum_locked: true
       - default: standard
         confidence: medium
         evidence: Conservative sofa type fallback for ordinary sofas when no specialized form is stated.
@@ -99,8 +171,9 @@ attributes:
     sources:
       - path: product.attributes.Seating Capacity
       - path: product.attributes.Number of Seats
-      - llm:
-          hint: Extract seating capacity only when the product text explicitly states a number of seats or people. Return null if absent.
+      - path: product.attributes.Seats
+        confidence: high
+        evidence: Giga supplier characteristic Seats field (for example 3 Seat).
       - default: 3
         confidence: medium
         evidence: Conservative draft fallback for standard sofas; review for loveseat, sectional, or oversized seating.

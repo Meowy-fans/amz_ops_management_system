@@ -186,13 +186,54 @@ def test_dispatch_analyze_listing_requirements_v2_passes_product_type_and_sku(
     assert calls == [(db, "CHAIR", ["SKU1"])]
 
 
+def test_dispatch_report_listing_shadow_diff_v2_passes_filters(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_report_listing_shadow_diff_v2",
+        lambda db, product_type=None, sku_list=None: calls.append(
+            (db, product_type, sku_list)
+        ),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "report-listing-shadow-diff-v2",
+        product_type="CHAIR",
+        sku_list=["SKU1"],
+    )
+
+    assert result is None
+    assert calls == [(db, "CHAIR", ["SKU1"])]
+
+
+def test_dispatch_evaluate_listing_v2_regression_passes_product_type(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        task_dispatcher,
+        "handle_evaluate_listing_v2_regression",
+        lambda db, product_type=None: calls.append((db, product_type)),
+    )
+
+    db = object()
+    result = dispatch_task(
+        db,
+        "evaluate-listing-v2-regression",
+        product_type="CHAIR",
+    )
+
+    assert result is None
+    assert calls == [(db, "CHAIR")]
+
+
 def test_dispatch_generate_listing_api_passes_strict_validation(monkeypatch):
     calls = []
     monkeypatch.setattr(
         task_dispatcher,
         "handle_generate_listing_api",
         lambda db, category=None, dry_run=True, strict_validation=False,
-        sku_list=None, sku_file=None, only_not_on_amazon=False: calls.append(
+        sku_list=None, sku_file=None, only_not_on_amazon=False, engine="v1": calls.append(
             (
                 db,
                 category,
@@ -201,6 +242,7 @@ def test_dispatch_generate_listing_api_passes_strict_validation(monkeypatch):
                 sku_list,
                 sku_file,
                 only_not_on_amazon,
+                engine,
             )
         ),
     )
@@ -215,10 +257,13 @@ def test_dispatch_generate_listing_api_passes_strict_validation(monkeypatch):
         sku_list=["SKU1"],
         sku_file="/tmp/skus.txt",
         only_not_on_amazon=True,
+        engine="shadow",
     )
 
     assert result is None
-    assert calls == [(db, "CABINET", True, True, ["SKU1"], "/tmp/skus.txt", True)]
+    assert calls == [
+        (db, "CABINET", True, True, ["SKU1"], "/tmp/skus.txt", True, "shadow")
+    ]
 
 
 def test_dispatch_sync_listing_issues_passes_dry_run(monkeypatch):
@@ -271,14 +316,22 @@ def test_dispatch_review_pending_attributes_passes_category(monkeypatch):
     monkeypatch.setattr(
         task_dispatcher,
         "handle_review_pending_attributes",
-        lambda db, category=None, engine="v1": calls.append((db, category, engine)),
+        lambda db, category=None, engine="v1", approve_human=False, sku=None: calls.append(
+            (db, category, engine, approve_human, sku)
+        ),
     )
 
     db = object()
-    result = dispatch_task(db, "review-pending-attributes", category="CHAIR")
+    result = dispatch_task(
+        db,
+        "review-pending-attributes",
+        category="CHAIR",
+        approve_human=True,
+        sku_list=["SKU1"],
+    )
 
     assert result is None
-    assert calls == [(db, "CHAIR", "v1")]
+    assert calls == [(db, "CHAIR", "v1", True, "SKU1")]
 
 
 def test_dispatch_submit_reviewed_plans_passes_flags(monkeypatch):

@@ -18,7 +18,21 @@ from src.cli.operation_handlers import (
     handle_amazon_order_daily_report,
     handle_analyze_listing_requirements_v2,
     handle_validate_listing_v2,
+    handle_evaluate_rules_v2_golden,
+    handle_generate_rule_skeleton_v2,
+    handle_map_rule_fields_v2,
+    handle_migrate_rules_v2,
+    handle_learn_rules_from_feedback_v2,
+    handle_reuse_rule_patterns_v2,
+    handle_review_pending_rules,
+    handle_approve_rule,
+    handle_promote_category_rules_v2,
+    handle_onboard_category_v2,
+    handle_analyze_listing_feedback_v2,
     handle_learn_required_from_submissions,
+    handle_report_listing_shadow_diff_v2,
+    handle_evaluate_listing_v2_regression,
+    handle_evaluate_listing_v2_validation_compare,
     handle_test_feishu_alert,
     handle_discover_product_type,
     handle_generate_details,
@@ -62,6 +76,12 @@ class UnknownTaskError(ValueError):
     """Raised when a non-interactive task name is not registered."""
 
 
+def _first_sku(sku_list: Optional[list[str]]) -> Optional[str]:
+    if not sku_list:
+        return None
+    return str(sku_list[0]).strip() or None
+
+
 def _generate_listing_task(
     db: Session,
     category: Optional[str] = None,
@@ -70,11 +90,13 @@ def _generate_listing_task(
     sku_list: Optional[list[str]] = None,
     sku_file: Optional[str] = None,
     only_not_on_amazon: bool = False,
+    engine: str = "v1",
 ):
     if return_listing_result and category:
         from src.services.product_listing_service import ProductListingService
 
         service = ProductListingService(db=db)
+        service.listing_payload_engine_mode = engine
         return service.generate_listings_via_api(
             category_name=category,
             dry_run=True,
@@ -108,6 +130,7 @@ TASK_HANDLERS = {
         sku_list=kwargs.get("sku_list"),
         sku_file=kwargs.get("sku_file"),
         only_not_on_amazon=kwargs.get("only_not_on_amazon", False),
+        engine=kwargs.get("engine", "v1"),
     ),
     "generate-listing-api": lambda db, **kwargs: handle_generate_listing_api(
         db,
@@ -117,6 +140,7 @@ TASK_HANDLERS = {
         sku_list=kwargs.get("sku_list"),
         sku_file=kwargs.get("sku_file"),
         only_not_on_amazon=kwargs.get("only_not_on_amazon", False),
+        engine=kwargs.get("engine", "v1"),
     ),
     "view-statistics": lambda db, **kwargs: handle_view_statistics(db),
     "pending-statistics": lambda db, **kwargs: handle_pending_statistics(db),
@@ -161,6 +185,8 @@ TASK_HANDLERS = {
         db,
         category=kwargs.get("category"),
         engine=kwargs.get("engine", "v1"),
+        approve_human=kwargs.get("approve_human", False),
+        sku=_first_sku(kwargs.get("sku_list")),
     ),
     "submit-reviewed-plans": lambda db, **kwargs: handle_submit_reviewed_plans(
         db,
@@ -190,6 +216,76 @@ TASK_HANDLERS = {
         db,
         product_type=kwargs.get("product_type") or kwargs.get("category"),
     ),
+    "generate-rule-skeleton-v2": lambda db, **kwargs: handle_generate_rule_skeleton_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        overwrite=bool(kwargs.get("overwrite", False)),
+    ),
+    "map-rule-fields-v2": lambda db, **kwargs: handle_map_rule_fields_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        sku_list=kwargs.get("sku_list"),
+        write=not bool(kwargs.get("dry_run", False)),
+    ),
+    "learn-rules-from-feedback-v2": lambda db, **kwargs: handle_learn_rules_from_feedback_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        sku_list=kwargs.get("sku_list"),
+        write=not bool(kwargs.get("dry_run", False)),
+    ),
+    "reuse-rule-patterns-v2": lambda db, **kwargs: handle_reuse_rule_patterns_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        reference_product_type=kwargs.get("reference"),
+        write=not bool(kwargs.get("dry_run", False)),
+    ),
+    "migrate-rules-v2": lambda db, **kwargs: handle_migrate_rules_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        write=not bool(kwargs.get("dry_run", True)),
+        require_golden=not bool(kwargs.get("skip_golden", False)),
+    ),
+    "evaluate-rules-v2-golden": lambda db, **kwargs: handle_evaluate_rules_v2_golden(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        sku_list=kwargs.get("sku_list"),
+    ),
+    "review-pending-rules": lambda db, **kwargs: handle_review_pending_rules(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+    ),
+    "approve-rule": lambda db, **kwargs: handle_approve_rule(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        path_key=kwargs.get("path_key"),
+        decision=kwargs.get("decision"),
+        reviewer=kwargs.get("reviewer"),
+        issue_type=kwargs.get("issue_type"),
+        write=not bool(kwargs.get("dry_run", True)),
+    ),
+    "promote-category-rules-v2": lambda db, **kwargs: handle_promote_category_rules_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        write=not bool(kwargs.get("dry_run", True)),
+        reviewer=kwargs.get("reviewer"),
+        require_preview=bool(kwargs.get("require_preview", False)),
+        min_preview_passed=int(kwargs.get("min_preview_passed") or 1),
+        acceptance_file=kwargs.get("acceptance_file"),
+    ),
+    "onboard-category-v2": lambda db, **kwargs: handle_onboard_category_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        reference_product_type=kwargs.get("reference"),
+        sample_sku_limit=kwargs.get("sample_sku_limit"),
+        overwrite_skeleton=bool(kwargs.get("overwrite", True)),
+        run_s7_offline=bool(kwargs.get("run_s7_offline", False)),
+        run_s7_preview=bool(kwargs.get("run_s7_preview", False)),
+    ),
+    "analyze-listing-feedback-v2": lambda db, **kwargs: handle_analyze_listing_feedback_v2(
+        db,
+        product_type=kwargs.get("product_type") or kwargs.get("category"),
+        limit=int(kwargs.get("limit") or 50),
+    ),
     "analyze-listing-requirements-v2": lambda db, **kwargs: (
         handle_analyze_listing_requirements_v2(
             db,
@@ -208,6 +304,26 @@ TASK_HANDLERS = {
         handle_learn_required_from_submissions(
             db,
             product_type=kwargs.get("product_type") or kwargs.get("category"),
+        )
+    ),
+    "report-listing-shadow-diff-v2": lambda db, **kwargs: (
+        handle_report_listing_shadow_diff_v2(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+            sku_list=kwargs.get("sku_list"),
+        )
+    ),
+    "evaluate-listing-v2-regression": lambda db, **kwargs: (
+        handle_evaluate_listing_v2_regression(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+        )
+    ),
+    "evaluate-listing-v2-validation-compare": lambda db, **kwargs: (
+        handle_evaluate_listing_v2_validation_compare(
+            db,
+            product_type=kwargs.get("product_type") or kwargs.get("category"),
+            sku_list=kwargs.get("sku_list"),
         )
     ),
     "probe-variation-hierarchy": lambda db, **kwargs: handle_probe_variation_hierarchy(
@@ -251,6 +367,20 @@ def dispatch_task(
     all_unmapped: bool = False,
     product_type: Optional[str] = None,
     engine: str = "v1",
+    approve_human: bool = False,
+    path_key: Optional[str] = None,
+    decision: Optional[str] = None,
+    reviewer: Optional[str] = None,
+    issue_type: Optional[str] = None,
+    require_preview: bool = False,
+    min_preview_passed: int = 1,
+    acceptance_file: Optional[str] = None,
+    reference: Optional[str] = None,
+    overwrite: bool = False,
+    sample_sku_limit: Optional[int] = None,
+    run_s7_offline: bool = False,
+    run_s7_preview: bool = False,
+    limit: int = 50,
 ):
     """Dispatch a task while preserving existing task behavior."""
     t = task.strip().lower()
@@ -272,4 +402,18 @@ def dispatch_task(
         all_unmapped=all_unmapped,
         product_type=product_type,
         engine=engine,
+        approve_human=approve_human,
+        path_key=path_key,
+        decision=decision,
+        reviewer=reviewer,
+        issue_type=issue_type,
+        require_preview=require_preview,
+        min_preview_passed=min_preview_passed,
+        acceptance_file=acceptance_file,
+        reference=reference,
+        overwrite=overwrite,
+        sample_sku_limit=sample_sku_limit,
+        run_s7_offline=run_s7_offline,
+        run_s7_preview=run_s7_preview,
+        limit=limit,
     )
