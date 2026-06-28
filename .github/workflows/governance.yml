@@ -1,0 +1,17 @@
+name: Governance Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  governance:
+    uses: Meowy-fans/agent-system/.github/workflows/pr-checks.yml@main
+    with:
+      skip_checks: "rules_registry,rules_index_sync,adr_lifecycle,task_linkage,memory_entries,delivery_report,structure"
