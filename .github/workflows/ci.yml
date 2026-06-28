@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  python:
+    uses: Meowy-fans/agent-system/.github/workflows/templates/python-ci.yml@main
+    with:
+      python-version: '3.12'
+      enable_pytest: false
+      enable_ruff: true
+      enable_mypy: true
+      enable_governance: true
+      ruff_path: 'src/'
+      mypy_path: 'src/'
+      runs_on: 'staging'
