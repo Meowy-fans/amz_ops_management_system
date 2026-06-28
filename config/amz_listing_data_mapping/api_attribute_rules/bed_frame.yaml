@@ -1,0 +1,836 @@
+attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
+  fabric_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Fabric Type
+          confidence: high
+          evidence: Bootstrap mapping for fabric_type.value
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for fabric_type.value
+  model_number:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Number
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+  finish_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Finish Type
+          confidence: high
+        - path: product.attributes.Finish
+          confidence: medium
+        - default: Unfinished
+          confidence: medium
+          evidence: BED_FRAME finish fallback when supplier finish is missing.
+          safe_default: true
+  is_assembly_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - path: product.attributes.Assembly Required
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+        - path: product.requires_assembly
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+  is_fragile:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - path: product.attributes.Is Fragile?
+          confidence: high
+          inherited_from: TABLE
+        - default: 'False'
+          confidence: medium
+          evidence: TABLE default for standard wood tables without glass or ceramic
+            tops.
+          safe_default: true
+          inherited_from: TABLE
+  model_name:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Name
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+  special_feature:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Special Feature
+          confidence: high
+        - path: content.title
+          confidence: medium
+        - default: Platform Bed Frame
+          confidence: medium
+          evidence: BED_FRAME special feature fallback.
+          safe_default: true
+  material:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+        - path: product.attributes.material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+  number_of_items:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: integer
+        sources:
+        - path: product.attributes.Number of Items
+          confidence: high
+        - default: 1
+          confidence: high
+          evidence: Single bed frame listing unit.
+          safe_default: true
+  color:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    sources:
+    - path: product.attributes.Main Color
+      confidence: high
+      evidence: Bootstrap mapping for color
+    - path: product.attributes.color
+      confidence: high
+      evidence: Bootstrap mapping for color
+  part_number:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Part Number
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+  item_shape:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Item Shape
+          confidence: high
+        - default: Rectangular
+          confidence: medium
+          evidence: BED_FRAME default shape when supplier item shape is missing.
+          safe_default: true
+  included_components:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Included Components
+          confidence: high
+        - default: Bed Frame
+          confidence: medium
+          evidence: BED_FRAME included components fallback.
+          safe_default: true
+  item_length_width_height:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+              evidence: BED_FRAME height from supplier dimensions.
+            - path: product.dimensions.height
+              confidence: medium
+              evidence: BED_FRAME height from supplier dimensions.
+        manual_review: false
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_length
+              confidence: high
+              evidence: BED_FRAME length from supplier dimensions.
+            - path: product.dimensions.length
+              confidence: medium
+              evidence: BED_FRAME length from supplier dimensions.
+        manual_review: false
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+              evidence: BED_FRAME width from supplier dimensions.
+            - path: product.dimensions.width
+              confidence: medium
+              evidence: BED_FRAME width from supplier dimensions.
+        manual_review: false
+  item_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - kilograms
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - kilograms
+        - pounds
+        transform: enum
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Product weight is normalized to pounds.
+          safe_default: true
+          inherited_from: TABLE
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.dimensions.assembled_weight
+          confidence: high
+          inherited_from: TABLE
+        - path: product.dimensions.weight
+          confidence: medium
+          inherited_from: TABLE
+  fulfillment_availability:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - fulfillment_channel_code
+    children:
+      fulfillment_channel_code:
+        shape: value
+        enum_values:
+        - AMAZON_NA
+        - DEFAULT
+        transform: enum
+        sources:
+        - default: DEFAULT
+          confidence: high
+          evidence: Merchant-fulfilled default channel.
+          safe_default: true
+  condition_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - club_club
+    - collectible_acceptable
+    - collectible_good
+    - collectible_like_new
+    - collectible_very_good
+    - new_new
+    - new_oem
+    - new_open_box
+    - refurbished_refurbished
+    - used_acceptable
+    - used_good
+    - used_like_new
+    - used_very_good
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - club_club
+        - collectible_acceptable
+        - collectible_good
+        - collectible_like_new
+        - collectible_very_good
+        - new_new
+        - new_oem
+        - new_open_box
+        - refurbished_refurbished
+        - used_acceptable
+        - used_good
+        - used_like_new
+        - used_very_good
+        transform: enum
+        sources:
+        - path: offer.condition_type
+          confidence: high
+        - default: new_new
+          confidence: high
+          evidence: New product default condition.
+          safe_default: true
+  list_price:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - currency
+    - value
+    children:
+      currency:
+        shape: value
+        enum_values:
+        - USD
+        transform: enum
+        sources:
+        - default: USD
+          confidence: high
+          evidence: US marketplace list price currency.
+          safe_default: true
+      value:
+        shape: value
+        transform: passthrough
+        sources:
+        - path: offer.price
+          confidence: high
+  item_package_dimensions:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Package dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.height
+              confidence: high
+              evidence: BED_FRAME package height from supplier carton dimensions.
+        manual_review: false
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Package dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.length
+              confidence: high
+              evidence: BED_FRAME package length from supplier carton dimensions.
+        manual_review: false
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Package dimensions normalized to inches.
+              safe_default: true
+          value:
+            shape: value
+            transform: passthrough
+            sources:
+            - path: product.dimensions.width
+              confidence: high
+              evidence: BED_FRAME package width from supplier carton dimensions.
+        manual_review: false
+  item_package_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - kilograms
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - kilograms
+        - pounds
+        transform: enum
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Package weight normalized to pounds.
+          safe_default: true
+      value:
+        shape: value
+        transform: passthrough
+        sources:
+        - path: product.dimensions.weight
+          confidence: high
+        - path: product.dimensions.assembled_weight
+          confidence: medium
+  number_of_boxes:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: integer
+        sources:
+        - path: product.attributes.Number of Boxes
+          confidence: high
+        - default: 1
+          confidence: high
+          evidence: Single-carton bed frame default.
+          safe_default: true
+  batteries_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - default: 'False'
+          confidence: high
+          evidence: Non-electronic bed frame default.
+          safe_default: true
+name: amazon_universal_required_v1
+version: bed_frame_attribute_rules_v2
+product_type: BED_FRAME
+mode: live_eligible
+generated_from: promote_category_rules_v2
+presets:
+- amazon_universal_required_v1
+dimension_strategy: item_length_width_height
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin

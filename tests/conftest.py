@@ -7,6 +7,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Rule YAML writes to config/amz_listing_data_mapping/api_attribute_rules/ are blocked
+# during pytest (see rule_yaml_write_guard). Use tmp_path config_dir on services under
+# test, or set AMZ_ALLOW_RULE_YAML_WRITE=1 for intentional canonical writes.
+
 @pytest.fixture
 def mock_db_session():
     """Returns a mock SQLAlchemy Session"""

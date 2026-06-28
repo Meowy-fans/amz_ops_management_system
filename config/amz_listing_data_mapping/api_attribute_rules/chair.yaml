@@ -1,19 +1,148 @@
-product_type: CHAIR
-version: chair_attribute_rules_draft_v1
-mode: dry_run
-generated_from: amazon_product_type_schema
-presets:
-- amazon_universal_required_v1
 attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
   frame:
     level: required
     shape: object
     transform: passthrough
     manual_review: true
-    sources:
-    - default: null
-      confidence: low
-      evidence: 'TODO: review source mapping for frame'
+    children:
+      color:
+        shape: list_value
+        transform: text
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.attributes.Main Color
+              confidence: high
+            - path: product.attributes.color
+              confidence: medium
+            - default: Brown
+              confidence: medium
+              evidence: Quick validation fallback for solid wood dining chairs when
+                supplier color is missing.
+              safe_default: true
+      material:
+        shape: list_value
+        transform: text
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.attributes.Main Material
+              confidence: high
+            - path: product.attributes.material
+              confidence: high
+            - path: product.attributes.Frame Material
+              confidence: high
+            - default: Wood
+              confidence: medium
+              evidence: Dining chair frame material fallback; Amazon 90220 preview
+                requires frame.material.
+              safe_default: true
   included_components:
     level: required
     shape: list_value
@@ -25,45 +154,90 @@ attributes:
         hint: Extract included components from the product title, description, bullet
           points, and supplier characteristics. Return null if the information is
           not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for included_components'
+    - default: Chair
+      confidence: medium
+      evidence: Quick validation single-chair listing default when supplier included
+        components are missing.
+      safe_default: true
   is_assembly_required:
     level: required
     shape: list_value
-    transform: enum
+    transform: boolean_yes_no
     manual_review: false
     sources:
     - path: product.attributes.Assembly Required
     - path: product.requires_assembly
-    - llm:
-        hint: Extract is assembly required from the product title, description, bullet
-          points, and supplier characteristics. Return null if the information is
-          not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for is_assembly_required'
+    - default: true
+      confidence: medium
+      evidence: Quick validation default for flat-pack dining chairs unless supplier
+        states otherwise.
+      safe_default: true
   is_fragile:
     level: required
     shape: list_value
-    transform: enum
+    transform: boolean_yes_no
     manual_review: true
     sources:
-    - llm:
-        hint: Extract is fragile from the product title, description, bullet points,
-          and supplier characteristics. Return null if the information is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for is_fragile'
+    - path: product.attributes.Is Fragile?
+    - default: false
+      confidence: medium
+      evidence: Quick validation default for standard dining chairs without glass
+        or ceramic components.
+      safe_default: true
   item_depth_width_height:
     level: required
     shape: object
     transform: passthrough
     manual_review: true
-    sources:
-    - default: null
-      confidence: low
-      evidence: 'TODO: review source mapping for item_depth_width_height'
+    children:
+      depth:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+            - path: product.dimensions.width
+              confidence: medium
+          unit:
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      width:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_length
+              confidence: high
+            - path: product.dimensions.length
+              confidence: medium
+          unit:
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      height:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+            - path: product.dimensions.height
+              confidence: medium
+          unit:
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
   item_shape:
     level: required
     shape: list_value
@@ -71,25 +245,34 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Item Shape
-    - llm:
-        hint: Extract item shape from the product title, description, bullet points,
-          and supplier characteristics. Return null if the information is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for item_shape'
+    - default: Rectangular
+      confidence: medium
+      evidence: Quick validation fallback for standard dining chair seat shape.
+      safe_default: true
   maximum_weight_recommendation:
     level: required
     shape: measure
     transform: passthrough
     manual_review: true
-    sources:
-    - llm:
-        hint: Extract maximum weight recommendation from the product title, description,
-          bullet points, and supplier characteristics. Return null if the information
-          is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for maximum_weight_recommendation'
+    children:
+      value:
+        transform: passthrough
+        sources:
+        - path: product.dimensions.assembled_weight
+          confidence: high
+        - path: product.dimensions.weight
+          confidence: medium
+        - default: 250
+          confidence: medium
+          evidence: Quick validation conservative dining chair weight recommendation
+            in pounds.
+          safe_default: true
+      unit:
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Weight values are normalized to pounds.
+          safe_default: true
   number_of_items:
     level: required
     shape: list_value
@@ -97,12 +280,8 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Number of Items
-    - llm:
-        hint: Extract number of items from the product title, description, bullet
-          points, and supplier characteristics. Return null if the information is
-          not found.
     - default: 1
-      confidence: medium
+      confidence: high
       evidence: Single-item listing fallback when supplier data lacks package count.
       safe_default: true
   seat:
@@ -110,10 +289,60 @@ attributes:
     shape: object
     transform: passthrough
     manual_review: true
-    sources:
-    - default: null
-      confidence: low
-      evidence: 'TODO: review source mapping for seat'
+    children:
+      depth:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+            - path: product.dimensions.width
+              confidence: medium
+          unit:
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      height:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+            - path: product.dimensions.height
+              confidence: medium
+            - default: 18
+              confidence: medium
+              evidence: Quick validation ergonomic dining chair seat height fallback
+                in inches.
+              safe_default: true
+          unit:
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      material_type:
+        shape: list_value
+        transform: text
+        children:
+          value:
+            transform: passthrough
+            sources:
+            - path: product.attributes.Main Material
+              confidence: high
+            - path: product.attributes.material
+              confidence: high
+            - default: Wood
+              confidence: medium
+              evidence: Quick validation upholstery/frame material fallback for dining
+                chairs.
+              safe_default: true
   model_name:
     level: recommended
     shape: list_value
@@ -179,3 +408,14 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Special Feature
+name: amazon_universal_required_v1
+version: chair_quick_validation_v2
+product_type: CHAIR
+mode: live_eligible
+generated_from: promote_category_rules_v2
+presets:
+- amazon_universal_required_v1
+dimension_strategy: item_depth_width_height
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
