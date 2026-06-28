@@ -1,0 +1,15 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "SOFA",
+  "generated_at": "2026-06-28T01:28:28.939006+00:00",
+  "pool_skus": [
+    "meow25110811dln",
+    "meow2511085a3hb",
+    "meow25110865jrz",
+    "meow2511088oLAd"
+  ],
+  "offline": {
+    "sku_count": 19,
+    "zero_missing": 0
+  }
+}

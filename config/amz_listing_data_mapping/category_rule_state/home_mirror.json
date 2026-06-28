@@ -1,0 +1,17 @@
+{
+  "product_type": "HOME_MIRROR",
+  "last_onboard_at": "2026-06-28T01:28:24.201247+00:00",
+  "status": "completed",
+  "yaml_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/home_mirror.yaml",
+  "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-home_mirror-onboard-acceptance.json",
+  "pool_skus": [
+    "meow251108CqW5i",
+    "meow251108GRUGR",
+    "meow251108oXHVM",
+    "meow251108RA1v0"
+  ],
+  "review_blocking_count": 11,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 5,
+  "preview_passed": null
+}

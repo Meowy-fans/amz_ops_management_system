@@ -1,0 +1,17 @@
+{
+  "product_type": "SOFA",
+  "last_onboard_at": "2026-06-28T01:28:28.939312+00:00",
+  "status": "completed",
+  "yaml_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/sofa.yaml",
+  "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-sofa-onboard-acceptance.json",
+  "pool_skus": [
+    "meow25110811dln",
+    "meow2511085a3hb",
+    "meow25110865jrz",
+    "meow2511088oLAd"
+  ],
+  "review_blocking_count": 13,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 19,
+  "preview_passed": null
+}

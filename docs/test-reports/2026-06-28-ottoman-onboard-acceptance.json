@@ -1,0 +1,13 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "OTTOMAN",
+  "generated_at": "2026-06-28T01:28:29.948312+00:00",
+  "pool_skus": [
+    "meow2511088jSUW",
+    "meow260518LZZCw"
+  ],
+  "offline": {
+    "sku_count": 2,
+    "zero_missing": 0
+  }
+}

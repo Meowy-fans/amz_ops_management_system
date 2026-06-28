@@ -1,0 +1,15 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "HOME_MIRROR",
+  "generated_at": "2026-06-28T01:28:24.200927+00:00",
+  "pool_skus": [
+    "meow251108CqW5i",
+    "meow251108GRUGR",
+    "meow251108oXHVM",
+    "meow251108RA1v0"
+  ],
+  "offline": {
+    "sku_count": 5,
+    "zero_missing": 0
+  }
+}

@@ -1,0 +1,1359 @@
+{
+  "generated_at": "2026-06-28T01:28:22.001485+00:00",
+  "backup_dir": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28",
+  "output_dir": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded",
+  "categories": {
+    "CABINET": {
+      "product_type": "CABINET",
+      "reference": "TABLE",
+      "backup_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/cabinet.yaml",
+      "draft_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/cabinet.yaml",
+      "onboard_status": "completed",
+      "pool_skus": [
+        "meow251108SQL9a"
+      ],
+      "review_blocking_count": 13,
+      "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-cabinet-onboard-acceptance.json",
+      "state_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/category_rule_state/cabinet.json",
+      "legacy_mode": "live_eligible",
+      "draft_mode": "dry_run",
+      "legacy_attribute_count": 13,
+      "draft_attribute_count": 27,
+      "steps": [
+        {
+          "step": "validate_prerequisites",
+          "status": "ok",
+          "detail": "schema_cached=true pool_skus=1",
+          "payload": {
+            "pool_skus": [
+              "meow251108SQL9a"
+            ]
+          }
+        },
+        {
+          "step": "generate_rule_skeleton_v2",
+          "status": "ok",
+          "detail": "attributes=27 placeholders=40",
+          "payload": {
+            "product_type": "CABINET",
+            "path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/cabinet.yaml",
+            "written": true,
+            "existed": false,
+            "attribute_count": 27,
+            "leaf_path_count": 40,
+            "placeholder_leaf_count": 40,
+            "warnings": [],
+            "mode": "dry_run"
+          }
+        },
+        {
+          "step": "reuse_rule_patterns_v2",
+          "status": "ok",
+          "detail": "reused=0 from TABLE",
+          "payload": {
+            "product_type": "CABINET",
+            "reference_product_type": "TABLE",
+            "candidate_leaf_count": 40,
+            "reused_leaf_count": 0,
+            "reused_paths": [],
+            "warnings": []
+          }
+        },
+        {
+          "step": "map_rule_fields_v2",
+          "status": "ok",
+          "detail": "mapped=27 sample_skus=1",
+          "payload": {
+            "product_type": "CABINET",
+            "sample_sku_count": 1,
+            "leaf_count": 40,
+            "mapped_leaf_count": 27,
+            "mapped_paths": [
+              "fabric_type.value",
+              "model_number.value",
+              "included_components.value",
+              "is_assembly_required.value",
+              "model_name.value",
+              "room_type.value",
+              "special_feature.value",
+              "material.value",
+              "number_of_items.value",
+              "color",
+              "part_number.value",
+              "item_shape.value",
+              "mounting_type.value",
+              "item_depth_width_height.depth.unit",
+              "item_depth_width_height.depth.value",
+              "item_depth_width_height.height.unit",
+              "item_depth_width_height.height.value",
+              "item_depth_width_height.width.unit",
+              "item_depth_width_height.width.value",
+              "item_package_dimensions.height.unit",
+              "item_package_dimensions.height.value",
+              "item_package_dimensions.length.unit",
+              "item_package_dimensions.length.value",
+              "item_package_dimensions.width.unit",
+              "item_package_dimensions.width.value",
+              "item_package_weight.unit",
+              "item_package_weight.value"
+            ],
+            "warnings": []
+          }
+        },
+        {
+          "step": "review_pending_rules",
+          "status": "ok",
+          "detail": "review_items=13 blocking_items=13",
+          "payload": {
+            "product_type": "CABINET",
+            "leaf_count": 40,
+            "placeholder_leaf_count": 13,
+            "item_count": 13,
+            "blocking_item_count": 13,
+            "items": [
+              {
+                "product_type": "CABINET",
+                "path_key": "merchant_suggested_asin.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "construction_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "is_fragile.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "item_weight.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "item_weight.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "door",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "number_of_drawers.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "fulfillment_availability.fulfillment_channel_code",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "condition_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "list_price.currency",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "list_price.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "number_of_boxes.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "CABINET",
+                "path_key": "batteries_required.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              }
+            ]
+          }
+        },
+        {
+          "step": "s7_acceptance",
+          "status": "ok",
+          "detail": "report=/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-cabinet-onboard-acceptance.json",
+          "payload": {
+            "offline": {
+              "sku_count": 1,
+              "zero_missing": 0
+            }
+          }
+        }
+      ]
+    },
+    "HOME_MIRROR": {
+      "product_type": "HOME_MIRROR",
+      "reference": "CABINET",
+      "backup_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/home_mirror.yaml",
+      "draft_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/home_mirror.yaml",
+      "onboard_status": "completed",
+      "pool_skus": [
+        "meow251108CqW5i",
+        "meow251108GRUGR",
+        "meow251108oXHVM",
+        "meow251108RA1v0"
+      ],
+      "review_blocking_count": 11,
+      "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-home_mirror-onboard-acceptance.json",
+      "state_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/category_rule_state/home_mirror.json",
+      "legacy_mode": "live_eligible",
+      "draft_mode": "dry_run",
+      "legacy_attribute_count": 10,
+      "draft_attribute_count": 21,
+      "steps": [
+        {
+          "step": "validate_prerequisites",
+          "status": "ok",
+          "detail": "schema_cached=true pool_skus=4",
+          "payload": {
+            "pool_skus": [
+              "meow251108CqW5i",
+              "meow251108GRUGR",
+              "meow251108oXHVM",
+              "meow251108RA1v0"
+            ]
+          }
+        },
+        {
+          "step": "generate_rule_skeleton_v2",
+          "status": "ok",
+          "detail": "attributes=21 placeholders=31",
+          "payload": {
+            "product_type": "HOME_MIRROR",
+            "path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/home_mirror.yaml",
+            "written": true,
+            "existed": false,
+            "attribute_count": 21,
+            "leaf_path_count": 31,
+            "placeholder_leaf_count": 31,
+            "warnings": [],
+            "mode": "dry_run"
+          }
+        },
+        {
+          "step": "reuse_rule_patterns_v2",
+          "status": "ok",
+          "detail": "reused=20 from CABINET",
+          "payload": {
+            "product_type": "HOME_MIRROR",
+            "reference_product_type": "CABINET",
+            "candidate_leaf_count": 31,
+            "reused_leaf_count": 20,
+            "reused_paths": [
+              "fabric_type.value",
+              "model_number.value",
+              "included_components.value",
+              "is_assembly_required.value",
+              "model_name.value",
+              "room_type.value",
+              "special_feature.value",
+              "material.value",
+              "number_of_items.value",
+              "color",
+              "item_shape.value",
+              "mounting_type.value",
+              "item_package_dimensions.height.unit",
+              "item_package_dimensions.height.value",
+              "item_package_dimensions.length.unit",
+              "item_package_dimensions.length.value",
+              "item_package_dimensions.width.unit",
+              "item_package_dimensions.width.value",
+              "item_package_weight.unit",
+              "item_package_weight.value"
+            ],
+            "warnings": []
+          }
+        },
+        {
+          "step": "map_rule_fields_v2",
+          "status": "ok",
+          "detail": "mapped=0 sample_skus=4",
+          "payload": {
+            "product_type": "HOME_MIRROR",
+            "sample_sku_count": 4,
+            "leaf_count": 11,
+            "mapped_leaf_count": 0,
+            "mapped_paths": [],
+            "warnings": []
+          }
+        },
+        {
+          "step": "review_pending_rules",
+          "status": "ok",
+          "detail": "review_items=40 blocking_items=11",
+          "payload": {
+            "product_type": "HOME_MIRROR",
+            "leaf_count": 31,
+            "placeholder_leaf_count": 11,
+            "item_count": 40,
+            "blocking_item_count": 11,
+            "items": [
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "fabric_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "fabric_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "merchant_suggested_asin.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "included_components.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "is_assembly_required.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "is_assembly_required.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "room_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "special_feature.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "material.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "material.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "number_of_items.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "color",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "color",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_shape.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "frame.color.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "mounting_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_length_width.length.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_length_width.length.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_length_width.width.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_length_width.width.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "fulfillment_availability.fulfillment_channel_code",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "condition_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "list_price.currency",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "list_price.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.height.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.length.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.length.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.width.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_dimensions.width.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_weight.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_weight.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "item_package_weight.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from CABINET; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "HOME_MIRROR",
+                "path_key": "batteries_required.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              }
+            ]
+          }
+        },
+        {
+          "step": "s7_acceptance",
+          "status": "ok",
+          "detail": "report=/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-home_mirror-onboard-acceptance.json",
+          "payload": {
+            "offline": {
+              "sku_count": 5,
+              "zero_missing": 0
+            }
+          }
+        }
+      ]
+    },
+    "SOFA": {
+      "product_type": "SOFA",
+      "reference": "TABLE",
+      "backup_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/sofa.yaml",
+      "draft_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/sofa.yaml",
+      "onboard_status": "completed",
+      "pool_skus": [
+        "meow25110811dln",
+        "meow2511085a3hb",
+        "meow25110865jrz",
+        "meow2511088oLAd"
+      ],
+      "review_blocking_count": 13,
+      "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-sofa-onboard-acceptance.json",
+      "state_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/category_rule_state/sofa.json",
+      "legacy_mode": "live_eligible",
+      "draft_mode": "dry_run",
+      "legacy_attribute_count": 13,
+      "draft_attribute_count": 22,
+      "steps": [
+        {
+          "step": "validate_prerequisites",
+          "status": "ok",
+          "detail": "schema_cached=true pool_skus=4",
+          "payload": {
+            "pool_skus": [
+              "meow25110811dln",
+              "meow2511085a3hb",
+              "meow25110865jrz",
+              "meow2511088oLAd"
+            ]
+          }
+        },
+        {
+          "step": "generate_rule_skeleton_v2",
+          "status": "ok",
+          "detail": "attributes=22 placeholders=42",
+          "payload": {
+            "product_type": "SOFA",
+            "path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/sofa.yaml",
+            "written": true,
+            "existed": false,
+            "attribute_count": 22,
+            "leaf_path_count": 42,
+            "placeholder_leaf_count": 42,
+            "warnings": [],
+            "mode": "dry_run"
+          }
+        },
+        {
+          "step": "reuse_rule_patterns_v2",
+          "status": "ok",
+          "detail": "reused=0 from TABLE",
+          "payload": {
+            "product_type": "SOFA",
+            "reference_product_type": "TABLE",
+            "candidate_leaf_count": 42,
+            "reused_leaf_count": 0,
+            "reused_paths": [],
+            "warnings": []
+          }
+        },
+        {
+          "step": "map_rule_fields_v2",
+          "status": "ok",
+          "detail": "mapped=29 sample_skus=4",
+          "payload": {
+            "product_type": "SOFA",
+            "sample_sku_count": 4,
+            "leaf_count": 42,
+            "mapped_leaf_count": 29,
+            "mapped_paths": [
+              "model_number.value",
+              "included_components.value",
+              "model_name.value",
+              "seat.height.unit",
+              "seat.height.value",
+              "seat.depth.unit",
+              "seat.depth.value",
+              "seat.fill_material.value",
+              "seat.material_type.value",
+              "material.value",
+              "fabric_type.value",
+              "number_of_items.value",
+              "color",
+              "part_number.value",
+              "is_assembly_required.value",
+              "item_depth_width_height.depth.unit",
+              "item_depth_width_height.depth.value",
+              "item_depth_width_height.height.unit",
+              "item_depth_width_height.height.value",
+              "item_depth_width_height.width.unit",
+              "item_depth_width_height.width.value",
+              "item_package_dimensions.height.unit",
+              "item_package_dimensions.height.value",
+              "item_package_dimensions.length.unit",
+              "item_package_dimensions.length.value",
+              "item_package_dimensions.width.unit",
+              "item_package_dimensions.width.value",
+              "item_package_weight.unit",
+              "item_package_weight.value"
+            ],
+            "warnings": []
+          }
+        },
+        {
+          "step": "review_pending_rules",
+          "status": "ok",
+          "detail": "review_items=13 blocking_items=13",
+          "payload": {
+            "product_type": "SOFA",
+            "leaf_count": 42,
+            "placeholder_leaf_count": 13,
+            "item_count": 13,
+            "blocking_item_count": 13,
+            "items": [
+              {
+                "product_type": "SOFA",
+                "path_key": "merchant_suggested_asin.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "is_fragile.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "item_weight.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "item_weight.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "seat.interior_width.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "seat.interior_width.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "seating_capacity.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "sofa_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "fulfillment_availability.fulfillment_channel_code",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "condition_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "list_price.currency",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "list_price.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "SOFA",
+                "path_key": "batteries_required.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              }
+            ]
+          }
+        },
+        {
+          "step": "s7_acceptance",
+          "status": "ok",
+          "detail": "report=/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-sofa-onboard-acceptance.json",
+          "payload": {
+            "offline": {
+              "sku_count": 19,
+              "zero_missing": 0
+            }
+          }
+        }
+      ]
+    },
+    "OTTOMAN": {
+      "product_type": "OTTOMAN",
+      "reference": "SOFA",
+      "backup_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/ottoman.yaml",
+      "draft_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/ottoman.yaml",
+      "onboard_status": "completed",
+      "pool_skus": [
+        "meow2511088jSUW",
+        "meow260518LZZCw"
+      ],
+      "review_blocking_count": 13,
+      "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-ottoman-onboard-acceptance.json",
+      "state_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/category_rule_state/ottoman.json",
+      "legacy_mode": "live_eligible",
+      "draft_mode": "dry_run",
+      "legacy_attribute_count": 13,
+      "draft_attribute_count": 25,
+      "steps": [
+        {
+          "step": "validate_prerequisites",
+          "status": "ok",
+          "detail": "schema_cached=true pool_skus=2",
+          "payload": {
+            "pool_skus": [
+              "meow2511088jSUW",
+              "meow260518LZZCw"
+            ]
+          }
+        },
+        {
+          "step": "generate_rule_skeleton_v2",
+          "status": "ok",
+          "detail": "attributes=25 placeholders=40",
+          "payload": {
+            "product_type": "OTTOMAN",
+            "path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/ottoman.yaml",
+            "written": true,
+            "existed": false,
+            "attribute_count": 25,
+            "leaf_path_count": 40,
+            "placeholder_leaf_count": 40,
+            "warnings": [],
+            "mode": "dry_run"
+          }
+        },
+        {
+          "step": "reuse_rule_patterns_v2",
+          "status": "ok",
+          "detail": "reused=26 from SOFA",
+          "payload": {
+            "product_type": "OTTOMAN",
+            "reference_product_type": "SOFA",
+            "candidate_leaf_count": 40,
+            "reused_leaf_count": 26,
+            "reused_paths": [
+              "fabric_type.value",
+              "model_number.value",
+              "included_components.value",
+              "is_assembly_required.value",
+              "model_name.value",
+              "seat.height.unit",
+              "seat.height.value",
+              "seat.material_type.value",
+              "material.value",
+              "number_of_items.value",
+              "color",
+              "part_number.value",
+              "item_depth_width_height.depth.unit",
+              "item_depth_width_height.depth.value",
+              "item_depth_width_height.height.unit",
+              "item_depth_width_height.height.value",
+              "item_depth_width_height.width.unit",
+              "item_depth_width_height.width.value",
+              "item_package_dimensions.height.unit",
+              "item_package_dimensions.height.value",
+              "item_package_dimensions.length.unit",
+              "item_package_dimensions.length.value",
+              "item_package_dimensions.width.unit",
+              "item_package_dimensions.width.value",
+              "item_package_weight.unit",
+              "item_package_weight.value"
+            ],
+            "warnings": []
+          }
+        },
+        {
+          "step": "map_rule_fields_v2",
+          "status": "ok",
+          "detail": "mapped=1 sample_skus=2",
+          "payload": {
+            "product_type": "OTTOMAN",
+            "sample_sku_count": 2,
+            "leaf_count": 14,
+            "mapped_leaf_count": 1,
+            "mapped_paths": [
+              "item_shape.value"
+            ],
+            "warnings": []
+          }
+        },
+        {
+          "step": "review_pending_rules",
+          "status": "ok",
+          "detail": "review_items=54 blocking_items=13",
+          "payload": {
+            "product_type": "OTTOMAN",
+            "leaf_count": 40,
+            "placeholder_leaf_count": 13,
+            "item_count": 54,
+            "blocking_item_count": 13,
+            "items": [
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "fabric_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "fabric_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "merchant_suggested_asin.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "base_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "included_components.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "is_assembly_required.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "is_assembly_required.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "is_fragile.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "model_name.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "seat.height.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "seat.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "seat.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "seat.material_type.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "material.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "material.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "number_of_items.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "color",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "color",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "part_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "part_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "part_number.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "frame",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "base",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "top",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.depth.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.depth.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.depth.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.height.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.width.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.width.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_depth_width_height.width.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "fulfillment_availability.fulfillment_channel_code",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "condition_type.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "list_price.currency",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "list_price.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.height.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.height.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.length.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.length.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.width.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_dimensions.width.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_weight.unit",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_weight.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_package_weight.value",
+                "issue_type": "inherited_source",
+                "detail": "Inherited from SOFA; review for category fit",
+                "blocking": false
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "batteries_required.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_weight.unit",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              },
+              {
+                "product_type": "OTTOMAN",
+                "path_key": "item_weight.value",
+                "issue_type": "todo_placeholder",
+                "detail": "Leaf source chain still contains TODO placeholder",
+                "blocking": true
+              }
+            ]
+          }
+        },
+        {
+          "step": "s7_acceptance",
+          "status": "ok",
+          "detail": "report=/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-ottoman-onboard-acceptance.json",
+          "payload": {
+            "offline": {
+              "sku_count": 2,
+              "zero_missing": 0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "backups": {
+    "CABINET": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/cabinet.yaml",
+    "HOME_MIRROR": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/home_mirror.yaml",
+    "SOFA": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/sofa.yaml",
+    "OTTOMAN": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/ottoman.yaml"
+  }
+}

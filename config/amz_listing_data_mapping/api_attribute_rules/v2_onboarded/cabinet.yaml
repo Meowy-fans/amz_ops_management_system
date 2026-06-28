@@ -1,0 +1,754 @@
+attributes:
+  fabric_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Fabric Type
+          confidence: high
+          evidence: Bootstrap mapping for fabric_type.value
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for fabric_type.value
+  merchant_suggested_asin:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for merchant_suggested_asin.value'
+  model_number:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Number
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+  construction_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for construction_type.value'
+  included_components:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Included Components
+          confidence: high
+          evidence: Bootstrap mapping for included_components.value
+  is_assembly_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - path: product.attributes.Assembly Required
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+        - path: product.requires_assembly
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+  is_fragile:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for is_fragile.value'
+  item_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - pounds
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for item_weight.unit'
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for item_weight.value'
+  model_name:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Name
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+  room_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Room Type
+          confidence: high
+          evidence: Bootstrap mapping for room_type.value
+  special_feature:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Special Feature
+          confidence: high
+          evidence: Bootstrap mapping for special_feature.value
+  material:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+        - path: product.attributes.material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+  number_of_items:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Number of Items
+          confidence: high
+          evidence: Bootstrap mapping for number_of_items.value
+  color:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    sources:
+    - path: product.attributes.Main Color
+      confidence: high
+      evidence: Bootstrap mapping for color
+    - path: product.attributes.color
+      confidence: high
+      evidence: Bootstrap mapping for color
+  part_number:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Part Number
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+  item_shape:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Item Shape
+          confidence: high
+          evidence: Bootstrap mapping for item_shape.value
+  door:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    sources:
+    - default: null
+      confidence: low
+      evidence: 'TODO: review source mapping for door'
+  number_of_drawers:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for number_of_drawers.value'
+  mounting_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Mounting Type
+          confidence: high
+          evidence: Bootstrap mapping for mounting_type.value
+  item_depth_width_height:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - depth
+    - height
+    - width
+    children:
+      depth:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_depth_width_height.depth.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
+            - path: product.dimensions.width
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_depth_width_height.height.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
+            - path: product.dimensions.height
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_depth_width_height.width.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
+            - path: product.dimensions.length
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
+  fulfillment_availability:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - fulfillment_channel_code
+    children:
+      fulfillment_channel_code:
+        shape: value
+        enum_values:
+        - AMAZON_NA
+        - DEFAULT
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for fulfillment_availability.fulfillment_channel_code'
+  condition_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - club_club
+    - collectible_acceptable
+    - collectible_good
+    - collectible_like_new
+    - collectible_very_good
+    - new_new
+    - new_oem
+    - new_open_box
+    - refurbished_refurbished
+    - used_acceptable
+    - used_good
+    - used_like_new
+    - used_very_good
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - club_club
+        - collectible_acceptable
+        - collectible_good
+        - collectible_like_new
+        - collectible_very_good
+        - new_new
+        - new_oem
+        - new_open_box
+        - refurbished_refurbished
+        - used_acceptable
+        - used_good
+        - used_like_new
+        - used_very_good
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for condition_type.value'
+  list_price:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - currency
+    - value
+    children:
+      currency:
+        shape: value
+        enum_values:
+        - USD
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for list_price.currency'
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for list_price.value'
+  item_package_dimensions:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.height.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.height.value
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.length.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.length.value
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - angstrom
+        - centimeters
+        - decimeters
+        - feet
+        - hundredths_inches
+        - inches
+        - kilometers
+        - meters
+        - micrometer
+        - miles
+        - millimeters
+        - mils
+        - nanometer
+        - picometer
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - angstrom
+            - centimeters
+            - decimeters
+            - feet
+            - hundredths_inches
+            - inches
+            - kilometers
+            - meters
+            - micrometer
+            - miles
+            - millimeters
+            - mils
+            - nanometer
+            - picometer
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.width.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.width.value
+  item_package_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - pounds
+        transform: enum
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Bootstrap unit for item_package_weight.unit
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.dimensions.weight
+          confidence: high
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+        - path: product.dimensions.assembled_weight
+          confidence: medium
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+  number_of_boxes:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for number_of_boxes.value'
+  batteries_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - default: null
+          confidence: low
+          evidence: 'TODO: review source mapping for batteries_required.value'
+product_type: CABINET
+version: cabinet_attribute_rules_v1
+mode: dry_run
+generated_from: regenerate_live_category_rules_v2
+presets:
+- amazon_universal_required_v1
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
+dimension_strategy: item_depth_width_height
+additional_dimension_measures:
+- item_width
+coverage_ignore_when_parent:
+- item_width
+post_processors:
+- cabinet_attribute_shapes
+regenerated_from_backup: /home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/cabinet.yaml

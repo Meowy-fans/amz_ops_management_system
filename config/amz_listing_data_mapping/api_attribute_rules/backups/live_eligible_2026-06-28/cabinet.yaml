@@ -1,0 +1,162 @@
+product_type: CABINET
+version: cabinet_attribute_rules_v1
+mode: live_eligible
+presets:
+  - amazon_universal_required_v1
+
+dimension_strategy: item_depth_width_height
+additional_dimension_measures:
+  - item_width
+post_processors:
+  - cabinet_attribute_shapes
+coverage_ignore_when_parent:
+  - item_width
+coverage_ignore_required:
+  - merchant_shipping_group
+  - merchant_suggested_asin
+
+attributes:
+  fabric_type:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Fabric Type
+      - path: product.attributes.Main Material
+      - path: product.attributes.material
+      - default: Wood
+        confidence: medium
+        evidence: CABINET listings are furniture items commonly made from wood or engineered wood when supplier material is unavailable.
+        safe_default: true
+
+  mounting_type:
+    level: required
+    shape: value
+    transform: enum
+    sources:
+      - path: product.attributes.Mounting Type
+      - default: Freestanding
+        confidence: high
+        evidence: CABINET listing default for freestanding bathroom storage unless source indicates wall mount.
+        safe_default: true
+
+  model_name:
+    level: required
+    shape: value
+    transform: text
+    sources:
+      - path: product.attributes.Model Name
+      - path: product.attributes.mpn
+      - path: product.vendor_sku
+
+  construction_type:
+    level: required
+    shape: value
+    transform: text
+    sources:
+      - path: product.attributes.Construction Type
+      - default: Freestanding
+        confidence: medium
+        evidence: Supplier cabinet assortment is normally standalone/freestanding unless product attributes indicate otherwise.
+        safe_default: true
+
+  number_of_items:
+    level: required
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Number of Items
+      - default: 1
+        confidence: high
+        evidence: One purchasable cabinet listing unit.
+        safe_default: true
+
+  door:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Door Style
+      - path: product.attributes.Door
+      - default: Shaker
+        confidence: medium
+        evidence: Conservative Amazon-valid cabinet door style default; review if source says drawers-only, slab, glass front, or open shelf.
+        safe_default: true
+
+  special_feature:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Special Feature
+      - default: Storage
+        confidence: medium
+        evidence: Conservative feature for cabinet category; does not invent technical claims.
+        safe_default: true
+
+  included_components:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Included Components
+      - default: Cabinet
+        confidence: high
+        evidence: Listing unit includes the cabinet itself.
+        safe_default: true
+
+  is_assembly_required:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+      - path: product.attributes.Assembly Required
+      - path: product.requires_assembly
+      - default: Yes
+        confidence: medium
+        evidence: Supplier furniture items commonly require assembly; review if source states fully assembled.
+        safe_default: true
+
+  item_shape:
+    level: required
+    shape: value
+    transform: text
+    sources:
+      - path: product.attributes.Item Shape
+      - default: Rectangular
+        confidence: high
+        evidence: Conservative shape for standard cabinet furniture.
+        safe_default: true
+
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Room Type
+      - default: Bathroom
+        confidence: high
+        evidence: CABINET mapped assortment is bathroom vanity/storage unless source category changes.
+        safe_default: true
+
+  is_fragile:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+      - path: product.attributes.Is Fragile?
+      - default: No
+        confidence: medium
+        evidence: Cabinet body is not fragile by default; review if glass/ceramic sink is included.
+        safe_default: true
+
+  number_of_drawers:
+    level: recommended
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Number of Drawers
+      - default: 0
+        confidence: medium
+        evidence: Conservative default when drawer count is not stated.
+        safe_default: true

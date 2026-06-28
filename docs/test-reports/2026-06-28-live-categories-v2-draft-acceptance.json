@@ -1,0 +1,74 @@
+{
+  "CABINET": {
+    "live_eligible": {
+      "mode": "live_eligible",
+      "offline": {
+        "sku_count": 1,
+        "zero_missing": 1
+      }
+    },
+    "v2_draft": {
+      "mode": "dry_run",
+      "offline": {
+        "sku_count": 1,
+        "zero_missing": 0
+      },
+      "review_blocking_count": 14,
+      "review_items": 14
+    }
+  },
+  "HOME_MIRROR": {
+    "live_eligible": {
+      "mode": "live_eligible",
+      "offline": {
+        "sku_count": 5,
+        "zero_missing": 5
+      }
+    },
+    "v2_draft": {
+      "mode": "dry_run",
+      "offline": {
+        "sku_count": 5,
+        "zero_missing": 0
+      },
+      "review_blocking_count": 12,
+      "review_items": 41
+    }
+  },
+  "SOFA": {
+    "live_eligible": {
+      "mode": "live_eligible",
+      "offline": {
+        "sku_count": 19,
+        "zero_missing": 19
+      }
+    },
+    "v2_draft": {
+      "mode": "dry_run",
+      "offline": {
+        "sku_count": 19,
+        "zero_missing": 0
+      },
+      "review_blocking_count": 14,
+      "review_items": 14
+    }
+  },
+  "OTTOMAN": {
+    "live_eligible": {
+      "mode": "live_eligible",
+      "offline": {
+        "sku_count": 2,
+        "zero_missing": 2
+      }
+    },
+    "v2_draft": {
+      "mode": "dry_run",
+      "offline": {
+        "sku_count": 2,
+        "zero_missing": 0
+      },
+      "review_blocking_count": 14,
+      "review_items": 55
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "product_type": "OTTOMAN",
+  "last_onboard_at": "2026-06-28T01:28:29.948648+00:00",
+  "status": "completed",
+  "yaml_path": "/home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/v2_onboarded/ottoman.yaml",
+  "acceptance_report_path": "/home/liangqinhao/amz_listing_management_system/docs/test-reports/2026-06-28-ottoman-onboard-acceptance.json",
+  "pool_skus": [
+    "meow2511088jSUW",
+    "meow260518LZZCw"
+  ],
+  "review_blocking_count": 13,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 2,
+  "preview_passed": null
+}
