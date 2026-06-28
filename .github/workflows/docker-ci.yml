@@ -1,0 +1,23 @@
+name: Docker CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  docker:
+    uses: Meowy-fans/agent-system/.github/workflows/templates/docker-ci.yml@main
+    with:
+      image_name: amz_ops
+      dockerfile: Dockerfile
+      enable_push: ${{ github.event_name == 'push' }}
+      enable_governance: false
+      runs_on: 'staging'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
