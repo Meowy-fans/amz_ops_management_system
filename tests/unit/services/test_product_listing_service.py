@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, call, patch
-import sys
+from unittest.mock import MagicMock, patch
 from src.services.product_listing_service import ProductListingService
 
 
@@ -486,6 +485,17 @@ class TestProductListingService:
         assert result['success'] is True
         assert result['results'] == [{'sku': 'SKU1', 'status': 'dry_run'}]
         mapper_cls.assert_not_called()
+
+    def test_generate_listings_via_api_blocks_v2_live(self, service):
+        service.listing_payload_engine_mode = "v2"
+
+        result = service.generate_listings_via_api("CABINET", dry_run=False)
+
+        assert result == {
+            "success": False,
+            "results": [],
+            "message": "v2_engine_requires_dry_run",
+        }
 
     def test_api_native_plan_prefers_approved_image_assets(self, service, mock_repo_context):
         class Selector:

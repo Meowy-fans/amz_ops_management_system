@@ -7,7 +7,7 @@
 
 ## Current Implementation Status
 
-Updated: 2026-06-26 by Claude Code (S11).
+Updated: 2026-06-27 by Codex (S14 regression evaluator + cutover plan first pass).
 
 This module set is currently implemented as read-only / standalone V2
 foundation code. It does not replace the production `generate-listing-api`
@@ -15,8 +15,8 @@ pipeline yet.
 
 Current completion estimate:
 
-- production replacement: **35% - 40%**
-- read-only / shadow-plan foundation: **about 80%**
+- production replacement: **50% - 55%**
+- read-only / shadow-plan foundation: **about 95%**
 
 Implemented first-pass modules:
 
@@ -35,18 +35,25 @@ Implemented first-pass modules:
 | `validation_preview_v2.py` | Implemented Amazon VALIDATION_PREVIEW integration with audit persistence and V2 coverage comparison. |
 | `feedback_learning_adapter_v2.py` | Implemented V2 feedback learning from Amazon 90220 issues at path_key granularity; tree builder hook + CLI task. |
 | `amazon_listing_learned_required_paths_v2_repository.py` | Implemented upsert/list with sample_count ratcheting; UNIQUE on (category, path_key, path_key_version). |
-| `listing_payload_engine_v2.py` | Implemented read-only requirement analysis and `build_read_only_plan()`. |
+| `listing_payload_shadow_adapter_v2.py` | Implemented S12 shadow audit adapter that builds V2 beside V1 and persists read-only audit rows. |
+| `listing_payload_shadow_diff_v2.py` | Implemented S13 read-only V1/V2 shadow diff summaries from audit rows. |
+| `listing_payload_v2_regression.py` | Implemented S14 shadow evidence evaluator for category go/no-go decisions. |
+| `listing_payload_engine_v2.py` | Implemented read-only requirement analysis and `build_read_only_plan()`; wires LLM extraction, confidence scoring, and path-level review state. |
 
 Not implemented yet:
 
-- V1/V2 shadow diff tooling
-- production cutover and retirement plan
+- real multi-category shadow/strict-preview evidence collection
+- `LISTING_PAYLOAD_ENGINE=v2` replacement implementation and canary cutover
 
 Current verification:
 
 ```text
 V2 targeted tests: 78 passed
 Full unit + integration suite: 871 passed
+S5/S6/S7 wiring fix targeted tests: 35 passed
+S12 shadow adapter targeted tests: 8 passed
+S13 shadow diff targeted tests: 34 passed
+S14 regression evaluator targeted tests: 29 passed
 ruff: All checks passed
 ```
 
@@ -71,6 +78,7 @@ ruff: All checks passed
 - `__init__` accepts optional `llm_extractor` parameter.
 - `_read_source` `llm` branch calls `llm_extractor.extract(draft, requirement)` when extractor is configured; falls back to defer behavior (`None`, `"llm"`, `"low"`) when not.
 - LLM extraction failure (null value) allows fallback to subsequent sources in the rule's `sources` list.
+- `ListingPayloadEngineV2.build_read_only_plan()` injects `LLMAttributeExtractorV2` into the resolver by default. The default extractor remains environment-gated (`ATTRIBUTE_LLM_EXTRACTION_ENABLED`) and is injectable in tests.
 
 ### S6 Implementation Notes
 
@@ -97,6 +105,7 @@ aggregates parent review state conservatively.
 - `score_tree(resolution_root, draft, requirement_root)` mutates each node's `confidence_score` and `review_route` in place.
 - `score_node(resolution, draft, requirement)` returns `PathConfidenceScore` for a single node without mutation.
 - Context provider is injectable via `__init__` (`context_provider(draft, requirement) -> str`); defaults to a built-in text collector over `draft.content` and `draft.standard_product.attributes`.
+- `ListingPayloadEngineV2.build_read_only_plan()` now calls `score_tree()` before payload composition and coverage evaluation, so downstream gates consume scored `ResolutionNode` state instead of unscored placeholders.
 
 ### S7 Implementation Notes
 
@@ -127,6 +136,7 @@ S7 delivers V2 path-level review persistence and the review workflow adapter.
 - `submit_reviewed_paths(category, dry_run, limit)` — for each SKU with completed reviews, builds overrides, calls `ListingPayloadEngineV2.build_read_only_plan(rules, overrides)`, returns coverage result. Does not PUT to Amazon (deferred to S14 cutover).
 - `_extract_pending_paths` — walks ResolutionTree leaves; a pending leaf has: no children, non-empty value, `review_route in {ai_agent, human}`, `blocking=True`.
 - `_attribute_from_path_key` — derives top-level attribute from path_key's first segment (e.g., `frame.color` → `frame`).
+- Engine review-state mapping: after scoring, required LLM leaves with `review_route in {ai_agent, human}` are marked `review_status="pending"`, `blocking=True`, and `NEEDS_REVIEW_REQUIRED_ATTRIBUTE`; required leaves routed `auto_approved` are marked `review_status="auto_approved"`. This is the contract shared by `coverage_gate_v2.py` and `review_adapter_v2.py`.
 
 **CLI Integration**:
 
@@ -504,12 +514,115 @@ Shadow mode:
 
 - never calls PUT
 - never changes the V1 submission decision
-- writes or prints a diff report with:
-  - V1 required list vs V2 required tree
-  - V1 payload vs V2 payload
-  - V1 coverage findings vs V2 coverage findings
+- writes `amazon_api_submissions` audit rows with
+  `operation="listing_payload_v2_shadow"`
+- stores V1 side context in `request_payload`:
+  - `v1_status`
+  - `v1_attribute_names`
+  - `v1_attributes`
+- stores V2 side context in `response_body`:
+  - V2 attribute names and attributes
+  - V2 required paths
+  - V2 coverage findings
   - V2 condition traces
   - V2 pending review paths
+  - summary counts and blocking codes
+
+S12 first-pass scope:
+
+- `ProductListingAPIPlanBuilder` invokes shadow mode for real SKUs when V1
+  generates a plan or produces a pre-submit block with enough SKU context.
+- The adapter records `shadow_built` or `shadow_failed`; failures are caught and
+  logged so V1 behavior continues.
+- Full V1/V2 diff presentation remains S13. S12 only persists enough audit
+  material for S13 to compare old vs V2 required sets, payloads, coverage
+  findings, review items, and strict-preview outcomes.
+
+S13 first-pass scope:
+
+- `ListingPayloadShadowDiffV2.report(product_type, sku, limit)` reads recent
+  `listing_payload_v2_shadow` rows and returns stable dict summaries.
+- The report compares V1/V2 attribute names and surfaces:
+  - attributes only in V1
+  - attributes only in V2
+  - shared attributes
+  - V2 missing required paths
+  - V2 low-confidence required paths
+  - V2 pending review paths
+  - V2 finding/blocking codes
+  - condition trace count
+- CLI task: `report-listing-shadow-diff-v2 --product-type CHAIR --sku SKU1`
+  (or `--category`) prints a read-only summary. `LISTING_V2_SHADOW_DIFF_LIMIT`
+  controls row count, default 20.
+- S13 still does not call PUT or Amazon preview. Strict-preview comparison is
+  available through `validate-listing-v2`; multi-category regression evidence is
+  deferred to S14.
+
+S14 first-pass scope:
+
+- `ListingPayloadV2Regression.evaluate(product_types, limit_per_category)` reads
+  S13 diff summaries and returns `go` / `no_go` per category.
+- Built-in live regression categories: `CABINET`, `HOME_MIRROR`, `OTTOMAN`.
+  These require shadow evidence and no V2 blocking codes.
+- Built-in exploratory categories: `CHAIR`, `SOFA`. These may have blocking
+  results only when every blocking code is explainable:
+  `MISSING_REQUIRED_ATTRIBUTE_RULE`, `LOW_CONFIDENCE_REQUIRED_ATTRIBUTE`,
+  `NEEDS_REVIEW_REQUIRED_ATTRIBUTE`, or `UNSAFE_DEFAULT_REQUIRED_ATTRIBUTE`.
+- CLI task: `evaluate-listing-v2-regression` prints category go/no-go from
+  stored shadow evidence. `LISTING_V2_REGRESSION_CATEGORIES` can override the
+  default category list; `LISTING_V2_REGRESSION_LIMIT` controls rows per
+  category.
+- Evidence collection can now use `generate-listing-api --engine shadow`
+  directly; `v2` remains blocked at the listing entrypoint until canary cutover.
+- 2026-06-27 CABINET evidence hardening:
+  - shadow SKU filter is case-insensitive;
+  - diff CLI prints missing/pending/low-confidence path details;
+  - `EvidenceResolverV2` can fall back to V2 candidate attributes and inherit
+    scalar-list/list-of-dict child values;
+  - `PayloadComposerV2` renders `array_object` scalar and scalar-list parent
+    values generically;
+  - `ListingPayloadEngineV2` candidate attributes include deterministic physical
+    fields already supported by V1;
+  - `CoverageGateV2` accepts rule-driven `coverage_ignore_required`.
+  CABINET `meow251115FC0ie` latest shadow submission `114150` reports
+  `missing=0`, `pending=0`, `blocking=0`; evidence report:
+  `docs/test-reports/2026-06-27-listing-payload-v2-cabinet-shadow.md`.
+- 2026-06-27 multi-category shadow regression:
+  - regression evaluator evaluates the latest shadow row per SKU;
+  - default regression returns `status=go total=5 go=5 no_go=0`;
+  - CABINET / HOME_MIRROR / OTTOMAN live regression rows have no V2 missing,
+    pending review, or blocking paths;
+  - CHAIR / SOFA are exploratory `go` only, with explainable missing-rule /
+    pending-review blockers;
+  - SOFA `seat` now has explicit child rules for `depth`, `height`,
+    `interior_width`, `fill_material`, and `material_type`.
+  Evidence report:
+  `docs/test-reports/2026-06-27-listing-payload-v2-shadow-regression.md`.
+- 2026-06-27 authoritative dry-run canary:
+  - `ProductListingAPIPlanBuilder` can run `LISTING_PAYLOAD_ENGINE=v2` as the
+    authoritative dry-run path;
+  - `--engine v2 --no-dry-run` remains blocked by CLI and service guardrails;
+  - builder passes the already prepared draft into V2 so image, commercial, and
+    variation decisions are preserved;
+  - V2 merges schema-allowed deterministic candidate attributes after required
+    tree composition, preventing non-required core fields such as
+    `main_product_image_locator`, `purchasable_offer`,
+    `fulfillment_availability`, and variation attributes from being dropped;
+  - review-only V2 coverage blocks are persisted through `ReviewAdapterV2`
+    using path-level review keys.
+- 2026-06-27 strict-preview parity extension:
+  - HOME_MIRROR V2 authoritative strict dry-run reached submitter and returned
+    `skipped_existing`;
+  - OTTOMAN V2 authoritative strict dry-run generated a new parent that passed
+    Amazon `VALIDATION_PREVIEW` with 0 issues;
+  - RequirementTreeBuilderV2 ignores stale expanded `required_properties` and
+    derives V2 required paths from raw schema plus evaluated condition branches;
+  - variation parent semantics are normalized so `parentage_level=parent` does
+    not require `child_parent_sku_relationship`.
+- Cutover/retirement plan:
+  `docs/retirement/listing-payload-engine-v2-cutover-2026-06-27.md`.
+- This evaluator is intentionally read-only: it does not call Amazon, does not
+  submit PUT, and does not switch `LISTING_PAYLOAD_ENGINE=v2`.
 
 ## 8. Review Compatibility
 

@@ -36,6 +36,13 @@ class ValidationPreviewComparison:
 class ValidationPreviewV2:
     """Run Amazon VALIDATION_PREVIEW for V2 PayloadBuildPlans without PUT."""
 
+    EXPLAINABLE_AMAZON_ONLY_CODES = frozenset(
+        {
+            "18448",  # recommended attribute / business warning class
+            "90000900",  # dimension / range warnings observed on CABINET canary
+        }
+    )
+
     def __init__(
         self,
         db: Any = None,
@@ -106,6 +113,48 @@ class ValidationPreviewV2:
             matched=matched,
             amazon_only=amazon_only,
             v2_only=v2_only,
+        )
+
+    @classmethod
+    def unexplained_amazon_only(
+        cls,
+        comparison: ValidationPreviewComparison,
+        allowed_codes: frozenset[str] | set[str] | None = None,
+        ignored_attribute_roots: frozenset[str] | set[str] | None = None,
+    ) -> List[Dict[str, Any]]:
+        """Return Amazon-only issues that are not warnings or allowlisted codes."""
+        allowed = set(allowed_codes or cls.EXPLAINABLE_AMAZON_ONLY_CODES)
+        ignored = {
+            cls._root_of(str(name or ""))
+            for name in (ignored_attribute_roots or [])
+            if str(name or "").strip()
+        }
+        unexplained: List[Dict[str, Any]] = []
+        for issue in comparison.amazon_only:
+            severity = str(issue.get("severity") or "ERROR").upper()
+            code = str(issue.get("code") or "").strip()
+            attr_names = issue.get("attributeNames") or []
+            root = cls._root_of(attr_names[0]) if attr_names else ""
+            if severity == "WARNING":
+                continue
+            if code in allowed:
+                continue
+            if root in ignored:
+                continue
+            unexplained.append(issue)
+        return unexplained
+
+    @classmethod
+    def comparison_is_clean(
+        cls,
+        comparison: ValidationPreviewComparison,
+        allowed_codes: frozenset[str] | set[str] | None = None,
+        ignored_attribute_roots: frozenset[str] | set[str] | None = None,
+    ) -> bool:
+        return not cls.unexplained_amazon_only(
+            comparison,
+            allowed_codes=allowed_codes,
+            ignored_attribute_roots=ignored_attribute_roots,
         )
 
     def _persist_response(

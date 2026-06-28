@@ -130,6 +130,11 @@ class MetadataSchemaService:
                 "fulfillment_availability",
             ],
             "schema_json": {
+                "required": [
+                    "color_name",
+                    "maximum_weight_recommendation",
+                    "fulfillment_availability",
+                ],
                 "properties": {
                     "color_name": {
                         "items": {
@@ -165,6 +170,47 @@ class MetadataSchemaService:
                         },
                     },
                 },
+            },
+        }
+
+
+class StaleExpandedRequiredSchemaService:
+    def get_or_fetch_schema(self, product_type):
+        assert product_type == "CHAIR"
+        return {
+            "required_properties": ["item_name", "child_parent_sku_relationship"],
+            "schema_json": {
+                "required": ["item_name"],
+                "properties": {
+                    "item_name": {
+                        "items": {"properties": {"value": {"type": "string"}}}
+                    },
+                    "parentage_level": {
+                        "items": {"properties": {"value": {"type": "string"}}}
+                    },
+                    "child_parent_sku_relationship": {
+                        "items": {
+                            "required": ["parent_sku"],
+                            "properties": {"parent_sku": {"type": "string"}},
+                        }
+                    },
+                },
+                "allOf": [
+                    {
+                        "if": {
+                            "properties": {
+                                "parentage_level": {
+                                    "contains": {
+                                        "required": ["value"],
+                                        "properties": {"value": {"enum": ["child"]}},
+                                    }
+                                }
+                            },
+                            "required": ["parentage_level"],
+                        },
+                        "then": {"required": ["child_parent_sku_relationship"]},
+                    }
+                ],
             },
         }
 
@@ -236,6 +282,34 @@ def test_builder_does_not_duplicate_learned_path_already_required_by_schema():
     )
 
     assert tree.required_paths.count("item_name") == 1
+
+
+def test_builder_ignores_stale_expanded_required_properties_for_parent_context():
+    builder = RequirementTreeBuilderV2(StaleExpandedRequiredSchemaService())
+
+    parent_tree = builder.build(
+        "CHAIR",
+        attributes={"parentage_level": [{"value": "parent"}]},
+    )
+    child_tree = builder.build(
+        "CHAIR",
+        attributes={"parentage_level": [{"value": "child"}]},
+    )
+
+    assert "child_parent_sku_relationship" not in parent_tree.required_paths
+    assert "child_parent_sku_relationship" in child_tree.required_paths
+
+
+def test_builder_filters_child_parent_relationship_for_variation_parent():
+    builder = RequirementTreeBuilderV2(StaleExpandedRequiredSchemaService())
+
+    tree = builder.build(
+        "CHAIR",
+        attributes={"parentage_level": [{"value": "parent"}]},
+        learned_required_paths=["child_parent_sku_relationship"],
+    )
+
+    assert "child_parent_sku_relationship" not in tree.required_paths
 
 
 def test_builder_reports_unknown_required_paths_for_unsupported_condition():

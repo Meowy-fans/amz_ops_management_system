@@ -11,23 +11,45 @@
 
 ## Current Progress
 
-Updated: 2026-06-26 by Claude Code (S11).
+Updated: 2026-06-27 by Codex (S14 regression evaluator + cutover plan first pass).
 
-Overall production replacement progress: **35% - 40%**.
+Overall production replacement progress: **50% - 55%**.
 
-Read-only / shadow-plan foundation progress: **about 80%**.
+Read-only / shadow-plan foundation progress: **about 95%**.
 
 Current status:
 
 - V2 remains **read-only** and does not change current `generate-listing-api`,
   coverage gate, submitter, or LIVE behavior.
-- S0-S7, S10-S11 have first-pass implementation.
+- S0-S14 tooling/planning have first-pass implementation; S14 real
+  multi-category shadow/strict-preview evidence is still pending.
+- S5/S6/S7 are now wired through `ListingPayloadEngineV2.build_read_only_plan()`:
+  LLM extraction feeds `EvidenceResolverV2`, `ConfidenceScorerV2` scores the
+  `ResolutionTree`, and required LLM leaf routes become path-level pending
+  review state for coverage and review persistence.
+- S12 shadow mode is wired behind `LISTING_PAYLOAD_ENGINE=shadow`; V1 still owns
+  behavior and V2 writes `listing_payload_v2_shadow` audit rows to
+  `amazon_api_submissions`.
+- S13 diff tooling reads those shadow rows and reports V1/V2 attribute deltas,
+  V2 required coverage gaps, pending review paths, condition trace counts, and
+  blocking codes through `report-listing-shadow-diff-v2`.
+- S14 regression evaluator consumes shadow diff summaries and returns category
+  go/no-go decisions through `evaluate-listing-v2-regression`; CABINET has one
+  latest-row shadow `go` evidence item, while HOME_MIRROR / OTTOMAN / CHAIR /
+  SOFA evidence remains pending. Cutover/retirement plan is documented but no
+  old module is retired until parity is proven.
+- CABINET shadow parity fixes completed on 2026-06-27: case-insensitive SKU
+  shadow lookup, path detail printing in diff reports, `array_object` scalar/list
+  scalar rendering, candidate attribute fallback, list-of-dict child inheritance,
+  deterministic physical candidate fields, and rule-driven
+  `coverage_ignore_required`.
 - `ListingPayloadEngineV2.build_read_only_plan()` can already produce a
   `PayloadBuildPlan` by chaining:
 
   ```text
   RequirementTree
     -> ResolutionTree
+    -> confidence_scorer_v2
     -> payload_composer_v2
     -> coverage_gate_v2
     -> PayloadBuildPlan
@@ -47,6 +69,9 @@ Implemented modules:
 - `validation_preview_v2.py`
 - `feedback_learning_adapter_v2.py`
 - `amazon_listing_learned_required_paths_v2_repository.py`
+- `listing_payload_shadow_adapter_v2.py`
+- `listing_payload_shadow_diff_v2.py`
+- `listing_payload_v2_regression.py`
 - `listing_payload_engine_v2.py`
 
 Implemented CLI:
@@ -54,6 +79,9 @@ Implemented CLI:
 - `analyze-listing-requirements-v2` for read-only requirement analysis.
 - `validate-listing-v2` for Amazon VALIDATION_PREVIEW without PUT.
 - `learn-required-from-submissions` for V2 feedback learning from Amazon 90220.
+- `report-listing-shadow-diff-v2` for read-only V1/V2 shadow diff summaries.
+- `evaluate-listing-v2-regression` for S14 category go/no-go evaluation from
+  shadow evidence.
 - `review-pending-attributes --engine v2` and `submit-reviewed-plans --engine v2`
   for V2 path-level review.
 
@@ -61,6 +89,10 @@ Current verification:
 
 ```text
 871 passed
+S5/S6/S7 wiring fix targeted tests: 35 passed
+S12 shadow adapter targeted tests: 8 passed
+S13 shadow diff targeted tests: 34 passed
+S14 regression evaluator targeted tests: 29 passed
 ruff: All checks passed
 ```
 
@@ -80,12 +112,14 @@ Completed first-pass slices:
 | S9 | First pass complete | Tree-level coverage gate for required children, measure value/unit, review, confidence, and safe default policy. |
 | S10 | First pass complete | Amazon VALIDATION_PREVIEW integration with audit persistence and V2 coverage comparison. |
 | S11 | First pass complete | V2 feedback learning from Amazon 90220 at path_key granularity; tree builder hook + CLI task. |
+| S12 | First pass complete | `ProductListingAPIPlanBuilder` can run V2 shadow audits beside V1 through `LISTING_PAYLOAD_ENGINE=shadow`; no PUT and no V1 decision changes. |
+| S13 | First pass complete | CLI/service can report V1/V2 attribute deltas, V2 findings, pending review, condition trace counts, and blocking summaries from shadow audit rows. |
+| S14 | Tooling/planning first pass complete | Regression evaluator and cutover/retirement plan are in place; real CABINET/HOME_MIRROR/OTTOMAN/CHAIR/SOFA evidence collection remains pending. |
 
 Not yet implemented:
 
-- S12 plan builder shadow adapter
-- S13 V1/V2 diff tooling
-- S14 multi-category regression and cutover
+- Real multi-category shadow/strict-preview evidence collection
+- `LISTING_PAYLOAD_ENGINE=v2` replacement implementation and canary cutover
 
 ## 1. Background
 
@@ -325,9 +359,9 @@ Existing modules remain active until V2 strict-preview regressions prove parity.
 | S9 | Tree-level coverage gate | First pass complete | 4-6 days | Parent objects with missing required children fail locally; complete required children pass; unsafe defaults and pending reviews block. |
 | S10 | Strict validation preview integration | First pass complete | 2-3 days | V2 plans can run Amazon `VALIDATION_PREVIEW` without PUT and persist comparable audit results. |
 | S11 | Feedback learning adapter | First pass complete | 2-4 days | Amazon missing-required feedback can be associated with schema path/context without blindly forcing every listing in a product type. |
-| S12 | Plan builder integration adapter | Not started | 3-5 days | `ProductListingAPIPlanBuilder` can run V2 in shadow mode beside the existing pipeline. |
-| S13 | Shadow reports and diff tooling | Not started | 2-3 days | CLI can compare old vs V2 requirement, payload, coverage, and validation outcomes for selected SKUs. |
-| S14 | Regression and cutover | Not started | 9-13 days | CABINET, HOME_MIRROR, and OTTOMAN strict-preview regressions remain green; CHAIR/SOFA dry-run categories produce explainable V2 failures or preview passes. |
+| S12 | Plan builder integration adapter | First pass complete | 3-5 days | `ProductListingAPIPlanBuilder` can run V2 in shadow mode beside the existing pipeline. |
+| S13 | Shadow reports and diff tooling | First pass complete | 2-3 days | CLI can compare old vs V2 requirement, payload, coverage, and validation outcomes for selected SKUs. |
+| S14 | Regression and cutover | Authoritative dry-run canary first pass complete; LIVE replacement not started | 9-13 days | CABINET, HOME_MIRROR, and OTTOMAN strict-preview regressions remain green; CHAIR/SOFA dry-run categories produce explainable V2 failures or preview passes. |
 
 Expected module work: **54-84 person-days**.
 
@@ -359,8 +393,8 @@ Acceptance:
 
 Deliver S4-S7.
 
-Status: **Partially complete**. S4 has a first-pass path/default/review-override
-resolver. S5-S7 remain open.
+Status: **First pass complete** for resolver, LLM extraction, confidence scoring,
+and path-level review adapter.
 
 Still no submitter integration.
 
@@ -387,20 +421,88 @@ Acceptance:
 
 Deliver S10-S13.
 
-Status: **Not started**.
+Status: **First pass complete** for strict-preview integration, shadow audit,
+and shadow diff reporting. Multi-category shadow evidence collection remains
+part of S14.
 
 Acceptance:
 
 1. `generate-listing-api` can run V2 in shadow mode for selected SKUs.
-2. Shadow reports compare old and V2 required sets, payloads, coverage findings,
+2. Shadow audits persist V1 payload/status and V2 plan summaries without changing
+   V1 submission decisions.
+3. Shadow reports compare old and V2 required sets, payloads, coverage findings,
    review items, and strict-preview results.
-3. Shadow mode never calls PUT.
+4. Shadow mode never calls PUT.
 
 ### Phase 5: Replacement
 
 Deliver S14.
 
-Status: **Not started**.
+Status: **Shadow regression and authoritative dry-run canary first pass complete;
+LIVE replacement not started**.
+`evaluate-listing-v2-regression` can evaluate shadow evidence and
+`docs/retirement/listing-payload-engine-v2-cutover-2026-06-27.md` defines the
+cutover/retirement gate. Default five-category regression now returns
+`status=go total=5 go=5 no_go=0`.
+
+Live regression evidence:
+
+- CABINET `meow251115FC0ie` latest shadow submission `114150`: V2
+  `missing=0`, `pending=0`, `blocking=0`.
+- HOME_MIRROR `meow251108CqW5i` latest shadow submission `115998`: V2
+  `missing=0`, `pending=0`, `blocking=0`.
+- OTTOMAN `meow2511088jSUW` / `meow260518LZZCw` latest shadow submissions
+  `116003` / `116002`: both V2 `missing=0`, `pending=0`, `blocking=0`; V1
+  parent strict preview passed and children were skipped existing.
+
+Exploratory evidence:
+
+- CHAIR `meow2511081Gqqd` remains `go` because blocking is explainable as
+  missing rules / pending review.
+- SOFA `meow251108Bg4d4` stored shadow row remains exploratory `go`; after the
+  SOFA `seat` rule fix, direct V2 read-only plan has `missing=0` and only
+  `seating_capacity.value` / `sofa_type.value` pending review.
+
+Detailed report:
+`docs/test-reports/2026-06-27-listing-payload-v2-shadow-regression.md`.
+
+Authoritative dry-run canary:
+
+- `generate-listing-api --engine v2` is now allowed only for dry-run /
+  strict-validation. LIVE `--no-dry-run` remains blocked at both CLI and service
+  layers.
+- `ProductListingAPIPlanBuilder` V2 mode uses
+  `ListingPayloadEngineV2.build_read_only_plan_from_draft()` so upstream
+  commercial, image, and variation decisions are preserved.
+- V2 attributes and V2 coverage replace the V1 resolver/renderer/coverage for
+  this dry-run path.
+- V2 payload composition merges schema-allowed deterministic candidate
+  attributes that are not part of the required tree, such as images, offers,
+  fulfillment, and variation attributes.
+- CABINET `meow251115FC0ie` strict dry-run canary with `--engine v2` entered the
+  V2 authoritative submitter path and returned `skipped_existing`; no PUT was
+  executed.
+- HOME_MIRROR `meow251108CqW5i` strict dry-run canary returned
+  `skipped_existing`; no PUT was executed.
+- OTTOMAN family strict dry-run canary generated 3 plans. New parent
+  `PARENT-818700D0BEB9` returned `validation_preview_passed` with 0 issues;
+  both existing children were skipped; no PUT was executed.
+- V2 no longer seeds RequirementTree from cached expanded `required_properties`;
+  requirements come from raw schema `required` plus evaluated conditional
+  branches. A generic variation parent filter prevents
+  `child_parent_sku_relationship` from blocking parent listings while preserving
+  child-listing requirements.
+
+Next handoff:
+
+- Next slice should focus on V2 path-level review resume:
+  `pending review -> approval -> override replay`.
+- Recommended exploratory seed: SOFA `meow251108Bg4d4`, because the current V2
+  plan can produce pending review paths such as `seating_capacity.value` and
+  `sofa_type.value`.
+- Keep `--engine v2 --no-dry-run` blocked until review resume and at least one
+  LIVE canary readiness review are complete.
+- Do not add `@retire` markers to V1 resolver/renderer/coverage yet.
 
 Acceptance:
 

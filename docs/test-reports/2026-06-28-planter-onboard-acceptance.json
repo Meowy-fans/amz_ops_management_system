@@ -1,0 +1,16 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "PLANTER",
+  "generated_at": "2026-06-28T04:05:43.650681+00:00",
+  "pool_skus": [
+    "meow251108CemWx"
+  ],
+  "offline": {
+    "sku_count": 1,
+    "zero_missing": 0
+  },
+  "preview": {
+    "sku_count": 1,
+    "validation_preview_passed": 0
+  }
+}

@@ -40,10 +40,30 @@ class AmazonListingPendingReviewV2Repository:
                 confidence_score = EXCLUDED.confidence_score,
                 route = EXCLUDED.route,
                 plan_snapshot = EXCLUDED.plan_snapshot,
-                review_status = 'pending',
-                reviewer = NULL,
-                verdict = NULL,
-                decided_at = NULL,
+                review_status = CASE
+                    WHEN amz_listing_pending_review_v2.review_status = 'completed'
+                         AND EXCLUDED.review_status = 'pending'
+                    THEN amz_listing_pending_review_v2.review_status
+                    ELSE EXCLUDED.review_status
+                END,
+                reviewer = CASE
+                    WHEN amz_listing_pending_review_v2.review_status = 'completed'
+                         AND EXCLUDED.review_status = 'pending'
+                    THEN amz_listing_pending_review_v2.reviewer
+                    ELSE NULL
+                END,
+                verdict = CASE
+                    WHEN amz_listing_pending_review_v2.review_status = 'completed'
+                         AND EXCLUDED.review_status = 'pending'
+                    THEN amz_listing_pending_review_v2.verdict
+                    ELSE NULL
+                END,
+                decided_at = CASE
+                    WHEN amz_listing_pending_review_v2.review_status = 'completed'
+                         AND EXCLUDED.review_status = 'pending'
+                    THEN amz_listing_pending_review_v2.decided_at
+                    ELSE NULL
+                END,
                 updated_at = NOW()
             RETURNING id
         """)

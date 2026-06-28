@@ -52,14 +52,14 @@ def handle_generate_listing_excel_deprecated(db: Session, category: Optional[str
         if result["success"]:
             print("✅ 发品文件生成成功！")
             print("=" * 70)
-            print(f"📊 统计信息:")
+            print("📊 统计信息:")
             print(f"   - 单品数量: {result.get('single_count', 0)}")
             print(f"   - 变体家族: {result.get('variation_count', 0)}")
             print(f"   - 总行数: {result.get('total_rows', 0)}")
             print(f"   - 批次ID: {result.get('batch_id', 'N/A')}")
 
             if "excel_file" in result:
-                print(f"\n📁 输出文件:")
+                print("\n📁 输出文件:")
                 print(f"   {result['excel_file']}")
 
             print("=" * 70)
@@ -89,6 +89,7 @@ def handle_generate_listing_api(
     sku_list: Optional[list[str]] = None,
     sku_file: Optional[str] = None,
     only_not_on_amazon: bool = False,
+    engine: str = "v1",
 ):
     """1.9 通过Amazon SP-API提交新品发品"""
     print("\n" + "=" * 70)
@@ -99,6 +100,25 @@ def handle_generate_listing_api(
         return {
             "success": False,
             "message": "strict_validation_requires_dry_run",
+            "results": [],
+        }
+    normalized_engine = str(engine or "v1").strip().lower()
+    if normalized_engine == "v2" and not dry_run:
+        print("Amazon SP-API 新品发品 - 配置错误")
+        print("=" * 70)
+        print("LISTING_PAYLOAD_ENGINE=v2 目前只允许 dry-run / strict-validation canary。")
+        return {
+            "success": False,
+            "message": "v2_engine_requires_dry_run",
+            "results": [],
+        }
+    if normalized_engine == "shadow" and not dry_run:
+        print("Amazon SP-API 新品发品 - 配置错误")
+        print("=" * 70)
+        print("shadow engine 只能用于 dry-run / strict-validation evidence collection。")
+        return {
+            "success": False,
+            "message": "shadow_engine_requires_dry_run",
             "results": [],
         }
 
@@ -131,11 +151,16 @@ def handle_generate_listing_api(
         print(f"SKU file: {sku_file}")
     if only_not_on_amazon:
         print("Scope filter: only SKUs not found on Amazon")
+    if normalized_engine == "shadow":
+        print("Listing payload engine: shadow (V1 behavior + V2 audit)")
+    elif normalized_engine == "v2":
+        print("Listing payload engine: v2 authoritative dry-run canary")
     print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70 + "\n")
 
     try:
         service = ProductListingService(db=db)
+        service.listing_payload_engine_mode = normalized_engine
         result = service.generate_listings_via_api(
             category_name=category,
             dry_run=dry_run,

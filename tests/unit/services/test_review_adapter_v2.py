@@ -249,6 +249,75 @@ def test_review_pending_paths_marks_needs_human_when_agent_uncertain():
     assert status == "in_progress"
 
 
+def test_approve_human_pending_paths_marks_human_route_rows_completed():
+    repo = FakeRepository()
+    repo.pending_rows = [
+        {
+            "id": 1,
+            "category": "SOFA",
+            "sku": "SKU1",
+            "path_key": "seating_capacity.value",
+            "route": "human",
+            "review_status": "pending",
+        },
+        {
+            "id": 2,
+            "category": "SOFA",
+            "sku": "SKU2",
+            "path_key": "sofa_type.value",
+            "route": "human",
+            "review_status": "pending",
+        },
+    ]
+    adapter = ReviewAdapterV2(repository=repo)
+
+    summary = adapter.approve_human_pending_paths(
+        category="SOFA",
+        sku="SKU1",
+        limit=10,
+    )
+
+    assert summary == {"approved": 1, "skipped": 1, "rows": 2}
+    assert len(repo.saved) == 1
+    review_id, decision, reviewer, verdict, status = repo.saved[0]
+    assert review_id == 1
+    assert decision == "approved"
+    assert reviewer == "manual_cli"
+    assert status == "completed"
+    assert verdict["reason"] == "manual_human_approval"
+
+
+def test_review_pending_paths_can_auto_approve_human_when_requested():
+    repo = FakeRepository()
+    repo.pending_rows = [
+        {
+            "id": 1,
+            "category": "SOFA",
+            "sku": "SKU1",
+            "path_key": "seating_capacity.value",
+            "attribute": "seating_capacity",
+            "value": "2",
+            "evidence": "Seats: 2 Seat",
+            "route": "human",
+            "review_status": "pending",
+            "plan_snapshot": {"sku": "SKU1"},
+        },
+    ]
+    adapter = ReviewAdapterV2(repository=repo)
+
+    summary = adapter.review_pending_paths(
+        category="SOFA",
+        limit=10,
+        approve_human=True,
+        sku="SKU1",
+    )
+
+    assert summary["reviewed"] == 0
+    assert summary["human_required"] == 1
+    assert summary["human_approved"] == 1
+    assert len(repo.saved) == 1
+
+
 def test_build_overrides_from_decisions_returns_path_keyed_override_map():
     repo = FakeRepository()
     repo.approved_rows = [

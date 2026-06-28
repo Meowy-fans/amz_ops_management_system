@@ -1,0 +1,1042 @@
+{
+  "inventory_total": 120,
+  "ledger_rows": 120,
+  "terminal_counts": {
+    "PENDING": 42,
+    "SKIP-EXISTING": 6,
+    "blocked_quality_gate": 4,
+    "skipped_no_change": 21,
+    "listing_confirmed": 1,
+    "PASS": 23,
+    "blocked_listing_issue": 4,
+    "PASS-WARN/ISSUES": 10,
+    "dry_run": 3,
+    "issues_found": 6
+  },
+  "by_category": {
+    "UNMAPPED": {
+      "PENDING": 30
+    },
+    "HOME_MIRROR": {
+      "SKIP-EXISTING": 2,
+      "PENDING": 10,
+      "blocked_quality_gate": 1,
+      "skipped_no_change": 7,
+      "listing_confirmed": 1
+    },
+    "SOFA": {
+      "skipped_no_change": 12,
+      "PASS": 1,
+      "blocked_listing_issue": 4,
+      "PASS-WARN/ISSUES": 2
+    },
+    "CHAIR": {
+      "PASS": 14,
+      "PASS-WARN/ISSUES": 4
+    },
+    "CABINET": {
+      "PASS-WARN/ISSUES": 3,
+      "skipped_no_change": 2,
+      "SKIP-EXISTING": 3,
+      "blocked_quality_gate": 3,
+      "dry_run": 3
+    },
+    "BED_FRAME": {
+      "PASS": 3,
+      "PASS-WARN/ISSUES": 1
+    },
+    "TABLE": {
+      "PASS": 4
+    },
+    "OTTOMAN": {
+      "PASS": 1,
+      "SKIP-EXISTING": 1
+    },
+    "ARTIFICIAL_TREE": {
+      "issues_found": 1
+    },
+    "BICYCLE": {
+      "issues_found": 1
+    },
+    "CLIMBING_PLANT_SUPPORT_STRUCTURE": {
+      "issues_found": 1
+    },
+    "DESK": {
+      "PENDING": 1
+    },
+    "FURNITURE": {
+      "issues_found": 1
+    },
+    "LADDER": {
+      "PENDING": 1
+    },
+    "PLANTER": {
+      "issues_found": 1
+    },
+    "SUITCASE": {
+      "issues_found": 1
+    }
+  },
+  "ledger": [
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2506285RSQ7",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511081Jfok",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511081h83b",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511082WyKq",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511083PbOp",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511085FmDA",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511085YCww",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511086f7z1",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow2511088HYKW",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108CbwwJ",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108D2EZu",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108E2rfW",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108JOb7K",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108NIpeJ",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108Q0Jox",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108QamBG",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108QxjB0",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108WJxqq",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108ZWonN",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108bPdRD",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108cObu0",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108cY5HJ",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108fI1Z6",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108fwnYU",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108hqDKy",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108kHwPk",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108kTBi0",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108nd3wr",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108opb7d",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "UNMAPPED",
+      "sku": "meow251108v6J8m",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250608gxPL5",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-22 02:59:20.642118+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628IBRtF",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628MOsHp",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628Wqoiu",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628fHvkT",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628hv0FF",
+      "status": "blocked_quality_gate",
+      "terminal": "blocked_quality_gate",
+      "issue_code": null,
+      "submitted_at": "2026-06-22 02:59:21.666057+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628rXSmM",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-22 02:59:21.660294+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow250628yIS8l",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108CqW5i",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:24:16.440540+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108GRUGR",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:24:25.085547+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108LqClg",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108RA1v0",
+      "status": "listing_confirmed",
+      "terminal": "listing_confirmed",
+      "issue_code": null,
+      "submitted_at": "2026-06-15 11:04:23.232170+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108UFMKd",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108XIvxT",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108YMCR5",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108e8YSS",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18367",
+      "submitted_at": "2026-06-28 11:24:22.892980+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108lbxoE",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:24:37.206894+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108oXHVM",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:24:47.727052+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108uu9WO",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:56.437277+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108wFRxA",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:25:03.442276+08:00"
+    },
+    {
+      "category": "HOME_MIRROR",
+      "sku": "meow251108yQtLx",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow25110811dln",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:23:59.659096+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow2511085a3hb",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:03.213842+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow25110865jrz",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:38:19.508662+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow2511088oLAd",
+      "status": "blocked_listing_issue",
+      "terminal": "blocked_listing_issue",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:24:04.295079+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108Bg4d4",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:13.330088+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108HkkrP",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:28.986882+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108W6Ryf",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:38:33.676145+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108WwIYu",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:25:04.671754+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108ZB5e5",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:25:15.629963+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108fPM80",
+      "status": "blocked_listing_issue",
+      "terminal": "blocked_listing_issue",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:23.992932+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108mAr2a",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:24:41.306790+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108nFiTm",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:44.211856+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108npHXZ",
+      "status": "blocked_listing_issue",
+      "terminal": "blocked_listing_issue",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:45.430560+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108nqzA9",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:24:46.649904+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108rFGvX",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:38:27.030090+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108vlfvp",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:25:02.226063+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108x7zbm",
+      "status": "blocked_listing_issue",
+      "terminal": "blocked_listing_issue",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:25:06.465566+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108yyq3W",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:25:12.950034+08:00"
+    },
+    {
+      "category": "SOFA",
+      "sku": "meow251108zN4MO",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "18448",
+      "submitted_at": "2026-06-28 11:25:17.370078+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow2511081Gqqd",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:58.380866+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow2511084CO3e",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:28.009068+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow2511086ZxM4",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:23.086935+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow25110886U7W",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:35.140902+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108969R3",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:51.165105+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108D55jW",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:40:29.662651+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108Fifdz",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:09.996450+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108HE6cX",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:04.515820+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108KmRAD",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100339",
+      "submitted_at": "2026-06-28 11:40:52.905003+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108QOPQp",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:47.067397+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108U21qE",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:45.746751+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108Ywgzd",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:39.705470+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108ZNCVC",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:16.053336+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108c3W1l",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:18:55.339106+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108fKlrr",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:41:33.765775+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108soUjl",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:41:09.531923+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108tgYzy",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100339",
+      "submitted_at": "2026-06-28 11:41:15.435679+08:00"
+    },
+    {
+      "category": "CHAIR",
+      "sku": "meow251108yArXW",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:40:40.477235+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow2508172omt6",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:36:25.176242+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow250817AXWkg",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:36:13.552966+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow250817zRPIq",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:36:19.846964+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251108SQL9a",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": "100335",
+      "submitted_at": "2026-06-28 11:24:52.802884+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow2511152QcBq",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-22 01:25:43.376802+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow2511152dapi",
+      "status": "blocked_quality_gate",
+      "terminal": "blocked_quality_gate",
+      "issue_code": null,
+      "submitted_at": "2026-06-22 01:25:40.641971+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115FUUlt",
+      "status": "blocked_quality_gate",
+      "terminal": "blocked_quality_gate",
+      "issue_code": null,
+      "submitted_at": "2026-06-15 06:19:46.869095+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115IhvcJ",
+      "status": "blocked_quality_gate",
+      "terminal": "blocked_quality_gate",
+      "issue_code": null,
+      "submitted_at": "2026-06-22 01:29:57.360603+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115S87Xu",
+      "status": "skipped_no_change",
+      "terminal": "skipped_no_change",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:25:48.682056+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115VtNnK",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-22 01:30:41.951329+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115ZHPrR",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-22 02:59:04.455714+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115aI4LD",
+      "status": "dry_run",
+      "terminal": "dry_run",
+      "issue_code": null,
+      "submitted_at": "2026-05-17 22:09:32.080321+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115x6Wq1",
+      "status": "dry_run",
+      "terminal": "dry_run",
+      "issue_code": null,
+      "submitted_at": "2026-06-15 06:19:46.217415+08:00"
+    },
+    {
+      "category": "CABINET",
+      "sku": "meow251115zg0HP",
+      "status": "dry_run",
+      "terminal": "dry_run",
+      "issue_code": null,
+      "submitted_at": "2026-05-17 22:09:32.056996+08:00"
+    },
+    {
+      "category": "BED_FRAME",
+      "sku": "meow25110896fzS",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:33:33.481265+08:00"
+    },
+    {
+      "category": "BED_FRAME",
+      "sku": "meow251108FetOX",
+      "status": "validation_preview_issues",
+      "terminal": "PASS-WARN/ISSUES",
+      "issue_code": "100339",
+      "submitted_at": "2026-06-28 11:33:26.918734+08:00"
+    },
+    {
+      "category": "BED_FRAME",
+      "sku": "meow251108VJprf",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:33:40.443379+08:00"
+    },
+    {
+      "category": "BED_FRAME",
+      "sku": "meow260518aoxYQ",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:33:47.456106+08:00"
+    },
+    {
+      "category": "TABLE",
+      "sku": "meow2511086pcXe",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 08:54:14.474780+08:00"
+    },
+    {
+      "category": "TABLE",
+      "sku": "meow251108FAsJo",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 08:54:19.392189+08:00"
+    },
+    {
+      "category": "TABLE",
+      "sku": "meow251108PlHb2",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 08:54:24.463468+08:00"
+    },
+    {
+      "category": "TABLE",
+      "sku": "meow251108uwb5L",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 08:54:29.731778+08:00"
+    },
+    {
+      "category": "OTTOMAN",
+      "sku": "meow2511088jSUW",
+      "status": "validation_preview_passed",
+      "terminal": "PASS",
+      "issue_code": null,
+      "submitted_at": "2026-06-28 11:20:07.374682+08:00"
+    },
+    {
+      "category": "OTTOMAN",
+      "sku": "meow260518LZZCw",
+      "status": "skipped_existing",
+      "terminal": "SKIP-EXISTING",
+      "issue_code": "13013",
+      "submitted_at": "2026-06-27 19:08:25.199873+08:00"
+    },
+    {
+      "category": "ARTIFICIAL_TREE",
+      "sku": "meow251108LptML",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:54:50.156369+08:00"
+    },
+    {
+      "category": "BICYCLE",
+      "sku": "meow251108ceBe7",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:54:43.073918+08:00"
+    },
+    {
+      "category": "CLIMBING_PLANT_SUPPORT_STRUCTURE",
+      "sku": "meow251108LzHLh",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:55:11.528406+08:00"
+    },
+    {
+      "category": "DESK",
+      "sku": "meow2506084DCXZ",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "FURNITURE",
+      "sku": "meow251108cJXHN",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:54:35.987533+08:00"
+    },
+    {
+      "category": "LADDER",
+      "sku": "meow251108eFqEd",
+      "status": null,
+      "terminal": "PENDING",
+      "issue_code": null,
+      "submitted_at": null
+    },
+    {
+      "category": "PLANTER",
+      "sku": "meow251108CemWx",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:54:57.374001+08:00"
+    },
+    {
+      "category": "SUITCASE",
+      "sku": "meow251108pbQsB",
+      "status": "issues_found",
+      "terminal": "issues_found",
+      "issue_code": "90220",
+      "submitted_at": "2026-06-22 07:55:04.513172+08:00"
+    }
+  ]
+}

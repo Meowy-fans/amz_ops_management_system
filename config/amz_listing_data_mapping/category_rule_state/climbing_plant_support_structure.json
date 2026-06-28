@@ -1,0 +1,14 @@
+{
+  "product_type": "CLIMBING_PLANT_SUPPORT_STRUCTURE",
+  "last_onboard_at": "2026-06-28T04:05:30.217243+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/climbing_plant_support_structure.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-climbing_plant_support_structure-onboard-acceptance.json",
+  "pool_skus": [
+    "meow251108LzHLh"
+  ],
+  "review_blocking_count": 12,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 1,
+  "preview_passed": 0
+}

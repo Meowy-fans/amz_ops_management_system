@@ -239,7 +239,7 @@ attributes:
     transform: passthrough
     children:
       height:
-        shape: measure
+        shape: measure_array
         children:
           value:
             transform: passthrough

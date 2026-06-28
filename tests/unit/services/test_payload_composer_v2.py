@@ -164,6 +164,132 @@ def test_composer_renders_array_object_with_selector_auto_field():
     }
 
 
+def test_composer_renders_array_object_from_scalar_list_parent_value():
+    root = _root(
+        RequirementNode(
+            path_key="bullet_point",
+            schema_path="$.properties.bullet_point",
+            name="bullet_point",
+            shape="array_object",
+            required=True,
+            auto_fields={"language_tag": "en_US"},
+            required_children=["value"],
+            children=[
+                RequirementNode(
+                    path_key="bullet_point.value",
+                    schema_path="$.properties.bullet_point.items.properties.value",
+                    name="value",
+                    shape="scalar",
+                    required=True,
+                )
+            ],
+        )
+    )
+    resolution = _resolution_root(
+        ResolutionNode(
+            path_key="bullet_point",
+            value=["Space saving", "Easy assembly"],
+            children=[
+                ResolutionNode(
+                    path_key="bullet_point.value",
+                    value=["Space saving", "Easy assembly"],
+                )
+            ],
+        )
+    )
+
+    attrs = PayloadComposerV2().compose(root, resolution)
+
+    assert attrs == {
+        "bullet_point": [
+            {"language_tag": "en_US", "value": "Space saving"},
+            {"language_tag": "en_US", "value": "Easy assembly"},
+        ]
+    }
+
+
+def test_composer_renders_array_object_from_scalar_parent_value():
+    root = _root(
+        RequirementNode(
+            path_key="door",
+            schema_path="$.properties.door",
+            name="door",
+            shape="array_object",
+            required=True,
+            auto_fields={"marketplace_id": "ATVPDKIKX0DER"},
+        )
+    )
+    resolution = _resolution_root(
+        ResolutionNode(path_key="door", value="Shaker", confidence="high")
+    )
+
+    attrs = PayloadComposerV2().compose(root, resolution)
+
+    assert attrs == {
+        "door": [{"marketplace_id": "ATVPDKIKX0DER", "value": "Shaker"}]
+    }
+
+
+def test_composer_renders_nested_array_object_child_as_list():
+    root = _root(
+        RequirementNode(
+            path_key="seat",
+            schema_path="$.properties.seat",
+            name="seat",
+            shape="array_object",
+            required=True,
+            children=[
+                RequirementNode(
+                    path_key="seat.material_type",
+                    schema_path="$.properties.seat.items.properties.material_type",
+                    name="material_type",
+                    shape="array_object",
+                    required=True,
+                    auto_fields={"language_tag": "en_US"},
+                    children=[
+                        RequirementNode(
+                            path_key="seat.material_type.value",
+                            schema_path="$.properties.seat.items.properties.material_type.items.properties.value",
+                            name="value",
+                            shape="scalar",
+                            required=True,
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    resolution = _resolution_root(
+        ResolutionNode(
+            path_key="seat",
+            children=[
+                ResolutionNode(
+                    path_key="seat.material_type",
+                    value="Linen",
+                    children=[
+                        ResolutionNode(
+                            path_key="seat.material_type.value",
+                            value="Linen",
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+
+    attrs = PayloadComposerV2().compose(root, resolution)
+
+    assert attrs == {
+        "seat": [
+            {
+                "material_type": [
+                    {"language_tag": "en_US", "value": "Linen"}
+                ]
+            }
+        ]
+    }
+
+
 def test_composer_skips_blocking_top_level_resolution():
     root = _root(
         RequirementNode(

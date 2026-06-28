@@ -150,15 +150,15 @@ attributes:
     manual_review: false
     sources:
     - path: product.attributes.Included Components
-    - llm:
-        hint: Extract included components from the product title, description, bullet
-          points, and supplier characteristics. Return null if the information is
-          not found.
     - default: Chair
       confidence: medium
       evidence: Quick validation single-chair listing default when supplier included
         components are missing.
       safe_default: true
+    - llm:
+        hint: Extract included components from the product title, description, bullet
+          points, and supplier characteristics. Return null if the information is
+          not found.
   is_assembly_required:
     level: required
     shape: list_value
@@ -291,7 +291,7 @@ attributes:
     manual_review: true
     children:
       depth:
-        shape: measure
+        shape: measure_array
         children:
           value:
             transform: passthrough
@@ -307,7 +307,7 @@ attributes:
               evidence: Product dimensions are normalized to inches.
               safe_default: true
       height:
-        shape: measure
+        shape: measure_array
         children:
           value:
             transform: passthrough

@@ -1,0 +1,717 @@
+{
+  "total": 120,
+  "pool": "offline_report_miss",
+  "categories": {
+    "HOME_MIRROR": {
+      "count": 21,
+      "readiness": {
+        "product_type": "HOME_MIRROR",
+        "status": "ready_live",
+        "pending_count": 21,
+        "mapped_category_count": 5,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 0,
+        "warnings": []
+      },
+      "skus": [
+        "meow250608gxPL5",
+        "meow250628IBRtF",
+        "meow250628MOsHp",
+        "meow250628Wqoiu",
+        "meow250628fHvkT",
+        "meow250628hv0FF",
+        "meow250628rXSmM",
+        "meow250628yIS8l",
+        "meow251108CqW5i",
+        "meow251108GRUGR",
+        "meow251108LqClg",
+        "meow251108RA1v0",
+        "meow251108UFMKd",
+        "meow251108XIvxT",
+        "meow251108YMCR5",
+        "meow251108e8YSS",
+        "meow251108lbxoE",
+        "meow251108oXHVM",
+        "meow251108uu9WO",
+        "meow251108wFRxA",
+        "meow251108yQtLx"
+      ],
+      "singles": [
+        "meow250628IBRtF",
+        "meow251108GRUGR",
+        "meow251108wFRxA",
+        "meow251108CqW5i",
+        "meow250628rXSmM",
+        "meow251108oXHVM",
+        "meow250628yIS8l",
+        "meow250608gxPL5",
+        "meow250628hv0FF",
+        "meow250628Wqoiu",
+        "meow251108lbxoE",
+        "meow251108RA1v0"
+      ],
+      "families": [
+        [
+          "meow251108LqClg",
+          "meow251108yQtLx",
+          "meow251108UFMKd",
+          "meow251108XIvxT",
+          "meow251108YMCR5"
+        ],
+        [
+          "meow251108e8YSS",
+          "meow251108uu9WO"
+        ],
+        [
+          "meow250628fHvkT",
+          "meow250628MOsHp"
+        ]
+      ]
+    },
+    "CABINET": {
+      "count": 20,
+      "readiness": {
+        "product_type": "CABINET",
+        "status": "ready_live",
+        "pending_count": 20,
+        "mapped_category_count": 5,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 0,
+        "warnings": []
+      },
+      "skus": [
+        "meow2508172omt6",
+        "meow250817AXWkg",
+        "meow250817zRPIq",
+        "meow2511081h83b",
+        "meow2511086f7z1",
+        "meow251108CbwwJ",
+        "meow251108SQL9a",
+        "meow251108cObu0",
+        "meow251108cY5HJ",
+        "meow251108nd3wr",
+        "meow2511152QcBq",
+        "meow2511152dapi",
+        "meow251115FUUlt",
+        "meow251115IhvcJ",
+        "meow251115S87Xu",
+        "meow251115VtNnK",
+        "meow251115ZHPrR",
+        "meow251115aI4LD",
+        "meow251115x6Wq1",
+        "meow251115zg0HP"
+      ],
+      "singles": [
+        "meow2511081h83b",
+        "meow251108CbwwJ",
+        "meow251115zg0HP",
+        "meow251115VtNnK",
+        "meow251108SQL9a",
+        "meow2511086f7z1",
+        "meow251115IhvcJ",
+        "meow251108cY5HJ"
+      ],
+      "families": [
+        [
+          "meow2508172omt6",
+          "meow250817zRPIq",
+          "meow250817AXWkg"
+        ],
+        [
+          "meow251108cObu0",
+          "meow251108nd3wr"
+        ],
+        [
+          "meow2511152QcBq",
+          "meow2511152dapi",
+          "meow251115x6Wq1"
+        ],
+        [
+          "meow251115ZHPrR",
+          "meow251115FUUlt"
+        ],
+        [
+          "meow251115aI4LD",
+          "meow251115S87Xu"
+        ]
+      ]
+    },
+    "SOFA": {
+      "count": 19,
+      "readiness": {
+        "product_type": "SOFA",
+        "status": "needs_rule_review",
+        "pending_count": 19,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 4,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow25110811dln",
+        "meow2511085a3hb",
+        "meow25110865jrz",
+        "meow2511088oLAd",
+        "meow251108Bg4d4",
+        "meow251108HkkrP",
+        "meow251108W6Ryf",
+        "meow251108WwIYu",
+        "meow251108ZB5e5",
+        "meow251108fPM80",
+        "meow251108mAr2a",
+        "meow251108nFiTm",
+        "meow251108npHXZ",
+        "meow251108nqzA9",
+        "meow251108rFGvX",
+        "meow251108vlfvp",
+        "meow251108x7zbm",
+        "meow251108yyq3W",
+        "meow251108zN4MO"
+      ],
+      "singles": [
+        "meow251108HkkrP",
+        "meow251108fPM80",
+        "meow251108WwIYu",
+        "meow251108W6Ryf",
+        "meow251108ZB5e5",
+        "meow25110865jrz"
+      ],
+      "families": [
+        [
+          "meow251108Bg4d4",
+          "meow25110811dln",
+          "meow251108vlfvp",
+          "meow251108nFiTm",
+          "meow251108zN4MO",
+          "meow2511085a3hb",
+          "meow251108yyq3W"
+        ],
+        [
+          "meow251108x7zbm",
+          "meow251108mAr2a",
+          "meow2511088oLAd",
+          "meow251108nqzA9",
+          "meow251108rFGvX",
+          "meow251108npHXZ"
+        ]
+      ]
+    },
+    "CHAIR": {
+      "count": 18,
+      "readiness": {
+        "product_type": "CHAIR",
+        "status": "needs_rule_review",
+        "pending_count": 18,
+        "mapped_category_count": 5,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 6,
+        "missing_required_rules": [],
+        "manual_review_count": 5,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2511081Gqqd",
+        "meow2511084CO3e",
+        "meow2511086ZxM4",
+        "meow25110886U7W",
+        "meow251108969R3",
+        "meow251108D55jW",
+        "meow251108Fifdz",
+        "meow251108HE6cX",
+        "meow251108KmRAD",
+        "meow251108QOPQp",
+        "meow251108U21qE",
+        "meow251108Ywgzd",
+        "meow251108ZNCVC",
+        "meow251108c3W1l",
+        "meow251108fKlrr",
+        "meow251108soUjl",
+        "meow251108tgYzy",
+        "meow251108yArXW"
+      ],
+      "singles": [
+        "meow251108HE6cX",
+        "meow251108QOPQp",
+        "meow25110886U7W",
+        "meow2511086ZxM4",
+        "meow251108D55jW",
+        "meow251108tgYzy",
+        "meow251108KmRAD",
+        "meow251108Fifdz",
+        "meow251108ZNCVC",
+        "meow2511081Gqqd",
+        "meow251108soUjl",
+        "meow251108yArXW"
+      ],
+      "families": [
+        [
+          "meow2511084CO3e",
+          "meow251108c3W1l",
+          "meow251108fKlrr",
+          "meow251108Ywgzd",
+          "meow251108U21qE",
+          "meow251108969R3"
+        ]
+      ]
+    },
+    "MAKEUP_VANITY": {
+      "count": 12,
+      "readiness": {
+        "product_type": "MAKEUP_VANITY",
+        "status": "needs_rule_review",
+        "pending_count": 12,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 14,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2506285RSQ7",
+        "meow2511081Jfok",
+        "meow2511083PbOp",
+        "meow2511085FmDA",
+        "meow251108E2rfW",
+        "meow251108NIpeJ",
+        "meow251108Q0Jox",
+        "meow251108QamBG",
+        "meow251108bPdRD",
+        "meow251108fwnYU",
+        "meow251108opb7d",
+        "meow251108v6J8m"
+      ],
+      "singles": [
+        "meow251108bPdRD",
+        "meow251108opb7d",
+        "meow2506285RSQ7"
+      ],
+      "families": [
+        [
+          "meow251108QamBG",
+          "meow251108E2rfW",
+          "meow2511085FmDA"
+        ],
+        [
+          "meow251108Q0Jox",
+          "meow251108fwnYU"
+        ],
+        [
+          "meow251108v6J8m",
+          "meow251108NIpeJ"
+        ],
+        [
+          "meow2511081Jfok",
+          "meow2511083PbOp"
+        ]
+      ]
+    },
+    "TABLE": {
+      "count": 5,
+      "readiness": {
+        "product_type": "TABLE",
+        "status": "needs_rule_review",
+        "pending_count": 5,
+        "mapped_category_count": 2,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 4,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2511086pcXe",
+        "meow251108FAsJo",
+        "meow251108PlHb2",
+        "meow251108WJxqq",
+        "meow251108uwb5L"
+      ],
+      "singles": [
+        "meow251108WJxqq",
+        "meow2511086pcXe",
+        "meow251108uwb5L"
+      ],
+      "families": [
+        [
+          "meow251108FAsJo",
+          "meow251108PlHb2"
+        ]
+      ]
+    },
+    "BED_FRAME": {
+      "count": 4,
+      "readiness": {
+        "product_type": "BED_FRAME",
+        "status": "needs_rule_review",
+        "pending_count": 4,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 12,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow25110896fzS",
+        "meow251108FetOX",
+        "meow251108VJprf",
+        "meow260518aoxYQ"
+      ],
+      "singles": [
+        "meow251108VJprf",
+        "meow25110896fzS",
+        "meow260518aoxYQ",
+        "meow251108FetOX"
+      ],
+      "families": []
+    },
+    "FURNITURE": {
+      "count": 4,
+      "readiness": {
+        "product_type": "FURNITURE",
+        "status": "needs_rule_review",
+        "pending_count": 4,
+        "mapped_category_count": 3,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 15,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2511082WyKq",
+        "meow251108cJXHN",
+        "meow251108fI1Z6",
+        "meow251108kHwPk"
+      ],
+      "singles": [
+        "meow251108cJXHN",
+        "meow2511082WyKq",
+        "meow251108fI1Z6",
+        "meow251108kHwPk"
+      ],
+      "families": []
+    },
+    "RIDE_ON_TOY": {
+      "count": 4,
+      "readiness": {
+        "product_type": "RIDE_ON_TOY",
+        "status": "needs_rule_review",
+        "pending_count": 4,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 9,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2511085YCww",
+        "meow2511088HYKW",
+        "meow251108JOb7K",
+        "meow251108kTBi0"
+      ],
+      "singles": [
+        "meow2511088HYKW",
+        "meow251108kTBi0",
+        "meow2511085YCww",
+        "meow251108JOb7K"
+      ],
+      "families": []
+    },
+    "ARTIFICIAL_TREE": {
+      "count": 2,
+      "readiness": {
+        "product_type": "ARTIFICIAL_TREE",
+        "status": "needs_rule_review",
+        "pending_count": 2,
+        "mapped_category_count": 2,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 7,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108LptML",
+        "meow251108QxjB0"
+      ],
+      "singles": [
+        "meow251108LptML",
+        "meow251108QxjB0"
+      ],
+      "families": []
+    },
+    "OTTOMAN": {
+      "count": 2,
+      "readiness": {
+        "product_type": "OTTOMAN",
+        "status": "ready_live",
+        "pending_count": 2,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 8,
+        "missing_required_rules": [],
+        "manual_review_count": 0,
+        "warnings": []
+      },
+      "skus": [
+        "meow2511088jSUW",
+        "meow260518LZZCw"
+      ],
+      "singles": [],
+      "families": [
+        [
+          "meow260518LZZCw",
+          "meow2511088jSUW"
+        ]
+      ]
+    },
+    "OUTDOOR_LIVING": {
+      "count": 2,
+      "readiness": {
+        "product_type": "OUTDOOR_LIVING",
+        "status": "needs_rule_review",
+        "pending_count": 2,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 9,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108D2EZu",
+        "meow251108ZWonN"
+      ],
+      "singles": [
+        "meow251108D2EZu",
+        "meow251108ZWonN"
+      ],
+      "families": []
+    },
+    "BICYCLE": {
+      "count": 1,
+      "readiness": {
+        "product_type": "BICYCLE",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 8,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108ceBe7"
+      ],
+      "singles": [
+        "meow251108ceBe7"
+      ],
+      "families": []
+    },
+    "CLIMBING_PLANT_SUPPORT_STRUCTURE": {
+      "count": 1,
+      "readiness": {
+        "product_type": "CLIMBING_PLANT_SUPPORT_STRUCTURE",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 8,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108LzHLh"
+      ],
+      "singles": [
+        "meow251108LzHLh"
+      ],
+      "families": []
+    },
+    "DESK": {
+      "count": 1,
+      "readiness": {
+        "product_type": "DESK",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 15,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow2506084DCXZ"
+      ],
+      "singles": [
+        "meow2506084DCXZ"
+      ],
+      "families": []
+    },
+    "FIRE_PIT": {
+      "count": 1,
+      "readiness": {
+        "product_type": "FIRE_PIT",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 7,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108hqDKy"
+      ],
+      "singles": [
+        "meow251108hqDKy"
+      ],
+      "families": []
+    },
+    "LADDER": {
+      "count": 1,
+      "readiness": {
+        "product_type": "LADDER",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 7,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108eFqEd"
+      ],
+      "singles": [
+        "meow251108eFqEd"
+      ],
+      "families": []
+    },
+    "PLANTER": {
+      "count": 1,
+      "readiness": {
+        "product_type": "PLANTER",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 7,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108CemWx"
+      ],
+      "singles": [
+        "meow251108CemWx"
+      ],
+      "families": []
+    },
+    "SUITCASE": {
+      "count": 1,
+      "readiness": {
+        "product_type": "SUITCASE",
+        "status": "needs_rule_review",
+        "pending_count": 1,
+        "mapped_category_count": 1,
+        "schema_cached": true,
+        "rule_exists": true,
+        "rule_mode": "live_eligible",
+        "required_count": 7,
+        "missing_required_rules": [],
+        "manual_review_count": 7,
+        "warnings": [
+          "manual_review_required"
+        ]
+      },
+      "skus": [
+        "meow251108pbQsB"
+      ],
+      "singles": [
+        "meow251108pbQsB"
+      ],
+      "families": []
+    }
+  }
+}

@@ -8,6 +8,11 @@ from typing import Any, Dict, List
 
 from src.models.amazon_listing import AmazonListingDraft
 from src.services.attribute_rule_loader import AttributeRuleLoader
+from src.services.attribute_transform_helpers import (
+    join_text_value,
+    parse_integer_value,
+    scan_enum_token,
+)
 
 
 @dataclass
@@ -286,10 +291,7 @@ class AttributeResolver:
         transform: str,
     ) -> Any:
         if transform == "integer":
-            try:
-                return int(float(value))
-            except (TypeError, ValueError):
-                return None
+            return parse_integer_value(value)
         if transform == "boolean_yes_no":
             text = str(value).strip().lower()
             if text in {"true", "yes", "y", "1", "required"}:
@@ -306,6 +308,10 @@ class AttributeResolver:
             return value if isinstance(value, bool) else None
         if transform == "enum":
             return self._valid_value(product_type, attribute, value)
+        if transform == "enum_scan":
+            return self._scan_enum_value(product_type, attribute, value)
+        if transform == "text_join":
+            return join_text_value(value)
         if transform in {"passthrough", "raw"}:
             return value
         return str(value).strip() if value is not None else None
@@ -336,6 +342,20 @@ class AttributeResolver:
             return exact[text.lower()]
         match = get_close_matches(text.lower(), list(exact.keys()), n=1, cutoff=0.75)
         return exact[match[0]] if match else text
+
+    def _scan_enum_value(self, product_type: str, attribute: str, value: Any) -> str | None:
+        if self.schema_service is None:
+            return None
+        try:
+            candidates = self.schema_service.get_cached_valid_values(
+                product_type,
+                attribute,
+            )
+        except Exception:
+            return None
+        if not candidates:
+            return None
+        return scan_enum_token(value, candidates)
 
     @staticmethod
     def _country_code(value: str) -> str:

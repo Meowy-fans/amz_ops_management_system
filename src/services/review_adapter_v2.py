@@ -55,10 +55,50 @@ class ReviewAdapterV2:
         self.repository.upsert_pending_paths(enriched)
         return len(enriched)
 
+    def approve_human_pending_paths(
+        self,
+        category: Optional[str] = None,
+        sku: Optional[str] = None,
+        limit: int = 50,
+        reviewer: str = "manual_cli",
+    ) -> Dict[str, Any]:
+        """Mark pending human-route path reviews as completed."""
+        rows = self.repository.list_pending(
+            category=category,
+            status="pending",
+            route="human",
+            limit=limit,
+        )
+        approved = 0
+        skipped = 0
+        for row in rows:
+            if sku and str(row.get("sku") or "") != str(sku):
+                skipped += 1
+                continue
+            self.repository.save_decision(
+                review_id=row["id"],
+                decision="approved",
+                reviewer=reviewer,
+                verdict={
+                    "verdict": "approved",
+                    "reason": "manual_human_approval",
+                    "path_key": row.get("path_key"),
+                },
+                review_status="completed",
+            )
+            approved += 1
+        return {
+            "approved": approved,
+            "skipped": skipped,
+            "rows": len(rows),
+        }
+
     def review_pending_paths(
         self,
         category: Optional[str] = None,
         limit: int = 50,
+        approve_human: bool = False,
+        sku: Optional[str] = None,
     ) -> Dict[str, Any]:
         rows = self.repository.list_pending(
             category=category,
@@ -90,11 +130,25 @@ class ReviewAdapterV2:
                     review_status="in_progress",
                 )
                 human_required += 1
-        return {
+        result = {
             "reviewed": reviewed,
             "human_required": human_required,
             "rows": len(rows),
         }
+        if approve_human:
+            human_result = self.approve_human_pending_paths(
+                category=category,
+                sku=sku,
+                limit=limit,
+            )
+            result.update(
+                {
+                    "human_approved": human_result["approved"],
+                    "human_skipped": human_result["skipped"],
+                    "human_rows": human_result["rows"],
+                }
+            )
+        return result
 
     def build_overrides_from_decisions(
         self,

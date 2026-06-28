@@ -1,11 +1,11 @@
 services:
   amz-listing-management-system:
-    image: amz-listing-management-system:2026-06-28-category-rule-lifecycle
+    image: amz-listing-management-system:2026-06-28-phase2-onboard-complete
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        BASE_IMAGE: amz-listing-management-system:2026-06-28-chair-parent-dims-fix
         SKIP_REQUIREMENTS_INSTALL: "true"
     container_name: amz-listing-management-system
     restart: unless-stopped
@@ -53,12 +53,12 @@ services:
       - "traefik.http.services.amz-listing.loadbalancer.server.port=8080"
 
   amz-order-sync-scheduler:
-    image: amz-listing-management-system:2026-06-28-category-rule-lifecycle
+    image: amz-listing-management-system:2026-06-28-phase2-onboard-complete
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        BASE_IMAGE: amz-listing-management-system:2026-06-28-chair-parent-dims-fix
         SKIP_REQUIREMENTS_INSTALL: "true"
     container_name: amz-order-sync-scheduler
     restart: unless-stopped
@@ -92,12 +92,12 @@ services:
       - proxy
 
   amz-order-daily-report-scheduler:
-    image: amz-listing-management-system:2026-06-28-category-rule-lifecycle
+    image: amz-listing-management-system:2026-06-28-phase2-onboard-complete
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        BASE_IMAGE: amz-listing-management-system:2026-06-28-chair-parent-dims-fix
         SKIP_REQUIREMENTS_INSTALL: "true"
     container_name: amz-order-daily-report-scheduler
     restart: unless-stopped
@@ -132,12 +132,12 @@ services:
       - proxy
 
   amz-price-inventory-scheduler:
-    image: amz-listing-management-system:2026-06-28-category-rule-lifecycle
+    image: amz-listing-management-system:2026-06-28-phase2-onboard-complete
     build:
       context: /home/liangqinhao/amz_listing_management_system
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: amz-listing-management-system:2026-05-17
+        BASE_IMAGE: amz-listing-management-system:2026-06-28-chair-parent-dims-fix
         SKIP_REQUIREMENTS_INSTALL: "true"
     container_name: amz-price-inventory-scheduler
     restart: unless-stopped

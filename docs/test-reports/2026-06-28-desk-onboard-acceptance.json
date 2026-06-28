@@ -1,0 +1,16 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "DESK",
+  "generated_at": "2026-06-28T04:05:07.460150+00:00",
+  "pool_skus": [
+    "meow2506084DCXZ"
+  ],
+  "offline": {
+    "sku_count": 1,
+    "zero_missing": 0
+  },
+  "preview": {
+    "sku_count": 1,
+    "validation_preview_passed": 0
+  }
+}

@@ -94,6 +94,34 @@ def test_insert_submission_nullable_fields_default_none():
     assert params["error_message"] is None
 
 
+def test_list_listing_payload_v2_shadow_submissions_sql_contract():
+    session = RecordingSession([
+        MappingResult([
+            {
+                "id": 10,
+                "sku": "SKU1",
+                "status": "shadow_built",
+                "product_type": "CHAIR",
+            }
+        ])
+    ])
+    repo = AmazonAPISubmissionRepository(session)
+
+    rows = repo.list_listing_payload_v2_shadow_submissions(
+        product_type="CHAIR",
+        sku="SKU1",
+        limit=5,
+    )
+
+    assert rows[0]["id"] == 10
+    sql = _normalized(session.calls[0][0])
+    params = session.calls[0][1]
+    assert "operation = 'listing_payload_v2_shadow'" in sql
+    assert "product_type = :product_type" in sql
+    assert "LOWER(sku) = LOWER(:sku)" in sql
+    assert params == {"product_type": "CHAIR", "sku": "SKU1", "limit": 5}
+
+
 def test_get_delayed_confirmation_candidates_sql_contract():
     session = RecordingSession([
         MappingResult([

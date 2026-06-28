@@ -1,0 +1,14 @@
+{
+  "product_type": "RIDE_ON_TOY",
+  "last_onboard_at": "2026-06-28T05:37:19.669838+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/ride_on_toy.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-ride_on_toy-onboard-acceptance.json",
+  "pool_skus": [
+    "meow2511085YCww"
+  ],
+  "review_blocking_count": 8,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 4,
+  "preview_passed": 0
+}

@@ -46,6 +46,7 @@ class RequirementTreeBuilderV2:
         properties = AmazonSchemaService._merged_properties(schema)
         required = self._applicable_required(schema_data, schema, attributes or {}, properties)
         self._inject_learned_required(required, learned_required_paths, properties)
+        self._apply_variation_context_required_filter(required, attributes or {})
         required_paths: List[str] = []
         root = RequirementNode(
             path_key=normalized,
@@ -103,10 +104,32 @@ class RequirementTreeBuilderV2:
         properties: Dict[str, Any],
     ) -> List[str]:
         names: List[str] = []
-        self._extend_unique(names, schema_data.get("required_properties") or [])
         self._collect_direct_required(schema, set(properties), names)
         self._collect_conditional_required(schema, attributes, set(properties), names, "$")
+        self._apply_variation_context_required_filter(names, attributes)
         return [name for name in names if name in properties]
+
+    def _apply_variation_context_required_filter(
+        self,
+        names: List[str],
+        attributes: Dict[str, Any],
+    ) -> None:
+        if "child_parent_sku_relationship" not in names:
+            return
+        if self._list_value_contains(attributes.get("parentage_level"), "parent"):
+            names[:] = [
+                name for name in names if name != "child_parent_sku_relationship"
+            ]
+
+    @staticmethod
+    def _list_value_contains(value: Any, expected: str) -> bool:
+        expected_lower = str(expected or "").strip().lower()
+        values = value if isinstance(value, list) else [value]
+        for item in values:
+            raw = item.get("value") if isinstance(item, dict) else item
+            if str(raw or "").strip().lower() == expected_lower:
+                return True
+        return False
 
     def _collect_direct_required(
         self,
@@ -279,6 +302,11 @@ class RequirementTreeBuilderV2:
     def _shape(self, schema: Dict[str, Any]) -> str:
         if schema.get("selectors"):
             return "array_object"
+        if schema.get("type") == "array":
+            items = schema.get("items") or {}
+            item_props = (items.get("properties") or {})
+            if "unit" in item_props and "value" in item_props:
+                return "measure_array"
         props = self._child_properties(schema)
         if "unit" in props and "value" in props:
             return "measure"

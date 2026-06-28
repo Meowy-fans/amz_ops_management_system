@@ -5,6 +5,7 @@
 - **里程碑**：关键词研究、竞品分析、广告管理、利润核算、库存规划、每日巡检、每周报告、商品生命周期状态机全部落地
 
 ## 最新进展
+- ✅ **2026-06-28 / Cursor**: CHAIR variation parent 维度 shape 修复 **生产部署** — 镜像 `2026-06-28-chair-parent-dims-fix`；`OptionalRuleChildrenEnricherV2` 通用修复（`measure` vs `measure_array`）；生产 CHAIR 18 SKU rerun：parent `validation_preview_passed`，14/18 passed。报告：`docs/test-reports/2026-06-28-chair-parent-dims-fix-production-deploy.md`。
 - ✅ **2026-06-28 / Cursor**: **`EPIC-AMZ-LISTING-RULE-AUTHORING-V2` 结案** — Phase 1–4（S0–S12）全部完成；生产镜像 `2026-06-28-category-rule-lifecycle`；BED_FRAME/TABLE/CHAIR 已 `live_eligible`；Epic 状态 **Completed**。文档：`docs/epics/listing-rule-authoring-v2.md`。
 - ✅ **2026-06-28 / Cursor**: Phase 4 **收尾三项** — (1) `bed_frame.yaml` / `table.yaml` / `chair.yaml` 纳入 git（`live_eligible`）；(2) `rule_yaml_write_guard` 阻断 pytest 误写 canonical config + 单测 4 passed；(3) 新类目标准路径 runbook `docs/runbooks/category-onboarding-v2.md`。commit `b8fe559`。
 - ✅ **2026-06-28 / Cursor**: Phase 4 **生产部署** — 镜像 `2026-06-28-category-rule-lifecycle`；migration 013；BED_FRAME E2E：offline 4/4、preview 3/4、promote dry-run go。报告：`docs/test-reports/2026-06-28-category-rule-lifecycle-production-deploy.md`。

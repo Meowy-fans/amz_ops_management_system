@@ -1,0 +1,720 @@
+attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
+  target_audience_keyword:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: Standard
+          confidence: medium
+          evidence: Phase 2 bootstrap default for RIDE_ON_TOY target_audience_keyword.value.
+          safe_default: true
+        manual_review: false
+  cpsia_cautionary_statement:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - choking_hazard_balloon
+    - choking_hazard_contains_a_marble
+    - choking_hazard_contains_small_ball
+    - choking_hazard_is_a_marble
+    - choking_hazard_is_a_small_ball
+    - choking_hazard_small_parts
+    - contains_small_magnets
+    - no_warning_applicable
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - choking_hazard_balloon
+        - choking_hazard_contains_a_marble
+        - choking_hazard_contains_small_ball
+        - choking_hazard_is_a_marble
+        - choking_hazard_is_a_small_ball
+        - choking_hazard_small_parts
+        - contains_small_magnets
+        - no_warning_applicable
+        transform: enum
+        sources:
+        - default: no_warning_applicable
+          confidence: high
+          evidence: Ride-on toy default CPSIA statement.
+          safe_default: true
+        manual_review: false
+  generic_keyword:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: content.title
+          confidence: medium
+        - default: Ride On Toy
+          confidence: medium
+          evidence: Category fallback generic keyword.
+          safe_default: true
+        manual_review: false
+  included_components:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Included Components
+          confidence: high
+          inherited_from: BICYCLE
+        - default: Table
+          confidence: medium
+          evidence: Single-table listing default when supplier included components
+            are missing.
+          safe_default: true
+          inherited_from: BICYCLE
+  model_name:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Name
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+          inherited_from: BICYCLE
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+          inherited_from: BICYCLE
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+          inherited_from: BICYCLE
+  safety_warning:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: Standard
+          confidence: medium
+          evidence: Phase 2 bootstrap default for RIDE_ON_TOY safety_warning.value.
+          safe_default: true
+        manual_review: false
+  target_gender:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - female
+    - male
+    - unisex
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - female
+        - male
+        - unisex
+        transform: enum
+        sources:
+        - default: unisex
+          confidence: high
+          evidence: Kids ride-on toys default target gender.
+          safe_default: true
+        manual_review: false
+  theme:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: Standard
+          confidence: medium
+          evidence: Phase 2 bootstrap default for RIDE_ON_TOY theme.value.
+          safe_default: true
+        manual_review: false
+  material:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+          inherited_from: BICYCLE
+        - path: product.attributes.material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+          inherited_from: BICYCLE
+  number_of_items:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Number of Items
+          confidence: high
+        - default: 1
+          confidence: high
+          evidence: Single ride-on toy unit.
+          safe_default: true
+  part_number:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Part Number
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for part_number.value
+  is_assembly_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - path: product.attributes.Assembly Required
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+        - path: product.requires_assembly
+          confidence: high
+          evidence: Bootstrap mapping for is_assembly_required.value
+  manufacturer_minimum_age:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: 36
+          confidence: high
+          evidence: Minimum age 36 months for ride-on toys.
+          safe_default: true
+        manual_review: false
+  item_length_width_height:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.height.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.height.value
+            - path: product.dimensions.height
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.height.value
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.length.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.length.value
+            - path: product.dimensions.length
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.length.value
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.width.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.width.value
+            - path: product.dimensions.width
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.width.value
+  fulfillment_availability:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - fulfillment_channel_code
+    children:
+      fulfillment_channel_code:
+        shape: value
+        enum_values:
+        - AMAZON_NA
+        - DEFAULT
+        transform: enum
+        sources:
+        - default: DEFAULT
+          confidence: high
+          evidence: Merchant-fulfilled default channel.
+          safe_default: true
+        manual_review: false
+  condition_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - club_club
+    - collectible_acceptable
+    - collectible_good
+    - collectible_like_new
+    - collectible_very_good
+    - new_new
+    - new_oem
+    - new_open_box
+    - refurbished_refurbished
+    - used_acceptable
+    - used_good
+    - used_like_new
+    - used_very_good
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - club_club
+        - collectible_acceptable
+        - collectible_good
+        - collectible_like_new
+        - collectible_very_good
+        - new_new
+        - new_oem
+        - new_open_box
+        - refurbished_refurbished
+        - used_acceptable
+        - used_good
+        - used_like_new
+        - used_very_good
+        transform: enum
+        sources:
+        - path: offer.condition_type
+          confidence: high
+        - default: new_new
+          confidence: high
+          evidence: New product default condition.
+          safe_default: true
+        manual_review: false
+  list_price:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - currency
+    - value
+    children:
+      currency:
+        shape: value
+        enum_values:
+        - USD
+        transform: enum
+        sources:
+        - default: USD
+          confidence: high
+          evidence: US marketplace list price currency.
+          safe_default: true
+        manual_review: false
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: offer.price
+          confidence: high
+        manual_review: false
+  item_package_dimensions:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.height.unit
+              inherited_from: BICYCLE
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.height.value
+              inherited_from: BICYCLE
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.length.unit
+              inherited_from: BICYCLE
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.length.value
+              inherited_from: BICYCLE
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.width.unit
+              inherited_from: BICYCLE
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.width.value
+              inherited_from: BICYCLE
+  item_package_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - pounds
+        transform: enum
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Bootstrap unit for item_package_weight.unit
+          inherited_from: BICYCLE
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.dimensions.weight
+          confidence: high
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+          inherited_from: BICYCLE
+        - path: product.dimensions.assembled_weight
+          confidence: medium
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+          inherited_from: BICYCLE
+  batteries_required:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - default: 'False'
+          confidence: high
+          evidence: Non-battery product default.
+          safe_default: true
+        manual_review: false
+name: amazon_universal_required_v1
+version: ride_on_toy_attribute_rules_skeleton_v2
+product_type: RIDE_ON_TOY
+mode: live_eligible
+generated_from: promote_category_rules_v2
+presets:
+- amazon_universal_required_v1
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
+dimension_strategy: item_length_width_height

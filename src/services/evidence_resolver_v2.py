@@ -6,6 +6,12 @@ from difflib import get_close_matches
 from typing import Any, Dict
 
 from src.models.amazon_listing import AmazonListingDraft
+from src.services.attribute_transform_helpers import (
+    join_text_value,
+    normalize_country_of_origin,
+    parse_integer_value,
+    scan_enum_token,
+)
 from src.services.requirement_models_v2 import RequirementNode, ResolutionNode
 
 
@@ -22,8 +28,10 @@ class EvidenceResolverV2:
         draft: AmazonListingDraft,
         rules: Dict[str, Any],
         overrides: Dict[str, Any] | None = None,
+        candidate_attributes: Dict[str, Any] | None = None,
     ) -> ResolutionNode:
         override_map = overrides or {}
+        candidate_map = candidate_attributes or {}
         root = ResolutionNode(path_key=requirement_root.path_key)
         for requirement in requirement_root.children:
             rule = (rules.get("attributes") or {}).get(requirement.path_key) or {}
@@ -33,6 +41,7 @@ class EvidenceResolverV2:
                     draft,
                     rule,
                     override_map,
+                    candidate_map,
                     str(rules.get("version") or ""),
                 )
             )
@@ -44,14 +53,26 @@ class EvidenceResolverV2:
         draft: AmazonListingDraft,
         rule: Dict[str, Any],
         overrides: Dict[str, Any],
+        candidate_attributes: Dict[str, Any],
         rule_version: str,
     ) -> ResolutionNode:
         if requirement.path_key in overrides:
             node = self._override_node(requirement, overrides[requirement.path_key])
         else:
-            node = self._rule_node(requirement, draft, rule, rule_version)
+            node = self._rule_node(
+                requirement,
+                draft,
+                rule,
+                rule_version,
+                candidate_attributes,
+            )
         for child in requirement.children:
             child_rule = ((rule.get("children") or {}).get(child.name) or {})
+            if child.path_key in overrides:
+                node.children.append(
+                    self._override_node(child, overrides[child.path_key])
+                )
+                continue
             inherited = self._inherited_child_node(child, node, child_rule)
             if inherited is not None:
                 node.children.append(inherited)
@@ -62,10 +83,67 @@ class EvidenceResolverV2:
                         draft,
                         child_rule,
                         overrides,
+                        candidate_attributes,
                         rule_version,
                     )
                 )
+        self._resolve_rule_only_children(
+            node=node,
+            requirement=requirement,
+            rule=rule,
+            draft=draft,
+            overrides=overrides,
+            candidate_attributes=candidate_attributes,
+            rule_version=rule_version,
+        )
         return node
+
+    def _resolve_rule_only_children(
+        self,
+        node: ResolutionNode,
+        requirement: RequirementNode,
+        rule: Dict[str, Any],
+        draft: AmazonListingDraft,
+        overrides: Dict[str, Any],
+        candidate_attributes: Dict[str, Any],
+        rule_version: str,
+    ) -> None:
+        """Resolve YAML children that are not present on the RequirementTree.
+
+        Required array_object parents such as TABLE.frame only declare optional
+        schema children, but category rules still map nested fields like
+        frame.material. Without this pass the parent stays blocking even when
+        OptionalRuleChildrenEnricher later renders a valid payload.
+        """
+        schema_child_names = {child.name for child in requirement.children}
+        from src.services.optional_rule_children_enricher_v2 import (
+            OptionalRuleChildrenEnricherV2,
+        )
+
+        enricher = OptionalRuleChildrenEnricherV2()
+        for child_name, child_rule in (rule.get("children") or {}).items():
+            if child_name in schema_child_names:
+                continue
+            child_requirement = enricher._requirement_from_rule(
+                requirement.name,
+                str(child_name),
+                child_rule,
+            )
+            if child_requirement.path_key in overrides:
+                node.children.append(
+                    self._override_node(child_requirement, overrides[child_requirement.path_key])
+                )
+                continue
+            node.children.append(
+                self._resolve_node(
+                    child_requirement,
+                    draft,
+                    child_rule,
+                    overrides,
+                    candidate_attributes,
+                    rule_version,
+                )
+            )
 
     def _rule_node(
         self,
@@ -73,6 +151,7 @@ class EvidenceResolverV2:
         draft: AmazonListingDraft,
         rule: Dict[str, Any],
         rule_version: str,
+        candidate_attributes: Dict[str, Any],
     ) -> ResolutionNode:
         transform = str(rule.get("transform") or "text")
         for source in rule.get("sources") or []:
@@ -94,6 +173,18 @@ class EvidenceResolverV2:
                     evidence=evidence or rule_version,
                     confidence=confidence,
                     safe_default=safe_default,
+                ),
+                requirement,
+            )
+        candidate_value = self._candidate_value(candidate_attributes, requirement)
+        if candidate_value not in (None, "", []):
+            return self._finish(
+                ResolutionNode(
+                    path_key=requirement.path_key,
+                    value=candidate_value,
+                    source=f"candidate_attributes.{requirement.path_key}",
+                    evidence=f"candidate_attributes.{requirement.path_key}",
+                    confidence="high",
                 ),
                 requirement,
             )
@@ -125,6 +216,14 @@ class EvidenceResolverV2:
         value = None
         if isinstance(parent.value, dict):
             value = parent.value.get(requirement.name)
+        elif isinstance(parent.value, list):
+            values = []
+            for item in parent.value:
+                if isinstance(item, dict) and requirement.name in item:
+                    values.append(item.get(requirement.name))
+                elif requirement.name == "value":
+                    values.append(item)
+            value = [item for item in values if item not in (None, "", [])]
         elif requirement.name == "value":
             value = parent.value
         if value in (None, ""):
@@ -171,6 +270,17 @@ class EvidenceResolverV2:
             False,
         )
 
+    @staticmethod
+    def _candidate_value(
+        candidate_attributes: Dict[str, Any],
+        requirement: RequirementNode,
+    ) -> Any:
+        for key in (requirement.path_key, requirement.name):
+            value = candidate_attributes.get(key)
+            if value not in (None, "", []):
+                return value
+        return None
+
     def _read_llm_source(
         self,
         draft: AmazonListingDraft,
@@ -191,10 +301,7 @@ class EvidenceResolverV2:
         transform: str,
     ) -> Any:
         if transform == "integer":
-            try:
-                return int(float(value))
-            except (TypeError, ValueError):
-                return None
+            return parse_integer_value(value)
         if transform == "boolean_yes_no":
             text = str(value).strip().lower()
             if text in {"true", "yes", "y", "1", "required"}:
@@ -211,6 +318,10 @@ class EvidenceResolverV2:
             return value if isinstance(value, bool) else None
         if transform == "enum":
             return self._valid_value(product_type, requirement, value)
+        if transform == "enum_scan":
+            return self._scan_enum_value(product_type, requirement, value)
+        if transform == "text_join":
+            return join_text_value(value)
         if transform in {"passthrough", "raw"}:
             return value
         return str(value).strip() if value is not None else None
@@ -221,9 +332,13 @@ class EvidenceResolverV2:
         requirement: RequirementNode,
         value: Any,
     ) -> str:
-        text = str(value or "").strip()
-        if not text:
+        if value is None:
+            return ""
+        text = str(value).strip()
+        if not text and value is not False:
             return text
+        if self._is_country_of_origin(requirement):
+            text = normalize_country_of_origin(text)
         candidates = requirement.enum_values
         if not candidates and self.schema_service is not None:
             try:
@@ -243,6 +358,34 @@ class EvidenceResolverV2:
             return exact[text.lower()]
         match = get_close_matches(text.lower(), list(exact.keys()), n=1, cutoff=0.75)
         return exact[match[0]] if match else text
+
+    def _scan_enum_value(
+        self,
+        product_type: str,
+        requirement: RequirementNode,
+        value: Any,
+    ) -> str | None:
+        candidates = list(requirement.enum_values or [])
+        if not candidates and self.schema_service is not None:
+            try:
+                candidates = (
+                    self.schema_service.get_cached_valid_values(
+                        product_type,
+                        requirement.name,
+                    )
+                    or []
+                )
+            except Exception:
+                candidates = []
+        if not candidates:
+            return None
+        return scan_enum_token(value, candidates)
+
+    @staticmethod
+    def _is_country_of_origin(requirement: RequirementNode) -> bool:
+        if requirement.name == "country_of_origin":
+            return True
+        return "country_of_origin" in str(requirement.path_key or "")
 
     def _finish(
         self,

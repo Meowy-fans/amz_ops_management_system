@@ -1,0 +1,16 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "BICYCLE",
+  "generated_at": "2026-06-28T04:05:25.015964+00:00",
+  "pool_skus": [
+    "meow251108ceBe7"
+  ],
+  "offline": {
+    "sku_count": 1,
+    "zero_missing": 0
+  },
+  "preview": {
+    "sku_count": 1,
+    "validation_preview_passed": 0
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "product_type": "MAKEUP_VANITY",
+  "last_onboard_at": "2026-06-28T05:37:08.152780+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/makeup_vanity.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-makeup_vanity-onboard-acceptance.json",
+  "pool_skus": [
+    "FM0004120240917"
+  ],
+  "review_blocking_count": 12,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 15,
+  "preview_passed": 0
+}

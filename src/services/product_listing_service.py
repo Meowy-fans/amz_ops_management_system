@@ -195,6 +195,15 @@ class ProductListingService:
             logger.info(
                 "开始 SP-API 发品 category=%s dry_run=%s", category_name, dry_run
             )
+            engine_mode = str(
+                getattr(self, "listing_payload_engine_mode", "v1") or "v1"
+            ).strip().lower()
+            if engine_mode in {"v2", "shadow"} and not dry_run:
+                return {
+                    "success": False,
+                    "results": [],
+                    "message": f"{engine_mode}_engine_requires_dry_run",
+                }
 
             from src.services.product_listing_scope import ListingScope
 

@@ -102,7 +102,7 @@ def test_enricher_adds_optional_frame_material_and_seat_depth():
                 "shape": "object",
                 "children": {
                     "depth": {
-                        "shape": "measure",
+                        "shape": "measure_array",
                         "children": {
                             "value": {"sources": [{"default": 20.0, "safe_default": True}]},
                             "unit": {"sources": [{"default": "inches", "safe_default": True}]},
@@ -292,3 +292,84 @@ def test_enricher_bootstraps_missing_array_object_parent_from_rule_children():
 
     assert enriched["frame"][0]["material"] == [{"value": "Wood", "language_tag": "en_US"}]
     assert enriched["frame"][0]["marketplace_id"]
+
+
+def test_enricher_preserves_flat_item_depth_width_height_measures():
+    """Variation parents may get dims from candidate merge without a requirement node."""
+    requirement_root = RequirementNode(
+        path_key="CHAIR",
+        schema_path="$",
+        name="CHAIR",
+        shape="root",
+        required=True,
+        children=[],
+    )
+    rules = {
+        "version": "chair_v2",
+        "dimension_strategy": "item_depth_width_height",
+        "attributes": {
+            "item_depth_width_height": {
+                "shape": "object",
+                "children": {
+                    "depth": {
+                        "shape": "measure",
+                        "children": {
+                            "value": {"sources": [{"default": 19.0, "safe_default": True}]},
+                            "unit": {"sources": [{"default": "inches", "safe_default": True}]},
+                        },
+                    },
+                    "width": {
+                        "shape": "measure",
+                        "children": {
+                            "value": {"sources": [{"default": 22.6, "safe_default": True}]},
+                            "unit": {"sources": [{"default": "inches", "safe_default": True}]},
+                        },
+                    },
+                    "height": {
+                        "shape": "measure",
+                        "children": {
+                            "value": {"sources": [{"default": 32.8, "safe_default": True}]},
+                            "unit": {"sources": [{"default": "inches", "safe_default": True}]},
+                        },
+                    },
+                },
+            },
+        },
+    }
+    draft = SimpleNamespace(
+        sku="PARENT-1",
+        product_type="CHAIR",
+        content=SimpleNamespace(title="", description="", bullets=[]),
+        standard_product=SimpleNamespace(attributes={}, dimensions=None, images=[]),
+        offer=SimpleNamespace(price=1.0, currency="USD", quantity=0, condition_type="new_new"),
+        variation=SimpleNamespace(
+            parentage_level="parent",
+            variation_theme="COLOR",
+            parent_sku="",
+            child_relationship_type="",
+            theme_attributes={},
+        ),
+        vendor_sku="PARENT-1",
+    )
+    attributes = {
+        "item_depth_width_height": [
+            {
+                "depth": {"unit": "inches", "value": 19.0},
+                "width": {"unit": "inches", "value": 22.6},
+                "height": {"unit": "inches", "value": 32.8},
+            }
+        ]
+    }
+
+    enriched = OptionalRuleChildrenEnricherV2().enrich(
+        attributes=attributes,
+        rules=rules,
+        requirement_root=requirement_root,
+        draft=draft,
+        resolver=EvidenceResolverV2(),
+    )
+
+    row = enriched["item_depth_width_height"][0]
+    assert row["depth"] == {"unit": "inches", "value": 19.0}
+    assert row["width"] == {"unit": "inches", "value": 22.6}
+    assert row["height"] == {"unit": "inches", "value": 32.8}

@@ -1,0 +1,16 @@
+{
+  "acceptance": "S8-onboard-category-v2",
+  "product_type": "MAKEUP_VANITY",
+  "generated_at": "2026-06-28T05:37:08.152183+00:00",
+  "pool_skus": [
+    "FM0004120240917"
+  ],
+  "offline": {
+    "sku_count": 15,
+    "zero_missing": 0
+  },
+  "preview": {
+    "sku_count": 15,
+    "validation_preview_passed": 0
+  }
+}

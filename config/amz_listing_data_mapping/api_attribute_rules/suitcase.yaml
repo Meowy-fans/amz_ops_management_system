@@ -1,123 +1,601 @@
-product_type: SUITCASE
-version: suitcase_attribute_rules_draft_v1
-mode: dry_run
-generated_from: amazon_product_type_schema
-presets:
-- amazon_universal_required_v1
 attributes:
-  department:
+  item_name:
     level: required
     shape: list_value
     transform: text
-    manual_review: true
     sources:
-    - llm:
-        hint: Extract department from the product title, description, bullet points,
-          and supplier characteristics. Return null if the information is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for department'
-  item_length_width_height:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
     level: required
     shape: object
     transform: passthrough
-    manual_review: true
     sources:
-    - default: null
-      confidence: low
-      evidence: 'TODO: review source mapping for item_length_width_height'
-  shell_type:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
     level: required
     shape: list_value
-    transform: text
-    manual_review: true
+    transform: boolean_yes_no
     sources:
-    - llm:
-        hint: Extract shell type from the product title, description, bullet points,
-          and supplier characteristics. Return null if the information is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for shell_type'
-  style:
-    level: required
-    shape: list_value
-    transform: text
-    manual_review: true
-    sources:
-    - llm:
-        hint: Extract style from the product title, description, bullet points, and
-          supplier characteristics. Return null if the information is not found.
-    - default: null
-      confidence: low
-      evidence: 'TODO: review safe default for style'
-  model_name:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Model Name
-    - path: product.attributes.mpn
-    - path: product.vendor_sku
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
   model_number:
-    level: recommended
-    shape: list_value
-    transform: text
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Number
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_number.value
+  model_name:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Model Name
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.attributes.mpn
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+        - path: product.vendor_sku
+          confidence: high
+          evidence: Bootstrap mapping for model_name.value
+  style:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Model Number
-    - path: product.attributes.mpn
-    - path: product.vendor_sku
-  part_number:
-    level: recommended
-    shape: list_value
-    transform: text
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.style
+          confidence: high
+        - path: product.attributes.Style
+          confidence: high
+        - default: Modern
+          confidence: medium
+          evidence: Fallback style when supplier style is missing.
+          safe_default: true
+        manual_review: false
+  department:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Part Number
-    - path: product.attributes.mpn
-    - path: product.vendor_sku
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - default: unisex-adult
+          confidence: medium
+          evidence: Default luggage department.
+          safe_default: true
+        manual_review: false
+  item_length_width_height:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.height.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.height.value
+            - path: product.dimensions.height
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.height.value
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.length.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.length.value
+            - path: product.dimensions.length
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.length.value
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - inches
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - inches
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_length_width_height.width.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.assembled_width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_length_width_height.width.value
+            - path: product.dimensions.width
+              confidence: medium
+              evidence: Bootstrap dimension mapping for item_length_width_height.width.value
+  shell_type:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: false
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Shell Type
+          confidence: high
+        - default: Hard
+          confidence: medium
+          evidence: Fallback shell type.
+          safe_default: true
+        manual_review: false
   material:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
-    sources:
-    - path: product.attributes.Main Material
-    - path: product.attributes.material
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.attributes.Main Material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
+        - path: product.attributes.material
+          confidence: high
+          evidence: Bootstrap mapping for material.value
   color:
-    level: recommended
-    shape: list_value
-    transform: text
-    manual_review: false
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
     sources:
     - path: product.attributes.Main Color
+      inherited_from: TABLE
     - path: product.attributes.color
-  item_shape:
-    level: recommended
-    shape: list_value
-    transform: text
+      inherited_from: TABLE
+  fulfillment_availability:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Item Shape
-  number_of_items:
-    level: recommended
-    shape: list_value
-    transform: integer
+    required_children:
+    - fulfillment_channel_code
+    children:
+      fulfillment_channel_code:
+        shape: value
+        enum_values:
+        - AMAZON_NA
+        - DEFAULT
+        transform: enum
+        sources:
+        - default: DEFAULT
+          confidence: high
+          evidence: Merchant-fulfilled default channel.
+          safe_default: true
+        manual_review: false
+  condition_type:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Number of Items
-  included_components:
-    level: recommended
-    shape: list_value
-    transform: text
+    enum_values:
+    - club_club
+    - collectible_acceptable
+    - collectible_good
+    - collectible_like_new
+    - collectible_very_good
+    - new_new
+    - new_oem
+    - new_open_box
+    - refurbished_refurbished
+    - used_acceptable
+    - used_good
+    - used_like_new
+    - used_very_good
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - club_club
+        - collectible_acceptable
+        - collectible_good
+        - collectible_like_new
+        - collectible_very_good
+        - new_new
+        - new_oem
+        - new_open_box
+        - refurbished_refurbished
+        - used_acceptable
+        - used_good
+        - used_like_new
+        - used_very_good
+        transform: enum
+        sources:
+        - path: offer.condition_type
+          confidence: high
+        - default: new_new
+          confidence: high
+          evidence: New product default condition.
+          safe_default: true
+        manual_review: false
+  list_price:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Included Components
-  special_feature:
-    level: recommended
-    shape: list_value
-    transform: text
+    required_children:
+    - currency
+    - value
+    children:
+      currency:
+        shape: value
+        enum_values:
+        - USD
+        transform: enum
+        sources:
+        - default: USD
+          confidence: high
+          evidence: US marketplace list price currency.
+          safe_default: true
+        manual_review: false
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: offer.price
+          confidence: high
+        manual_review: false
+  item_package_dimensions:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - height
+    - length
+    - width
+    children:
+      height:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - centimeters
+        - feet
+        - inches
+        - meters
+        - millimeters
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - centimeters
+            - feet
+            - inches
+            - meters
+            - millimeters
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.height.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.height
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.height.value
+      length:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - centimeters
+        - feet
+        - inches
+        - meters
+        - millimeters
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - centimeters
+            - feet
+            - inches
+            - meters
+            - millimeters
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.length.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.length
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.length.value
+      width:
+        shape: measure
+        required_children:
+        - unit
+        - value
+        unit_values:
+        - centimeters
+        - feet
+        - inches
+        - meters
+        - millimeters
+        - yards
+        children:
+          unit:
+            shape: value
+            enum_values:
+            - centimeters
+            - feet
+            - inches
+            - meters
+            - millimeters
+            - yards
+            transform: enum
+            sources:
+            - default: inches
+              confidence: high
+              evidence: Bootstrap unit for item_package_dimensions.width.unit
+          value:
+            shape: value
+            transform: text
+            sources:
+            - path: product.dimensions.width
+              confidence: high
+              evidence: Bootstrap dimension mapping for item_package_dimensions.width.value
+  item_package_weight:
+    shape: array_object
+    level: required
+    transform: passthrough
+    manual_review: true
+    required_children:
+    - unit
+    - value
+    unit_values:
+    - grams
+    - kilograms
+    - milligrams
+    - ounces
+    - pounds
+    children:
+      unit:
+        shape: value
+        enum_values:
+        - grams
+        - kilograms
+        - milligrams
+        - ounces
+        - pounds
+        transform: enum
+        sources:
+        - default: pounds
+          confidence: high
+          evidence: Bootstrap unit for item_package_weight.unit
+      value:
+        shape: value
+        transform: text
+        sources:
+        - path: product.dimensions.weight
+          confidence: high
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+        - path: product.dimensions.assembled_weight
+          confidence: medium
+          evidence: Bootstrap dimension mapping for item_package_weight.value
+  batteries_required:
+    shape: array_object
+    level: required
+    transform: passthrough
     manual_review: false
-    sources:
-    - path: product.attributes.Special Feature
+    enum_values:
+    - 'False'
+    - 'True'
+    required_children:
+    - value
+    children:
+      value:
+        shape: value
+        enum_values:
+        - 'False'
+        - 'True'
+        transform: enum
+        sources:
+        - default: 'False'
+          confidence: high
+          evidence: Non-battery product default.
+          safe_default: true
+        manual_review: false
+name: amazon_universal_required_v1
+version: suitcase_attribute_rules_skeleton_v2
+product_type: SUITCASE
+mode: live_eligible
+generated_from: patch_phase2_onboard_rules
+presets:
+- amazon_universal_required_v1
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
+dimension_strategy: item_length_width_height

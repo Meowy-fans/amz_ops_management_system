@@ -1,0 +1,14 @@
+{
+  "product_type": "SAUNA",
+  "last_onboard_at": "2026-06-28T05:37:27.483109+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/sauna.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-sauna-onboard-acceptance.json",
+  "pool_skus": [
+    "meow251108D2EZu"
+  ],
+  "review_blocking_count": 5,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 2,
+  "preview_passed": 0
+}

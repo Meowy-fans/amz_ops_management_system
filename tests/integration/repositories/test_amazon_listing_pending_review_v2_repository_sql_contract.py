@@ -89,7 +89,8 @@ def test_upsert_pending_paths_sql_contract_inserts_path_level_rows():
     sql = _normalized(session.calls[0][0])
     assert "INSERT INTO amz_listing_pending_review_v2" in sql
     assert "ON CONFLICT (category, sku, path_key, path_key_version) DO UPDATE" in sql
-    assert "review_status = 'pending'" in sql
+    assert "review_status = CASE" in sql
+    assert "review_status = 'completed'" in sql
 
 
 def test_list_pending_filters_by_category_status_and_route():

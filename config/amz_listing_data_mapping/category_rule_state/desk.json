@@ -1,0 +1,14 @@
+{
+  "product_type": "DESK",
+  "last_onboard_at": "2026-06-28T04:05:07.460861+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/desk.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-desk-onboard-acceptance.json",
+  "pool_skus": [
+    "meow2506084DCXZ"
+  ],
+  "review_blocking_count": 10,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 1,
+  "preview_passed": 0
+}

@@ -42,6 +42,8 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
         "--product-type",
         "SOFA",
         "--all-unmapped",
+        "--engine",
+        "shadow",
     ])
     monkeypatch.setattr(app_main, "SessionLocal", lambda: FakeSession(events))
 
@@ -71,7 +73,8 @@ def test_main_dispatches_non_interactive_task_and_closes_session(monkeypatch):
         "category_code": "10027",
         "product_type": "SOFA",
         "all_unmapped": True,
-        "engine": "v1",
+        "engine": "shadow",
+        "approve_human": False,
     }
 
 

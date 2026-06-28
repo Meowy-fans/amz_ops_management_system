@@ -1,0 +1,335 @@
+{
+  "total": 30,
+  "summary": {
+    "ARTIFICIAL_TREE": {
+      "total": 1,
+      "passed": 1,
+      "issues": 0,
+      "blocked": 0
+    },
+    "CABINET": {
+      "total": 6,
+      "passed": 0,
+      "issues": 6,
+      "blocked": 0
+    },
+    "FIRE_PIT": {
+      "total": 1,
+      "passed": 1,
+      "issues": 0,
+      "blocked": 0
+    },
+    "FURNITURE": {
+      "total": 3,
+      "passed": 3,
+      "issues": 0,
+      "blocked": 0
+    },
+    "MAKEUP_VANITY": {
+      "total": 12,
+      "passed": 11,
+      "issues": 1,
+      "blocked": 0
+    },
+    "OUTDOOR_LIVING": {
+      "total": 2,
+      "passed": 2,
+      "issues": 0,
+      "blocked": 0
+    },
+    "RIDE_ON_TOY": {
+      "total": 4,
+      "passed": 4,
+      "issues": 0,
+      "blocked": 0
+    },
+    "TABLE": {
+      "total": 1,
+      "passed": 1,
+      "issues": 0,
+      "blocked": 0
+    }
+  },
+  "results": [
+    {
+      "sku": "meow251108QxjB0",
+      "category": "ARTIFICIAL_TREE",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511081h83b",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 1,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u201866.9\u2019 \u2018inches\u2019 for \u2018width\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201842\u2019 \u2018inches\u2019 for \u2018width\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow2511086f7z1",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 2,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u201876.9\u2019 \u2018inches\u2019 for \u2018height\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201843.5\u2019 \u2018inches\u2019 for \u2018height\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow251108CbwwJ",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 1,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u201872.83\u2019 \u2018inches\u2019 for \u2018height\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201843.5\u2019 \u2018inches\u2019 for \u2018height\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow251108cObu0",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 2,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u2018108.2\u2019 \u2018inches\u2019 for \u2018width\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201842\u2019 \u2018inches\u2019 for \u2018width\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow251108cY5HJ",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 2,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u201892.5\u2019 \u2018inches\u2019 for \u2018width\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201842\u2019 \u2018inches\u2019 for \u2018width\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow251108nd3wr",
+      "category": "CABINET",
+      "status": "validation_preview_issues",
+      "issue_count": 2,
+      "top_issue": {
+        "code": "100335",
+        "message": "Value of \u2018108.2\u2019 \u2018inches\u2019 for \u2018width\u2019 in \u2018Item Dimensions D x W x H\u2019 of \u2018CABINET\u2019 is more than the maximum allowed value. The value must be at most \u201842\u2019 \u2018inches\u2019 for \u2018width\u2019 for attribute \u2018Item Dimensions D x W x H\u2019.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "item_depth_width_height"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow251108hqDKy",
+      "category": "FIRE_PIT",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511082WyKq",
+      "category": "FURNITURE",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108fI1Z6",
+      "category": "FURNITURE",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108kHwPk",
+      "category": "FURNITURE",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2506285RSQ7",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_issues",
+      "issue_count": 1,
+      "top_issue": {
+        "code": "18367",
+        "message": "Having the most relevant product type for a product enhances both the seller and customer experience. Therefore, your product type has been updated from MAKEUP_VANITY to HOME_MIRROR. If you believe the original product type you selected is correct, you may change the SKU attributes such as title, product description and bullet points to better match MAKEUP_VANITY.",
+        "severity": "WARNING",
+        "attributeNames": [
+          "product_type"
+        ],
+        "categories": [
+          "INVALID_ATTRIBUTE"
+        ]
+      }
+    },
+    {
+      "sku": "meow2511081Jfok",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511083PbOp",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511085FmDA",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108bPdRD",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108E2rfW",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108fwnYU",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108NIpeJ",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108opb7d",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108Q0Jox",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108QamBG",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108v6J8m",
+      "category": "MAKEUP_VANITY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108D2EZu",
+      "category": "OUTDOOR_LIVING",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108ZWonN",
+      "category": "OUTDOOR_LIVING",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511085YCww",
+      "category": "RIDE_ON_TOY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow2511088HYKW",
+      "category": "RIDE_ON_TOY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108JOb7K",
+      "category": "RIDE_ON_TOY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108kTBi0",
+      "category": "RIDE_ON_TOY",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    },
+    {
+      "sku": "meow251108WJxqq",
+      "category": "TABLE",
+      "status": "validation_preview_passed",
+      "issue_count": 0,
+      "top_issue": null
+    }
+  ]
+}

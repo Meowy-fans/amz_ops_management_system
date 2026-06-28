@@ -123,7 +123,18 @@ class AttributeRuleGenerator:
             }
         ],
         "item_name": [{"path": "content.title"}],
-        "product_description": [{"path": "content.description"}],
+        "product_description": [
+            {"path": "content.description"},
+            {"path": "product.description"},
+            {
+                "path": "content.bullets",
+                "confidence": "high",
+                "evidence": (
+                    "Compose required description from listing bullets when no "
+                    "persisted description exists."
+                ),
+            },
+        ],
         "bullet_point": [{"path": "content.bullets", "transform": "passthrough"}],
         "target_audience_base": [
             {

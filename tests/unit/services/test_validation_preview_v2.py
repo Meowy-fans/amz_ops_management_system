@@ -197,6 +197,67 @@ def test_compare_returns_empty_lists_when_both_sides_clean():
     assert comparison.v2_only == []
 
 
+def test_unexplained_amazon_only_ignores_warnings_and_allowlisted_codes():
+    comparison = ValidationPreviewComparison(
+        sku="SKU1",
+        amazon_issue_count=2,
+        v2_finding_count=0,
+        amazon_only=[
+            {
+                "code": "90000900",
+                "severity": "WARNING",
+                "message": "Width warning",
+                "attributeNames": ["item_depth_width_height"],
+            },
+            {
+                "code": "18448",
+                "severity": "ERROR",
+                "message": "Recommended attribute",
+                "attributeNames": ["recommended_uses_for_product"],
+            },
+            {
+                "code": "90220",
+                "severity": "ERROR",
+                "message": "Missing required",
+                "attributeNames": ["frame_material"],
+            },
+        ],
+    )
+
+    unexplained = ValidationPreviewV2.unexplained_amazon_only(comparison)
+
+    assert len(unexplained) == 1
+    assert unexplained[0]["attributeNames"] == ["frame_material"]
+    assert ValidationPreviewV2.comparison_is_clean(comparison) is False
+
+
+def test_unexplained_amazon_only_ignores_coverage_ignore_required_roots():
+    comparison = ValidationPreviewComparison(
+        sku="SKU1",
+        amazon_issue_count=1,
+        v2_finding_count=0,
+        amazon_only=[
+            {
+                "code": "90220",
+                "severity": "ERROR",
+                "message": "Missing required",
+                "attributeNames": ["merchant_suggested_asin"],
+            }
+        ],
+    )
+
+    unexplained = ValidationPreviewV2.unexplained_amazon_only(
+        comparison,
+        ignored_attribute_roots=["merchant_suggested_asin"],
+    )
+
+    assert unexplained == []
+    assert ValidationPreviewV2.comparison_is_clean(
+        comparison,
+        ignored_attribute_roots=["merchant_suggested_asin"],
+    )
+
+
 def test_compare_is_dataclass_with_expected_fields():
     comparison = ValidationPreviewComparison(
         sku="SKU1",

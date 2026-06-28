@@ -1,0 +1,14 @@
+{
+  "product_type": "FIRE_PIT",
+  "last_onboard_at": "2026-06-28T05:37:34.935555+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/fire_pit.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-fire_pit-onboard-acceptance.json",
+  "pool_skus": [
+    "meow251108hqDKy"
+  ],
+  "review_blocking_count": 11,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 1,
+  "preview_passed": 0
+}

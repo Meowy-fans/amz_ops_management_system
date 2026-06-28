@@ -217,6 +217,44 @@ def test_generate_listing_api_passes_sku_scope(monkeypatch):
     }]
 
 
+def test_generate_listing_api_shadow_sets_service_engine(monkeypatch, capsys):
+    seen = []
+
+    class Service(ListingService):
+        def generate_listings_via_api(
+            self,
+            category_name,
+            dry_run=True,
+            validation_only=False,
+            sku_list=None,
+            sku_file=None,
+            only_not_on_amazon=False,
+        ):
+            seen.append(getattr(self, "listing_payload_engine_mode", None))
+            return super().generate_listings_via_api(
+                category_name,
+                dry_run=dry_run,
+                validation_only=validation_only,
+                sku_list=sku_list,
+                sku_file=sku_file,
+                only_not_on_amazon=only_not_on_amazon,
+            )
+
+    monkeypatch.setattr("src.cli.listing_handlers.ProductListingService", Service)
+
+    result = handle_generate_listing_api(
+        db=object(),
+        category="CABINET",
+        dry_run=True,
+        engine="shadow",
+    )
+
+    output = capsys.readouterr().out
+    assert result["success"] is True
+    assert seen == ["shadow"]
+    assert "Listing payload engine: shadow" in output
+
+
 def test_generate_listing_api_rejects_strict_validation_with_live(capsys):
     result = handle_generate_listing_api(
         db=object(),
@@ -225,10 +263,75 @@ def test_generate_listing_api_rejects_strict_validation_with_live(capsys):
         strict_validation=True,
     )
 
-    output = capsys.readouterr().out
+    capsys.readouterr()
     assert result["success"] is False
     assert result["message"] == "strict_validation_requires_dry_run"
-    assert "strict validation 只能用于 dry-run" in output
+
+
+def test_generate_listing_api_rejects_shadow_with_live(capsys):
+    result = handle_generate_listing_api(
+        db=object(),
+        category="CABINET",
+        dry_run=False,
+        engine="shadow",
+    )
+
+    output = capsys.readouterr().out
+    assert result["success"] is False
+    assert result["message"] == "shadow_engine_requires_dry_run"
+    assert "shadow engine" in output
+
+
+def test_generate_listing_api_allows_v2_dry_run(monkeypatch, capsys):
+    seen = []
+
+    class Service(ListingService):
+        def generate_listings_via_api(
+            self,
+            category_name,
+            dry_run=True,
+            validation_only=False,
+            sku_list=None,
+            sku_file=None,
+            only_not_on_amazon=False,
+        ):
+            seen.append(self.listing_payload_engine_mode)
+            return super().generate_listings_via_api(
+                category_name,
+                dry_run=dry_run,
+                validation_only=validation_only,
+                sku_list=sku_list,
+                sku_file=sku_file,
+                only_not_on_amazon=only_not_on_amazon,
+            )
+
+    monkeypatch.setattr("src.cli.listing_handlers.ProductListingService", Service)
+
+    result = handle_generate_listing_api(
+        db=object(),
+        category="CABINET",
+        dry_run=True,
+        engine="v2",
+    )
+
+    output = capsys.readouterr().out
+    assert result["success"] is True
+    assert seen == ["v2"]
+    assert "Listing payload engine: v2 authoritative dry-run canary" in output
+
+
+def test_generate_listing_api_rejects_v2_live(capsys):
+    result = handle_generate_listing_api(
+        db=object(),
+        category="CABINET",
+        dry_run=False,
+        engine="v2",
+    )
+
+    output = capsys.readouterr().out
+    assert result["success"] is False
+    assert result["message"] == "v2_engine_requires_dry_run"
+    assert "只允许 dry-run" in output
 
 
 def test_generate_listing_failure_prints_reason(monkeypatch, capsys):

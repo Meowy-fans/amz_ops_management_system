@@ -1,0 +1,14 @@
+{
+  "product_type": "OUTDOOR_LIVING",
+  "last_onboard_at": "2026-06-28T05:42:31.752427+00:00",
+  "status": "completed",
+  "yaml_path": "/app/config/amz_listing_data_mapping/api_attribute_rules/outdoor_living.yaml",
+  "acceptance_report_path": "/app/docs/test-reports/2026-06-28-outdoor_living-onboard-acceptance.json",
+  "pool_skus": [
+    "meow251108D2EZu"
+  ],
+  "review_blocking_count": 5,
+  "offline_zero_missing": 0,
+  "offline_sku_count": 2,
+  "preview_passed": 0
+}

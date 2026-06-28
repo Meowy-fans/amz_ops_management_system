@@ -80,11 +80,20 @@ class OptionalRuleChildrenEnricherV2:
                 )
                 if rendered in (None, "", []):
                     continue
-                if child_requirement.shape == "measure" and isinstance(rendered, dict):
+                # Object-embedded measures are flat dicts unless the YAML rule
+                # declares measure_array (e.g. seat.height). Top-level measure
+                # arrays are handled by PayloadComposerV2._render_top_level().
+                if (
+                    str(child_rule.get("shape") or "") == "measure_array"
+                    and isinstance(rendered, dict)
+                ):
                     rendered = [rendered]
                 for item in payload_items:
-                    if isinstance(item, dict):
-                        item[child_name] = rendered
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get(child_name) not in (None, "", []):
+                        continue
+                    item[child_name] = rendered
             merged[attr_name] = payload
         return merged
 

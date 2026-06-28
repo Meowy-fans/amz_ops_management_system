@@ -34,7 +34,7 @@ class PayloadComposerV2:
         value = self._render_node(requirement, resolution, resolution_index)
         if value is None:
             return None
-        if requirement.shape in {"list_value", "measure", "object", "nested_object", "array_object"}:
+        if requirement.shape in {"list_value", "measure", "measure_array", "object", "nested_object", "array_object"}:
             return value if isinstance(value, list) else [value]
         return [{"value": value}]
 
@@ -50,6 +50,9 @@ class PayloadComposerV2:
             return self._render_list_value(requirement, resolution)
         if requirement.shape == "measure":
             return self._render_measure(requirement, resolution, resolution_index)
+        if requirement.shape == "measure_array":
+            rendered = self._render_measure(requirement, resolution, resolution_index)
+            return [rendered] if rendered else None
         if requirement.shape in {"object", "nested_object", "array_object"}:
             return self._render_object(requirement, resolution, resolution_index)
         return self._scalar_value(resolution.value if resolution else None)
@@ -102,13 +105,12 @@ class PayloadComposerV2:
             rendered_items = [
                 item
                 for value in resolution.value
-                if isinstance(value, dict)
                 for item in [self._merge_object_value(requirement, value)]
                 if self._has_non_auto_value(item, requirement)
             ]
             return rendered_items or None
 
-        item = dict(requirement.auto_fields)
+        item = dict(self._object_auto_fields(requirement))
         if resolution and isinstance(resolution.value, dict):
             item.update(
                 {
@@ -117,20 +119,40 @@ class PayloadComposerV2:
                     if value not in (None, "", [])
                 }
             )
+        elif resolution and resolution.value not in (None, "", []):
+            item["value"] = self._scalar_value(resolution.value)
         for child in requirement.children:
             child_resolution = resolution_index.get(child.path_key)
             child_value = self._render_node(child, child_resolution, resolution_index)
             if child_value is not None:
                 item[child.name] = child_value
-        return item if self._has_non_auto_value(item, requirement) else None
+        if not self._has_non_auto_value(item, requirement):
+            return None
+        return [item] if requirement.shape == "array_object" else item
+
+    @staticmethod
+    def _object_auto_fields(requirement: RequirementNode) -> Dict[str, Any]:
+        """Only array_object rows should inherit selector auto fields like marketplace_id."""
+        if requirement.shape in {"object", "nested_object"}:
+            return {}
+        return dict(requirement.auto_fields)
 
     @staticmethod
     def _merge_object_value(
         requirement: RequirementNode,
-        value: Dict[str, Any],
+        value: Any,
     ) -> Dict[str, Any]:
-        item = dict(requirement.auto_fields)
-        item.update({key: item_value for key, item_value in value.items() if item_value not in (None, "", [])})
+        item = dict(PayloadComposerV2._object_auto_fields(requirement))
+        if isinstance(value, dict):
+            item.update(
+                {
+                    key: item_value
+                    for key, item_value in value.items()
+                    if item_value not in (None, "", [])
+                }
+            )
+        elif value not in (None, "", []):
+            item["value"] = PayloadComposerV2._scalar_value(value)
         return item
 
     @staticmethod

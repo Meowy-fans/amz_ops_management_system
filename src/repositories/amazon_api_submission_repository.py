@@ -191,3 +191,37 @@ class AmazonAPISubmissionRepository:
             },
         ).mappings()
         return [dict(row) for row in rows]
+
+    def list_listing_payload_v2_shadow_submissions(
+        self,
+        product_type: Optional[str] = None,
+        sku: Optional[str] = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Return recent V2 shadow audit rows for diff reporting."""
+        query = text("""
+            SELECT
+                id,
+                sku,
+                status,
+                product_type,
+                request_payload,
+                response_body,
+                error_message,
+                submitted_at
+            FROM amazon_api_submissions
+            WHERE operation = 'listing_payload_v2_shadow'
+              AND (:product_type IS NULL OR product_type = :product_type)
+              AND (:sku IS NULL OR LOWER(sku) = LOWER(:sku))
+            ORDER BY submitted_at DESC
+            LIMIT :limit
+        """)
+        rows = self.db.execute(
+            query,
+            {
+                "product_type": product_type,
+                "sku": sku,
+                "limit": int(limit),
+            },
+        ).mappings()
+        return [dict(row) for row in rows]
