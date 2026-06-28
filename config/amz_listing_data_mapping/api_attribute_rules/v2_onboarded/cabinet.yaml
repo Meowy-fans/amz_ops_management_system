@@ -1,754 +1,262 @@
 attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
   fabric_type:
-    shape: array_object
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Fabric Type
-          confidence: high
-          evidence: Bootstrap mapping for fabric_type.value
-        - path: product.attributes.Main Material
-          confidence: high
-          evidence: Bootstrap mapping for fabric_type.value
-  merchant_suggested_asin:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for merchant_suggested_asin.value'
-  model_number:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Model Number
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-  construction_type:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for construction_type.value'
-  included_components:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Included Components
-          confidence: high
-          evidence: Bootstrap mapping for included_components.value
-  is_assembly_required:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - path: product.attributes.Assembly Required
-          confidence: high
-          evidence: Bootstrap mapping for is_assembly_required.value
-        - path: product.requires_assembly
-          confidence: high
-          evidence: Bootstrap mapping for is_assembly_required.value
-  is_fragile:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for is_fragile.value'
-  item_weight:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - unit
-    - value
-    unit_values:
-    - pounds
-    children:
-      unit:
-        shape: value
-        enum_values:
-        - pounds
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for item_weight.unit'
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for item_weight.value'
-  model_name:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Model Name
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-  room_type:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Room Type
-          confidence: high
-          evidence: Bootstrap mapping for room_type.value
-  special_feature:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Special Feature
-          confidence: high
-          evidence: Bootstrap mapping for special_feature.value
-  material:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Main Material
-          confidence: high
-          evidence: Bootstrap mapping for material.value
-        - path: product.attributes.material
-          confidence: high
-          evidence: Bootstrap mapping for material.value
-  number_of_items:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Number of Items
-          confidence: high
-          evidence: Bootstrap mapping for number_of_items.value
-  color:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
+    shape: list_value
+    transform: text
     sources:
-    - path: product.attributes.Main Color
-      confidence: high
-      evidence: Bootstrap mapping for color
-    - path: product.attributes.color
-      confidence: high
-      evidence: Bootstrap mapping for color
-  part_number:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Part Number
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-  item_shape:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Item Shape
-          confidence: high
-          evidence: Bootstrap mapping for item_shape.value
-  door:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    sources:
-    - default: null
-      confidence: low
-      evidence: 'TODO: review source mapping for door'
-  number_of_drawers:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for number_of_drawers.value'
+    - path: product.attributes.Fabric Type
+    - path: product.attributes.Main Material
+    - path: product.attributes.material
+    - default: Wood
+      confidence: medium
+      evidence: CABINET listings are furniture items commonly made from wood or engineered
+        wood when supplier material is unavailable.
+      safe_default: true
   mounting_type:
-    shape: array_object
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Mounting Type
-          confidence: high
-          evidence: Bootstrap mapping for mounting_type.value
-  item_depth_width_height:
-    shape: array_object
+    shape: value
+    transform: enum
+    sources:
+    - path: product.attributes.Mounting Type
+    - default: Freestanding
+      confidence: high
+      evidence: CABINET listing default for freestanding bathroom storage unless source
+        indicates wall mount.
+      safe_default: true
+  model_name:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - depth
-    - height
-    - width
-    children:
-      depth:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.depth.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.assembled_width
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
-            - path: product.dimensions.width
-              confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
-      height:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.height.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.assembled_height
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
-            - path: product.dimensions.height
-              confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
-      width:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.width.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.assembled_length
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
-            - path: product.dimensions.length
-              confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
-  fulfillment_availability:
-    shape: array_object
+    shape: value
+    transform: text
+    sources:
+    - path: product.attributes.Model Name
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
+  construction_type:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - fulfillment_channel_code
-    children:
-      fulfillment_channel_code:
-        shape: value
-        enum_values:
-        - AMAZON_NA
-        - DEFAULT
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for fulfillment_availability.fulfillment_channel_code'
-  condition_type:
-    shape: array_object
+    shape: value
+    transform: text
+    sources:
+    - path: product.attributes.Construction Type
+    - default: Freestanding
+      confidence: medium
+      evidence: Supplier cabinet assortment is normally standalone/freestanding unless
+        product attributes indicate otherwise.
+      safe_default: true
+  number_of_items:
     level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - club_club
-    - collectible_acceptable
-    - collectible_good
-    - collectible_like_new
-    - collectible_very_good
-    - new_new
-    - new_oem
-    - new_open_box
-    - refurbished_refurbished
-    - used_acceptable
-    - used_good
-    - used_like_new
-    - used_very_good
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - club_club
-        - collectible_acceptable
-        - collectible_good
-        - collectible_like_new
-        - collectible_very_good
-        - new_new
-        - new_oem
-        - new_open_box
-        - refurbished_refurbished
-        - used_acceptable
-        - used_good
-        - used_like_new
-        - used_very_good
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for condition_type.value'
-  list_price:
-    shape: array_object
+    shape: value
+    transform: integer
+    sources:
+    - path: product.attributes.Number of Items
+    - default: 1
+      confidence: high
+      evidence: One purchasable cabinet listing unit.
+      safe_default: true
+  door:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - currency
-    - value
-    children:
-      currency:
-        shape: value
-        enum_values:
-        - USD
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for list_price.currency'
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for list_price.value'
-  item_package_dimensions:
-    shape: array_object
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Door Style
+    - path: product.attributes.Door
+    - default: Shaker
+      confidence: medium
+      evidence: Conservative Amazon-valid cabinet door style default; review if source
+        says drawers-only, slab, glass front, or open shelf.
+      safe_default: true
+  special_feature:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Special Feature
+    - default: Storage
+      confidence: medium
+      evidence: Conservative feature for cabinet category; does not invent technical
+        claims.
+      safe_default: true
+  included_components:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - height
-    - length
-    - width
-    children:
-      height:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.height.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.height
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.height.value
-      length:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.length.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.length
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.length.value
-      width:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.width.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.width
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.width.value
-  item_package_weight:
-    shape: array_object
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Included Components
+    - default: Cabinet
+      confidence: high
+      evidence: Listing unit includes the cabinet itself.
+      safe_default: true
+  is_assembly_required:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - unit
-    - value
-    unit_values:
-    - pounds
-    children:
-      unit:
-        shape: value
-        enum_values:
-        - pounds
-        transform: enum
-        sources:
-        - default: pounds
-          confidence: high
-          evidence: Bootstrap unit for item_package_weight.unit
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.dimensions.weight
-          confidence: high
-          evidence: Bootstrap dimension mapping for item_package_weight.value
-        - path: product.dimensions.assembled_weight
-          confidence: medium
-          evidence: Bootstrap dimension mapping for item_package_weight.value
-  number_of_boxes:
-    shape: array_object
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - path: product.attributes.Assembly Required
+    - path: product.requires_assembly
+    - default: true
+      confidence: medium
+      evidence: Supplier furniture items commonly require assembly; review if source
+        states fully assembled.
+      safe_default: true
+  item_shape:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for number_of_boxes.value'
-  batteries_required:
-    shape: array_object
+    shape: value
+    transform: text
+    sources:
+    - path: product.attributes.Item Shape
+    - default: Rectangular
+      confidence: high
+      evidence: Conservative shape for standard cabinet furniture.
+      safe_default: true
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Room Type
+    - default: Bathroom
+      confidence: high
+      evidence: CABINET mapped assortment is bathroom vanity/storage unless source
+        category changes.
+      safe_default: true
+  is_fragile:
     level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for batteries_required.value'
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - path: product.attributes.Is Fragile?
+    - default: false
+      confidence: medium
+      evidence: Cabinet body is not fragile by default; review if glass/ceramic sink
+        is included.
+      safe_default: true
+  number_of_drawers:
+    level: recommended
+    shape: value
+    transform: integer
+    sources:
+    - path: product.attributes.Number of Drawers
+    - default: 0
+      confidence: medium
+      evidence: Conservative default when drawer count is not stated.
+      safe_default: true
+name: amazon_universal_required_v1
+version: cabinet_v2_onboarded_2026-06-28
 product_type: CABINET
-version: cabinet_attribute_rules_v1
-mode: dry_run
-generated_from: regenerate_live_category_rules_v2
+mode: live_eligible
 presets:
 - amazon_universal_required_v1
-coverage_ignore_required:
-- merchant_shipping_group
-- merchant_suggested_asin
 dimension_strategy: item_depth_width_height
 additional_dimension_measures:
 - item_width
-coverage_ignore_when_parent:
-- item_width
 post_processors:
 - cabinet_attribute_shapes
-regenerated_from_backup: /home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/cabinet.yaml
+coverage_ignore_when_parent:
+- item_width
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
+generated_from: promote_category_rules_v2

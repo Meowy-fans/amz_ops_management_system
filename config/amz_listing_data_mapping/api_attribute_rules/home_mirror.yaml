@@ -1,126 +1,227 @@
-product_type: HOME_MIRROR
-version: home_mirror_attribute_rules_v1
-mode: live_eligible
-presets:
-  - amazon_universal_required_v1
-
-dimension_strategy: item_length_width
-coverage_ignore_required:
-  - merchant_shipping_group
-  - merchant_suggested_asin
-
 attributes:
+  item_name:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
+    level: required
+    shape: list_value
+    transform: passthrough
+    sources:
+    - path: content.bullets
+  product_description:
+    level: required
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
+    level: required
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: text
+    sources:
+    - default: not_applicable
+      confidence: medium
+      evidence: Default for non-hazardous goods; review per category for battery or
+        hazmat risk.
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
   fabric_type:
     level: required
     shape: list_value
     transform: text
     sources:
-      - path: product.attributes.Fabric Type
-      - path: product.attributes.Main Material
-      - path: product.attributes.material
-      - default: Glass, Metal
-        confidence: medium
-        evidence: HOME_MIRROR listings commonly combine glass mirror surface with metal frame; Giga source data often lacks material fields.
-        safe_default: true
-
+    - path: product.attributes.Fabric Type
+    - path: product.attributes.Main Material
+    - path: product.attributes.material
+    - default: Glass, Metal
+      confidence: medium
+      evidence: HOME_MIRROR listings commonly combine glass mirror surface with metal
+        frame; Giga source data often lacks material fields.
+      safe_default: true
   model_name:
     level: required
     shape: list_value
     transform: text
     sources:
-      - path: product.attributes.Model Name
-      - path: product.attributes.mpn
-      - path: product.vendor_sku
-
+    - path: product.attributes.Model Name
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
   frame:
     level: required
     shape: object
     transform: passthrough
     sources:
-      - default:
-          color:
-            - value: Silver
-              language_tag: en_US
-          material:
-            - value: Metal
-              language_tag: en_US
-        confidence: medium
-        evidence: HOME_MIRROR fallback based on supplier assortment; review when supplier provides exact frame color/material.
-        safe_default: true
-
+    - default:
+        color:
+        - value: Silver
+          language_tag: en_US
+        material:
+        - value: Metal
+          language_tag: en_US
+      confidence: medium
+      evidence: HOME_MIRROR fallback based on supplier assortment; review when supplier
+        provides exact frame color/material.
+      safe_default: true
   mounting_type:
     level: required
     shape: list_value
     transform: enum
     sources:
-      - path: product.attributes.Mounting Type
-      - default: Wall Mount
-        confidence: medium
-        evidence: HOME_MIRROR items in this assortment are wall mirrors unless source indicates floor/tabletop mounting.
-        safe_default: true
-
+    - path: product.attributes.Mounting Type
+    - default: Wall Mount
+      confidence: medium
+      evidence: HOME_MIRROR items in this assortment are wall mirrors unless source
+        indicates floor/tabletop mounting.
+      safe_default: true
   is_assembly_required:
     level: required
     shape: list_value
     transform: boolean
     sources:
-      - path: product.attributes.Assembly Required
-      - default: false
-        confidence: medium
-        evidence: Wall mirrors generally do not require customer assembly beyond mounting hardware installation.
-        safe_default: true
-
+    - path: product.attributes.Assembly Required
+    - default: false
+      confidence: medium
+      evidence: Wall mirrors generally do not require customer assembly beyond mounting
+        hardware installation.
+      safe_default: true
   item_shape:
     level: required
     shape: list_value
     transform: enum
     sources:
-      - path: product.attributes.Item Shape
-      - default: Rectangular
-        confidence: medium
-        evidence: Conservative HOME_MIRROR shape fallback; review if title or images indicate round/arched/oval.
-        safe_default: true
-
+    - path: product.attributes.Item Shape
+    - default: Rectangular
+      confidence: medium
+      evidence: Conservative HOME_MIRROR shape fallback; review if title or images
+        indicate round/arched/oval.
+      safe_default: true
   included_components:
     level: required
     shape: list_value
     transform: text
     sources:
-      - path: product.attributes.Included Components
-      - default: Mirror
-        confidence: high
-        evidence: Listing unit includes the mirror itself.
-        safe_default: true
-
+    - path: product.attributes.Included Components
+    - default: Mirror
+      confidence: high
+      evidence: Listing unit includes the mirror itself.
+      safe_default: true
   special_feature:
     level: required
     shape: list_value
     transform: enum
     sources:
-      - path: product.attributes.Special Feature
-      - default: Wall Mounted
-        confidence: medium
-        evidence: Conservative HOME_MIRROR feature fallback aligned with wall mirror listings.
-        safe_default: true
-
+    - path: product.attributes.Special Feature
+    - default: Wall Mounted
+      confidence: medium
+      evidence: Conservative HOME_MIRROR feature fallback aligned with wall mirror
+        listings.
+      safe_default: true
   room_type:
     level: required
     shape: list_value
     transform: enum
     sources:
-      - path: product.attributes.Room Type
-      - default: Bathroom
-        confidence: medium
-        evidence: HOME_MIRROR assortment is commonly used as bathroom or vanity mirrors.
-        safe_default: true
-
+    - path: product.attributes.Room Type
+    - default: Bathroom
+      confidence: medium
+      evidence: HOME_MIRROR assortment is commonly used as bathroom or vanity mirrors.
+      safe_default: true
   number_of_items:
     level: required
     shape: value
     transform: integer
     sources:
-      - path: product.attributes.Number of Items
-      - default: 1
-        confidence: high
-        evidence: One purchasable mirror listing unit.
-        safe_default: true
+    - path: product.attributes.Number of Items
+    - default: 1
+      confidence: high
+      evidence: One purchasable mirror listing unit.
+      safe_default: true
+name: amazon_universal_required_v1
+version: home_mirror_v2_onboarded_2026-06-28
+product_type: HOME_MIRROR
+mode: live_eligible
+presets:
+- amazon_universal_required_v1
+dimension_strategy: item_length_width
+coverage_ignore_required:
+- merchant_shipping_group
+- merchant_suggested_asin
+generated_from: promote_category_rules_v2

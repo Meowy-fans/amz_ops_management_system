@@ -1,0 +1,13 @@
+{
+  "acceptance": "v2-onboard-live-recertify",
+  "product_type": "CABINET",
+  "generated_at": "2026-06-28T01:39:10.093781+00:00",
+  "offline": {
+    "sku_count": 1,
+    "zero_missing": 1
+  },
+  "preview": {
+    "sku_count": 1,
+    "validation_preview_passed": 0
+  }
+}

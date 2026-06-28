@@ -1,878 +1,350 @@
 attributes:
-  merchant_suggested_asin:
-    shape: array_object
+  item_name:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for merchant_suggested_asin.value'
-  model_number:
-    shape: array_object
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  bullet_point:
     level: required
+    shape: list_value
     transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Model Number
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for model_number.value
-  included_components:
-    shape: array_object
+    sources:
+    - path: content.bullets
+  product_description:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Included Components
-          confidence: high
-          evidence: Bootstrap mapping for included_components.value
-  is_fragile:
-    shape: array_object
+    shape: list_value
+    transform: text_join
+    sources:
+    - path: content.description
+    - path: product.description
+    - path: content.bullets
+      confidence: high
+      evidence: Compose required description from listing bullets when no persisted
+        description exists.
+  brand:
     level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for is_fragile.value'
-  item_weight:
-    shape: array_object
+    shape: list_value
+    transform: text
+    sources:
+    - default: Generic
+      confidence: medium
+      evidence: Fallback brand for unbranded Giga products.
+      safe_default: true
+  manufacturer:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Nova Home Essentials
+      confidence: medium
+      evidence: Existing production default manufacturer for Giga-sourced products.
+      safe_default: true
+  target_audience_base:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - default: Homeowners
+      confidence: medium
+      evidence: Default target audience for home and furniture products.
+      safe_default: true
+  item_type_keyword:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  item_type_name:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: content.title
+  country_of_origin:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - unit
-    - value
-    unit_values:
-    - pounds
-    children:
-      unit:
-        shape: value
-        enum_values:
-        - pounds
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for item_weight.unit'
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for item_weight.value'
-  model_name:
-    shape: array_object
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.place_of_origin
+    - default: CN
+      confidence: medium
+      evidence: Fallback country for Giga products when place_of_origin is missing.
+      safe_default: true
+  supplier_declared_dg_hz_regulation:
     level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Model Name
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for model_name.value
-  seat:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - height
-    - depth
-    - fill_material
-    - interior_width
-    - material_type
-    children:
-      height:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for seat.height.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.assembled_height
-              confidence: high
-              evidence: Bootstrap dimension mapping for seat.height.value
-            - path: product.dimensions.height
-              confidence: medium
-              evidence: Bootstrap dimension mapping for seat.height.value
-      depth:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for seat.depth.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.assembled_width
-              confidence: high
-              evidence: Bootstrap dimension mapping for seat.depth.value
-            - path: product.dimensions.width
-              confidence: medium
-              evidence: Bootstrap dimension mapping for seat.depth.value
-      fill_material:
-        shape: list_value
-        enum_values:
-        - cotton
-        - down
-        - fiber_wrapped_foam
-        - foam
-        - polyester
-        - polystyrene_beads
-        - synthetic_fiber
-        required_children:
-        - value
-        children:
-          value:
-            shape: value
-            enum_values:
-            - cotton
-            - down
-            - fiber_wrapped_foam
-            - foam
-            - polyester
-            - polystyrene_beads
-            - synthetic_fiber
-            transform: enum
-            sources:
-            - path: product.attributes.Filler
-              confidence: medium
-              evidence: Heuristic Giga field match for seat.fill_material.value
-      interior_width:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - centimeters
-        - feet
-        - inches
-        - meters
-        - millimeters
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - centimeters
-            - feet
-            - inches
-            - meters
-            - millimeters
-            transform: enum
-            sources:
-            - default: null
-              confidence: low
-              evidence: 'TODO: review source mapping for seat.interior_width.unit'
-          value:
-            shape: value
-            transform: text
-            sources:
-            - default: null
-              confidence: low
-              evidence: 'TODO: review source mapping for seat.interior_width.value'
-      material_type:
-        shape: array_object
-        required_children:
-        - value
-        children:
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.attributes.Main Material
-              confidence: high
-              evidence: Heuristic Giga field match for seat.material_type.value
-  material:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Main Material
-          confidence: high
-          evidence: Bootstrap mapping for material.value
-        - path: product.attributes.material
-          confidence: high
-          evidence: Bootstrap mapping for material.value
-  fabric_type:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Fabric Type
-          confidence: high
-          evidence: Bootstrap mapping for fabric_type.value
-        - path: product.attributes.Main Material
-          confidence: high
-          evidence: Bootstrap mapping for fabric_type.value
-  number_of_items:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Number of Items
-          confidence: high
-          evidence: Bootstrap mapping for number_of_items.value
-  color:
-    shape: array_object
-    level: required
-    transform: passthrough
+    shape: list_value
+    transform: enum
     manual_review: true
     sources:
-    - path: product.attributes.Main Color
+    - default: not_applicable
       confidence: high
-      evidence: Bootstrap mapping for color
-    - path: product.attributes.color
+      evidence: 'Verified 2026-06-22: all 19 pending SOFA SKUs audited. No batteries,
+        chemicals, flammables, aerosols, or regulated materials detected. One SKU
+        (W2353P351264) mentions light in product name -- refers to lightweight/color,
+        not electrical. not_applicable is safe for entire category.'
+      safe_default: true
+  externally_assigned_product_identifier:
+    level: required
+    shape: object
+    transform: passthrough
+    sources:
+    - default:
+        type: GTIN_EXEMPTION
+        value: product_does_not_have_gtin
+      confidence: medium
+      evidence: Existing GTIN exemption behavior for listings without supplier product
+        identifiers.
+      safe_default: true
+  supplier_declared_has_product_identifier_exemption:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - default: true
+      confidence: medium
+      evidence: Existing product identifier exemption declaration for GTIN-exempt
+        listings.
+      safe_default: true
+  model_name:
+    level: required
+    shape: value
+    transform: text
+    sources:
+    - path: product.attributes.Model Name
+    - path: product.attributes.mpn
+    - path: product.vendor_sku
+  number_of_items:
+    level: required
+    shape: value
+    transform: integer
+    sources:
+    - path: product.attributes.Number of Items
+    - default: 1
       confidence: high
-      evidence: Bootstrap mapping for color
-  part_number:
-    shape: array_object
+      evidence: One purchasable sofa listing unit.
+      safe_default: true
+  is_fragile:
     level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+    - path: product.attributes.Is Fragile?
+    - default: false
+      confidence: medium
+      evidence: Draft SOFA furniture default; review if listing includes glass, stone,
+        ceramic, or fragile decorative components.
+      safe_default: true
+  seat:
+    level: required
+    shape: object
     transform: passthrough
     manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.attributes.Part Number
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-        - path: product.attributes.mpn
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-        - path: product.vendor_sku
-          confidence: high
-          evidence: Bootstrap mapping for part_number.value
-  is_assembly_required:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - path: product.attributes.Assembly Required
-          confidence: high
-          evidence: Bootstrap mapping for is_assembly_required.value
-        - path: product.requires_assembly
-          confidence: high
-          evidence: Bootstrap mapping for is_assembly_required.value
-  seating_capacity:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for seating_capacity.value'
-  sofa_type:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - convertible
-    - futon
-    - loveseat
-    - sectional
-    - settee
-    - sleeper
-    - sofa_bed
-    - sofa_chaise
-    - standard
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - convertible
-        - futon
-        - loveseat
-        - sectional
-        - settee
-        - sleeper
-        - sofa_bed
-        - sofa_chaise
-        - standard
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for sofa_type.value'
-  item_depth_width_height:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - depth
-    - height
-    - width
     children:
       depth:
         shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
         children:
-          unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.depth.unit
           value:
-            shape: value
-            transform: text
+            transform: passthrough
             sources:
             - path: product.dimensions.assembled_width
               confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
             - path: product.dimensions.width
               confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.depth.value
-      height:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
-        children:
           unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
             sources:
             - default: inches
               confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.height.unit
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      height:
+        shape: measure
+        children:
           value:
-            shape: value
-            transform: text
+            transform: passthrough
             sources:
             - path: product.dimensions.assembled_height
               confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
             - path: product.dimensions.height
               confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.height.value
-      width:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - inches
-        children:
+            - default: 18
+              confidence: medium
+              evidence: Draft ergonomic sofa seat height fallback; review against
+                supplier dimensions before LIVE.
+              safe_default: true
           unit:
-            shape: value
-            enum_values:
-            - inches
-            transform: enum
             sources:
             - default: inches
               confidence: high
-              evidence: Bootstrap unit for item_depth_width_height.width.unit
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      interior_width:
+        shape: measure
+        children:
           value:
-            shape: value
-            transform: text
+            transform: passthrough
             sources:
             - path: product.dimensions.assembled_length
               confidence: high
-              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
             - path: product.dimensions.length
               confidence: medium
-              evidence: Bootstrap dimension mapping for item_depth_width_height.width.value
-  fulfillment_availability:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - fulfillment_channel_code
-    children:
-      fulfillment_channel_code:
-        shape: value
-        enum_values:
-        - AMAZON_NA
-        - DEFAULT
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for fulfillment_availability.fulfillment_channel_code'
-  condition_type:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    enum_values:
-    - club_club
-    - collectible_acceptable
-    - collectible_good
-    - collectible_like_new
-    - collectible_very_good
-    - new_new
-    - new_oem
-    - new_open_box
-    - refurbished_refurbished
-    - used_acceptable
-    - used_good
-    - used_like_new
-    - used_very_good
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - club_club
-        - collectible_acceptable
-        - collectible_good
-        - collectible_like_new
-        - collectible_very_good
-        - new_new
-        - new_oem
-        - new_open_box
-        - refurbished_refurbished
-        - used_acceptable
-        - used_good
-        - used_like_new
-        - used_very_good
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for condition_type.value'
-  list_price:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - currency
-    - value
-    children:
-      currency:
-        shape: value
-        enum_values:
-        - USD
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for list_price.currency'
-      value:
-        shape: value
-        transform: text
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for list_price.value'
-  item_package_dimensions:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - height
-    - length
-    - width
-    children:
-      height:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
           unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
             sources:
             - default: inches
               confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.height.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.height
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.height.value
-      length:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.length.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.length
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.length.value
-      width:
-        shape: measure
-        required_children:
-        - unit
-        - value
-        unit_values:
-        - angstrom
-        - centimeters
-        - decimeters
-        - feet
-        - hundredths_inches
-        - inches
-        - kilometers
-        - meters
-        - micrometer
-        - miles
-        - millimeters
-        - mils
-        - nanometer
-        - picometer
-        - yards
-        children:
-          unit:
-            shape: value
-            enum_values:
-            - angstrom
-            - centimeters
-            - decimeters
-            - feet
-            - hundredths_inches
-            - inches
-            - kilometers
-            - meters
-            - micrometer
-            - miles
-            - millimeters
-            - mils
-            - nanometer
-            - picometer
-            - yards
-            transform: enum
-            sources:
-            - default: inches
-              confidence: high
-              evidence: Bootstrap unit for item_package_dimensions.width.unit
-          value:
-            shape: value
-            transform: text
-            sources:
-            - path: product.dimensions.width
-              confidence: high
-              evidence: Bootstrap dimension mapping for item_package_dimensions.width.value
-  item_package_weight:
-    shape: array_object
-    level: required
-    transform: passthrough
-    manual_review: true
-    required_children:
-    - unit
-    - value
-    unit_values:
-    - pounds
-    children:
-      unit:
-        shape: value
-        enum_values:
-        - pounds
+              evidence: Product dimensions are normalized to inches.
+              safe_default: true
+      fill_material:
+        shape: list_value
         transform: enum
         sources:
-        - default: pounds
+        - path: product.attributes.Fill Material
           confidence: high
-          evidence: Bootstrap unit for item_package_weight.unit
-      value:
-        shape: value
-        transform: text
-        sources:
-        - path: product.dimensions.weight
+        - path: product.attributes.Filler
           confidence: high
-          evidence: Bootstrap dimension mapping for item_package_weight.value
-        - path: product.dimensions.assembled_weight
+        - default: foam
           confidence: medium
-          evidence: Bootstrap dimension mapping for item_package_weight.value
-  batteries_required:
-    shape: array_object
-    level: required
+          evidence: SOFA seat.fill_material schema tokens use snake_case values such
+            as foam; map supplier foam fills to the approved enum token.
+          safe_default: true
+      material_type:
+        shape: list_value
+        transform: text
+        sources:
+        - path: product.attributes.Main Material
+          confidence: high
+        - path: product.attributes.material
+          confidence: high
+        - default: Polyester
+          confidence: medium
+          evidence: Conservative sofa upholstery fallback when supplier material is
+            missing; review if source specifies leather, linen, velvet, or blended
+            fabric.
+          safe_default: true
+  fabric_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Fabric Type
+    - path: product.attributes.Main Material
+    - path: product.attributes.material
+    - default: Polyester
+      confidence: medium
+      evidence: Conservative sofa upholstery fallback when supplier material is missing;
+        review if source specifies leather, linen, velvet, or blended fabric.
+      safe_default: true
+  sofa_type:
+    level: recommended
+    shape: list_value
+    transform: enum_scan
+    sources:
+    - path: content.title
+      confidence: high
+      evidence: Match explicit sofa-form keywords in the supplier title against Amazon
+        sofa_type enum tokens.
+    - path: product.attributes.Sofa Type
+    - path: product.attributes.Product Type
+    - default: standard
+      confidence: medium
+      evidence: Conservative sofa type fallback for ordinary sofas when no specialized
+        form is stated.
+      safe_default: true
+  seating_capacity:
+    level: recommended
+    shape: value
+    transform: integer
+    sources:
+    - path: product.attributes.Seating Capacity
+    - path: product.attributes.Number of Seats
+    - path: product.attributes.Seats
+      confidence: high
+      evidence: Giga supplier characteristic Seats field (for example 3 Seat).
+    - default: 3
+      confidence: medium
+      evidence: Conservative draft fallback for standard sofas; review for loveseat,
+        sectional, or oversized seating.
+      safe_default: true
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: enum
+    sources:
+    - path: product.attributes.Room Type
+    - llm:
+        hint: Extract intended room only when product text explicitly mentions a room.
+          Return null if absent.
+        enum_locked: true
+    - default: Living Room
+      confidence: medium
+      evidence: Common sofa placement fallback; review if product is marketed for
+        bedroom, nursery, office, or home theater.
+      safe_default: true
+  included_components:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+    - path: product.attributes.Included Components
+    - default: Seat Cushion
+      confidence: medium
+      evidence: Draft default for sofa listing contents; review if product includes
+        ottoman, throw pillows, hardware, or sectional components.
+      safe_default: true
+  is_assembly_required:
+    level: recommended
+    shape: list_value
+    transform: boolean
+    sources:
+    - path: product.attributes.Assembly Required
+    - path: product.requires_assembly
+    - default: true
+      confidence: medium
+      evidence: Supplier large furniture commonly requires assembly; review if source
+        states fully assembled.
+      safe_default: true
+  arm:
+    level: recommended
+    shape: list_value
     transform: passthrough
     manual_review: true
-    enum_values:
-    - 'False'
-    - 'True'
-    required_children:
-    - value
-    children:
-      value:
-        shape: value
-        enum_values:
-        - 'False'
-        - 'True'
-        transform: enum
-        sources:
-        - default: null
-          confidence: low
-          evidence: 'TODO: review source mapping for batteries_required.value'
+    sources:
+    - llm:
+        hint: 'Extract arm style only when Giga product name/description explicitly
+          states one of: Angle, Armless, Curved, English, Flared, Key, Padded, Pillow-Top,
+          Pleated, Recessed, Rolled, Round, Ruched, Saddle, Scroll, Shelter, Sloped,
+          Sock, Square, Straight, Swoop, Track, Tuxedo. Return null if absent.'
+        enum_locked: true
+    - default: null
+      confidence: low
+      evidence: "Verified against SOFA schema: arm[].style[].value enum (23 values).\
+        \ Schema is array\u2192object\u2192style\u2192array\u2192{value, language_tag}.\
+        \ Recommended attribute, safely excluded from payload when data unavailable."
+  back:
+    level: recommended
+    shape: list_value
+    transform: passthrough
+    manual_review: true
+    sources:
+    - llm:
+        hint: 'Extract back style only when Giga product name/description explicitly
+          states one of: Backless, Biscuit Back, Camel Back, Cushion Back, Loose Back,
+          Pillow Back, Scatter Back, Sewn Pillow Back, Split Back, Tight Back, Tufted
+          Back. Return null if absent.'
+        enum_locked: true
+    - default: null
+      confidence: low
+      evidence: "Verified against SOFA schema: back[].style[].value enum (11 values).\
+        \ Schema is array\u2192object\u2192style\u2192array\u2192{value, language_tag}.\
+        \ Recommended attribute, safely excluded from payload when data unavailable."
+name: amazon_universal_required_v1
+version: sofa_v2_onboarded_2026-06-28
 product_type: SOFA
-version: sofa_attribute_rules_v2_live
-mode: dry_run
-generated_from: regenerate_live_category_rules_v2
+mode: live_eligible
+generated_from: promote_category_rules_v2
 presets:
 - amazon_universal_required_v1
+dimension_strategy: item_depth_width_height
 coverage_ignore_required:
 - merchant_shipping_group
 - merchant_suggested_asin
-dimension_strategy: item_depth_width_height
-regenerated_from_backup: /home/liangqinhao/amz_listing_management_system/config/amz_listing_data_mapping/api_attribute_rules/backups/live_eligible_2026-06-28/sofa.yaml

@@ -1,0 +1,243 @@
+product_type: SOFA
+version: sofa_attribute_rules_v2_live
+mode: live_eligible
+generated_from: amazon_product_type_schema
+presets:
+  - amazon_universal_required_v1
+
+dimension_strategy: item_depth_width_height
+coverage_ignore_required:
+  - merchant_shipping_group
+  - merchant_suggested_asin
+
+attributes:
+  supplier_declared_dg_hz_regulation:
+    level: required
+    shape: list_value
+    transform: enum
+    manual_review: true
+    sources:
+      - default: not_applicable
+        confidence: high
+        evidence: "Verified 2026-06-22: all 19 pending SOFA SKUs audited. No batteries, chemicals, flammables, aerosols, or regulated materials detected. One SKU (W2353P351264) mentions light in product name -- refers to lightweight/color, not electrical. not_applicable is safe for entire category."
+        safe_default: true
+
+  model_name:
+    level: required
+    shape: value
+    transform: text
+    sources:
+      - path: product.attributes.Model Name
+      - path: product.attributes.mpn
+      - path: product.vendor_sku
+
+  number_of_items:
+    level: required
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Number of Items
+      - default: 1
+        confidence: high
+        evidence: One purchasable sofa listing unit.
+        safe_default: true
+
+  is_fragile:
+    level: required
+    shape: list_value
+    transform: boolean_yes_no
+    sources:
+      - path: product.attributes.Is Fragile?
+      - default: No
+        confidence: medium
+        evidence: Draft SOFA furniture default; review if listing includes glass, stone, ceramic, or fragile decorative components.
+        safe_default: true
+
+  seat:
+    level: required
+    shape: object
+    transform: passthrough
+    manual_review: true
+    children:
+      depth:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_width
+                confidence: high
+              - path: product.dimensions.width
+                confidence: medium
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      height:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_height
+                confidence: high
+              - path: product.dimensions.height
+                confidence: medium
+              - default: 18
+                confidence: medium
+                evidence: Draft ergonomic sofa seat height fallback; review against supplier dimensions before LIVE.
+                safe_default: true
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      interior_width:
+        shape: measure
+        children:
+          value:
+            transform: passthrough
+            sources:
+              - path: product.dimensions.assembled_length
+                confidence: high
+              - path: product.dimensions.length
+                confidence: medium
+          unit:
+            sources:
+              - default: inches
+                confidence: high
+                evidence: Product dimensions are normalized to inches.
+                safe_default: true
+      fill_material:
+        shape: list_value
+        transform: enum
+        sources:
+          - path: product.attributes.Fill Material
+            confidence: high
+          - path: product.attributes.Filler
+            confidence: high
+          - default: foam
+            confidence: medium
+            evidence: SOFA seat.fill_material schema tokens use snake_case values such as foam; map supplier foam fills to the approved enum token.
+            safe_default: true
+      material_type:
+        shape: list_value
+        transform: text
+        sources:
+          - path: product.attributes.Main Material
+            confidence: high
+          - path: product.attributes.material
+            confidence: high
+          - default: Polyester
+            confidence: medium
+            evidence: Conservative sofa upholstery fallback when supplier material is missing; review if source specifies leather, linen, velvet, or blended fabric.
+            safe_default: true
+
+  fabric_type:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Fabric Type
+      - path: product.attributes.Main Material
+      - path: product.attributes.material
+      - default: Polyester
+        confidence: medium
+        evidence: Conservative sofa upholstery fallback when supplier material is missing; review if source specifies leather, linen, velvet, or blended fabric.
+        safe_default: true
+
+  sofa_type:
+    level: recommended
+    shape: list_value
+    transform: enum_scan
+    sources:
+      - path: content.title
+        confidence: high
+        evidence: Match explicit sofa-form keywords in the supplier title against Amazon sofa_type enum tokens.
+      - path: product.attributes.Sofa Type
+      - path: product.attributes.Product Type
+      - default: standard
+        confidence: medium
+        evidence: Conservative sofa type fallback for ordinary sofas when no specialized form is stated.
+        safe_default: true
+
+  seating_capacity:
+    level: recommended
+    shape: value
+    transform: integer
+    sources:
+      - path: product.attributes.Seating Capacity
+      - path: product.attributes.Number of Seats
+      - path: product.attributes.Seats
+        confidence: high
+        evidence: Giga supplier characteristic Seats field (for example 3 Seat).
+      - default: 3
+        confidence: medium
+        evidence: Conservative draft fallback for standard sofas; review for loveseat, sectional, or oversized seating.
+        safe_default: true
+
+  room_type:
+    level: recommended
+    shape: list_value
+    transform: enum
+    sources:
+      - path: product.attributes.Room Type
+      - llm:
+          hint: Extract intended room only when product text explicitly mentions a room. Return null if absent.
+          enum_locked: true
+      - default: Living Room
+        confidence: medium
+        evidence: Common sofa placement fallback; review if product is marketed for bedroom, nursery, office, or home theater.
+        safe_default: true
+
+  included_components:
+    level: recommended
+    shape: list_value
+    transform: text
+    sources:
+      - path: product.attributes.Included Components
+      - default: Seat Cushion
+        confidence: medium
+        evidence: Draft default for sofa listing contents; review if product includes ottoman, throw pillows, hardware, or sectional components.
+        safe_default: true
+
+  is_assembly_required:
+    level: recommended
+    shape: list_value
+    transform: boolean
+    sources:
+      - path: product.attributes.Assembly Required
+      - path: product.requires_assembly
+      - default: true
+        confidence: medium
+        evidence: Supplier large furniture commonly requires assembly; review if source states fully assembled.
+        safe_default: true
+
+  arm:
+    level: recommended
+    shape: list_value
+    transform: passthrough
+    manual_review: true
+    sources:
+      - llm:
+          hint: "Extract arm style only when Giga product name/description explicitly states one of: Angle, Armless, Curved, English, Flared, Key, Padded, Pillow-Top, Pleated, Recessed, Rolled, Round, Ruched, Saddle, Scroll, Shelter, Sloped, Sock, Square, Straight, Swoop, Track, Tuxedo. Return null if absent."
+          enum_locked: true
+      - default: null
+        confidence: low
+        evidence: "Verified against SOFA schema: arm[].style[].value enum (23 values). Schema is array→object→style→array→{value, language_tag}. Recommended attribute, safely excluded from payload when data unavailable."
+
+  back:
+    level: recommended
+    shape: list_value
+    transform: passthrough
+    manual_review: true
+    sources:
+      - llm:
+          hint: "Extract back style only when Giga product name/description explicitly states one of: Backless, Biscuit Back, Camel Back, Cushion Back, Loose Back, Pillow Back, Scatter Back, Sewn Pillow Back, Split Back, Tight Back, Tufted Back. Return null if absent."
+          enum_locked: true
+      - default: null
+        confidence: low
+        evidence: "Verified against SOFA schema: back[].style[].value enum (11 values). Schema is array→object→style→array→{value, language_tag}. Recommended attribute, safely excluded from payload when data unavailable."
